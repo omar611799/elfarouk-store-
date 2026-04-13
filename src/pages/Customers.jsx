@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
 import { Plus, Edit2, Trash2, Users, Phone, Car, History, Wrench, Calendar, FileText } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
