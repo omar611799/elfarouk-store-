@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, Tag, Truck, Users,
   ShoppingCart, FileText, ArrowLeftRight, Menu, X, Store, BarChart3, BookOpen, TrendingDown
+} from 'lucide-react'
 import { useStore } from '../../context/StoreContext'
 
 const nav = [
