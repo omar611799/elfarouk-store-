@@ -35,10 +35,19 @@ export default function Layout() {
   const allowedNav = nav.filter(n => currentUser?.role === 'admin' || !n.adminOnly)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-obsidian-950 text-slate-200 relative">
-      {/* Dynamic Background Ornament */}
-      <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-electric-500/10 blur-[120px] rounded-full pointer-events-none animate-pulse-glow" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-cyan-500/5 blur-[100px] rounded-full pointer-events-none animate-pulse-glow" style={{ animationDelay: '2s' }} />
+    <div className="flex h-screen overflow-hidden text-slate-200 relative z-0">
+      {/* Video Background */}
+      <div className="fixed inset-0 w-full h-full -z-10 bg-slate-950">
+        <video 
+          autoPlay muted loop playsInline
+          poster="/background.jpg"
+          className="w-full h-full object-cover opacity-40 mix-blend-screen"
+        >
+          <source src="/dashboard-bg.mp4" type="video/mp4" />
+        </video>
+        {/* Shadow Overlay to keep it professional and text readable */}
+        <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" />
+      </div>
 
       {/* Mobile overlay */}
       <AnimatePresence>
@@ -53,7 +62,7 @@ export default function Layout() {
 
       {/* Sidebar */}
       <aside className={`
-        fixed top-0 right-0 h-full w-72 bg-obsidian-950 border-l border-white/5 z-50
+        fixed top-0 right-0 h-full w-72 bg-slate-900/50 backdrop-blur-2xl border-l border-white/5 z-50
         transform transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
         ${open ? 'translate-x-0' : 'translate-x-full'}
         lg:relative lg:translate-x-0 lg:flex lg:flex-col shadow-2xl
