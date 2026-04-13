@@ -106,7 +106,8 @@ export default function POS() {
     recognition.start()
   }
 
-  const [scannerError, setScannerError] = useState(false)
+  const [scannerError, setScannerError] = useState(null)
+  const [retryCamera, setRetryCamera] = useState(0)
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -120,7 +121,7 @@ export default function POS() {
         cartAdd(matched);
         toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
         setShowScanner(false);
-        setScannerError(false);
+        setScannerError(null);
       } else {
         toast.error(`كود غير معروف: ${decodedText?.decodedText}`);
       }
@@ -130,54 +131,76 @@ export default function POS() {
   };
 
   useEffect(() => {
-    import('html5-qrcode').then(({ Html5Qrcode }) => {
-      let html5QrCode = null;
-      if (showScanner && !scannerError) {
+    let videoTimeout;
+    let html5QrCode = null;
+
+    const startCamera = async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode');
         html5QrCode = new Html5Qrcode('reader');
         
-        Html5Qrcode.getCameras().then(devices => {
-          if (devices && devices.length > 0) {
-            const cameraId = devices.length > 1 ? devices[devices.length - 1].id : devices[0].id;
-            
-            html5QrCode.start(
-              cameraId,
-              { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
-              (decodedText) => {
-                const matched = products.find(p => p.sku === decodedText || p.id === decodedText);
-                if (matched) {
-                  cartAdd(matched);
-                  toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
-                  setShowScanner(false);
-                } else {
-                  toast.error(`كود غير معروف: ${decodedText}`);
-                }
-              },
-              (errorMessage) => {}
-            ).catch(err => {
-              console.error("Camera start error:", err);
-              setScannerError(true);
-            });
-          } else {
-            console.error("No cameras found");
-            setScannerError(true);
-          }
-        }).catch(err => {
-          console.error("Permission error:", err);
-          setScannerError(true);
-        });
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          const cameraId = devices.length > 1 ? devices[devices.length - 1].id : devices[0].id;
+          
+          await html5QrCode.start(
+            cameraId,
+            { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
+            (decodedText) => {
+              const matched = products.find(p => p.sku === decodedText || p.id === decodedText);
+              if (matched) {
+                cartAdd(matched);
+                toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
+                setShowScanner(false);
+              } else {
+                toast.error(`كود غير معروف: ${decodedText}`);
+              }
+            },
+            () => {}
+          );
+
+          // Failsafe Timeout: Check if video is actually playing after 3 seconds
+          videoTimeout = setTimeout(() => {
+            const videoEl = document.querySelector('#reader video');
+            // If the video tag doesn't exist, isn't ready or paused, OS blocked the feed silently
+            if (!videoEl || videoEl.readyState === 0 || videoEl.paused) {
+              setScannerError("الكاميرا لا تستجيب (قد تكون محظورة أو محجوزة لتطبيق آخر)");
+            }
+          }, 3000);
+
+        } else {
+          setScannerError("لم يتم العثور على أي كاميرا متصلة بالجهاز");
+        }
+      } catch (err) {
+        console.error("Camera fail:", err);
+        const errorMsg = err?.name || err?.message || String(err);
+        if (errorMsg.includes('NotAllowedError')) {
+           setScannerError("تم رفض صلاحية الكاميرا من المتصفح");
+        } else if (errorMsg.includes('NotReadableError') || errorMsg.includes('TrackStartError')) {
+           setScannerError("الكاميرا محجوزة لتطبيق آخر (أغلق أي برنامج يستخدمها)");
+        } else if (errorMsg.includes('OverconstrainedError')) {
+           setScannerError("لا توجد كاميرا مطابقة للمواصفات المطلوبة");
+        } else {
+           setScannerError(`خطأ غير متوقع: ${errorMsg}`);
+        }
       }
-      
       window._currentQrCode = html5QrCode;
-    });
+    };
+
+    if (showScanner) {
+      setScannerError(null);
+      startCamera();
+    }
 
     return () => { 
+      clearTimeout(videoTimeout);
       if (window._currentQrCode) {
         window._currentQrCode.stop().then(() => {
           window._currentQrCode.clear();
         }).catch(() => {});
       }
     };
-  }, [showScanner, scannerError, products, cartAdd]);
+  }, [showScanner, retryCamera, products, cartAdd]);
 
   const handleSale = async () => {
     if (cart.length === 0 || !customer.name) return
@@ -327,19 +350,23 @@ export default function POS() {
                     <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-rose-500/20">
                       <Camera size={20} className="text-rose-400" />
                     </div>
-                    <p className="text-rose-400 text-sm font-bold">تعذر تشغيل الكاميرا آلياً</p>
+                    <p className="text-rose-400 text-sm font-bold mb-2">فشل تشغيل الكاميرا</p>
+                    <p className="text-slate-300 text-xs px-4 mb-4">{scannerError}</p>
+                    <button onClick={() => setRetryCamera(c => c + 1)} className="btn-ghost !py-2 text-xs">
+                        إعادة محاولة الاتصال بالكاميرا
+                    </button>
                   </div>
                 )}
 
                 <div className="w-full max-w-sm mx-auto text-center border-t border-white/10 pt-4 mt-2">
-                  <p className="text-slate-400 text-xs mb-3">يمكنك رفع صورة الباركود مباشرة من اللابتوب</p>
+                  <p className="text-slate-400 text-xs mb-3">يمكنك استخدام رفع الصورة كبديل دائم في أي وقت.</p>
                   <label className="btn-primary !bg-electric-600 hover:!bg-electric-500 cursor-pointer inline-flex items-center justify-center w-full max-w-[200px] text-sm">
                     رفع صورة الباركود
                     <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
                   </label>
                 </div>
 
-                <button onClick={() => { setShowScanner(false); setScannerError(false); }} className="absolute top-4 right-4 text-white/50 hover:text-white bg-white/10 p-2 rounded-full z-50"><X size={16} /></button>
+                <button onClick={() => { setShowScanner(false); setScannerError(null); }} className="absolute top-4 right-4 text-white/50 hover:text-white bg-white/10 p-2 rounded-full z-50"><X size={16} /></button>
             </motion.div>
         )}
 
