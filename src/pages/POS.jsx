@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Search, Plus, Minus, Trash2, ShoppingCart, Send, MessageCircle, Mic, CreditCard, Banknote, Smartphone, CalendarClock, Camera, Sparkles, X, ChevronLeft } from 'lucide-react'
+import { Search, Plus, Minus, Trash2, ShoppingCart, Send, MessageCircle, Mic, CreditCard, Banknote, Smartphone, CalendarClock, Camera, Sparkles, X, ChevronLeft, Users } from 'lucide-react'
 import { Html5QrcodeScanner } from 'html5-qrcode'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
