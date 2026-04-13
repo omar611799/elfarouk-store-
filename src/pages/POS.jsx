@@ -194,10 +194,19 @@ export default function POS() {
 
     return () => { 
       clearTimeout(videoTimeout);
-      if (window._currentQrCode) {
-        window._currentQrCode.stop().then(() => {
-          window._currentQrCode.clear();
-        }).catch(() => {});
+      try {
+        if (window._currentQrCode) {
+          if (window._currentQrCode.isScanning) {
+            window._currentQrCode.stop().then(() => {
+              window._currentQrCode.clear();
+            }).catch(() => {});
+          } else {
+            window._currentQrCode.clear();
+          }
+        }
+      } catch (err) {
+        console.error("Cleanup error:", err);
+        try { window._currentQrCode?.clear(); } catch(e){}
       }
     };
   }, [showScanner, retryCamera, products, cartAdd]);
