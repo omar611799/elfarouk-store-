@@ -136,41 +136,42 @@ export default function POS() {
 
     const startCamera = async () => {
       try {
+        // 1. Force the explicit browser permission prompt organically
+        const tmpStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        tmpStream.getTracks().forEach(t => t.stop()); // release lock immediately
+
+        // 2. Initialize library
         const { Html5Qrcode } = await import('html5-qrcode');
         html5QrCode = new Html5Qrcode('reader');
         
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 0) {
-          const cameraId = devices.length > 1 ? devices[devices.length - 1].id : devices[0].id;
-          
-          await html5QrCode.start(
-            cameraId,
-            { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
-            (decodedText) => {
-              const matched = products.find(p => p.sku === decodedText || p.id === decodedText);
-              if (matched) {
-                cartAdd(matched);
-                toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
-                setShowScanner(false);
-              } else {
-                toast.error(`كود غير معروف: ${decodedText}`);
-              }
-            },
-            () => {}
-          );
+        const config = { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 };
+        const onScan = (decodedText) => {
+          const matched = products.find(p => p.sku === decodedText || p.id === decodedText);
+          if (matched) {
+            cartAdd(matched);
+            toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
+            setShowScanner(false);
+          } else {
+            toast.error(`كود غير معروف: ${decodedText}`);
+          }
+        };
 
-          // Failsafe Timeout: Check if video is actually playing after 3 seconds
-          videoTimeout = setTimeout(() => {
-            const videoEl = document.querySelector('#reader video');
-            // If the video tag doesn't exist, isn't ready or paused, OS blocked the feed silently
-            if (!videoEl || videoEl.readyState === 0 || videoEl.paused) {
-              setScannerError("الكاميرا لا تستجيب (قد تكون محظورة أو محجوزة لتطبيق آخر)");
-            }
-          }, 3000);
-
-        } else {
-          setScannerError("لم يتم العثور على أي كاميرا متصلة بالجهاز");
+        // 3. Try rear camera first, fallback to front camera (laptop)
+        try {
+          await html5QrCode.start({ facingMode: "environment" }, config, onScan, () => {});
+        } catch (err1) {
+          console.warn("Environment camera failed, falling back to user camera:", err1);
+          await html5QrCode.start({ facingMode: "user" }, config, onScan, () => {});
         }
+
+        // Failsafe Timeout: Check if video is actually playing after 3 seconds
+        videoTimeout = setTimeout(() => {
+          const videoEl = document.querySelector('#reader video');
+          if (!videoEl || videoEl.readyState === 0 || videoEl.paused) {
+            setScannerError("الكاميرا لا تستجيب (يرجى التأكد من عدم استخدامها في تطبيق آخر)");
+          }
+        }, 3000);
+
       } catch (err) {
         console.error("Camera fail:", err);
         const errorMsg = err?.name || err?.message || String(err);
