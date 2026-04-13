@@ -4,13 +4,14 @@ import { listenCol, COLS, addProduct, updateProduct, deleteProduct,
   addCategory, deleteCategory, addSupplier, updateSupplier, deleteSupplier,
   addCustomer, updateCustomer, deleteCustomer,
   updateProductStock, addTransaction, completeSale,
-  payInvoiceDebt, deleteInvoiceAndReturnStock } from '../firebase/collections'
+  payInvoiceDebt, deleteInvoiceAndReturnStock,
+  addExpense, deleteExpense } from '../firebase/collections'
 
 const StoreContext = createContext(null)
 
 const init = {
   products: [], categories: [], suppliers: [],
-  customers: [], invoices: [], transactions: [],
+  customers: [], invoices: [], transactions: [], expenses: [],
   loading: true,
   cart: [],
 }
@@ -46,6 +47,7 @@ export function StoreProvider({ children }) {
       listenCol(COLS.CUSTOMERS,    data => dispatch({ type: 'SET', key: 'customers',    data })),
       listenCol(COLS.INVOICES,     data => dispatch({ type: 'SET', key: 'invoices',     data })),
       listenCol(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data })),
+      listenCol(COLS.EXPENSES,     data => dispatch({ type: 'SET', key: 'expenses',     data })),
     ]
     dispatch({ type: 'LOADING', value: false })
     return () => unsubs.forEach(u => u())
@@ -106,6 +108,16 @@ export function StoreProvider({ children }) {
   }
   const handleDeleteCustomer = async (id) => {
     try { await deleteCustomer(id); toast.success('تم حذف العميل') }
+    catch (e) { toast.error(e.message) }
+  }
+
+  // ── Expenses ──
+  const handleAddExpense = async (data) => {
+    try { await addExpense(data); toast.success('تم تسجيل المصروف بنجاح') }
+    catch (e) { toast.error(e.message) }
+  }
+  const handleDeleteExpense = async (id) => {
+    try { await deleteExpense(id); toast.success('تم حذف المصروف') }
     catch (e) { toast.error(e.message) }
   }
 
@@ -178,6 +190,8 @@ export function StoreProvider({ children }) {
       completeSale: handleCompleteSale,
       payInvoiceDebt: handlePayInvoiceDebt,
       deleteInvoice: handleDeleteInvoice,
+      addExpense: handleAddExpense,
+      deleteExpense: handleDeleteExpense,
       cartAdd, cartQty, cartRemove, cartClear,
     }}>
       {children}

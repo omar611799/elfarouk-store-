@@ -1,5 +1,5 @@
 import { useStore } from '../context/StoreContext'
-import { Package, Users, FileText, TrendingUp, AlertTriangle, ShoppingCart } from 'lucide-react'
+import { Package, Users, FileText, TrendingUp, AlertTriangle, ShoppingCart, TrendingDown } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { motion } from 'framer-motion'
 
@@ -17,10 +17,12 @@ const item = {
 }
 
 export default function Dashboard() {
-  const { products, customers, invoices, transactions } = useStore()
+  const { products, customers, invoices, transactions, expenses } = useStore()
 
   const totalSales    = invoices.reduce((s, i) => s + (i.total || 0), 0)
-  const totalProfit   = invoices.reduce((s, i) => s + (i.total || 0) * 0.3, 0)
+  const totalProfitRaw = invoices.reduce((s, i) => s + (i.total || 0) * 0.3, 0)
+  const totalExpenses = (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0)
+  const netProfit     = totalProfitRaw - totalExpenses
   const lowStock      = products.filter(p => p.quantity <= (p.minStock || 5))
   const totalProducts = products.length
 
@@ -66,9 +68,9 @@ export default function Dashboard() {
 
   const stats = [
     { label: 'إجمالي المبيعات', value: `${totalSales.toLocaleString()} ج.م`, icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-    { label: 'صافي الأرباح',    value: `${totalProfit.toLocaleString()} ج.م`, icon: ShoppingCart, color: 'text-primary-400', bg: 'bg-primary-500/10 border-primary-500/20' },
+    { label: 'صافي الربح',      value: `${netProfit.toLocaleString()} ج.م`, icon: ShoppingCart, color: 'text-primary-400', bg: 'bg-primary-500/10 border-primary-500/20' },
+    { label: 'المصروفات',       value: `${totalExpenses.toLocaleString()} ج.م`, icon: TrendingDown, color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20' },
     { label: 'قطع الغيار',      value: totalProducts, icon: Package, color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
-    { label: 'العملاء',         value: customers.length, icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
   ]
 
   const sendReminderWhatsApp = (rem) => {

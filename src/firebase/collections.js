@@ -19,9 +19,9 @@ export const COLS = {
   PRODUCTS: 'products',
   CATEGORIES: 'categories',
   SUPPLIERS: 'suppliers',
-  CUSTOMERS: 'customers',
   INVOICES: 'invoices',
   TRANSACTIONS: 'transactions',
+  EXPENSES: 'expenses',
 }
 
 // ── Real-time listeners (onSnapshot) ──
@@ -95,6 +95,10 @@ export const getInvoice = (id) => getDoc_(COLS.INVOICES, id)
 
 // ── Transactions ──
 export const addTransaction = (d) => addDoc_(COLS.TRANSACTIONS, d)
+
+// ── Expenses ──
+export const addExpense = (d) => addDoc_(COLS.EXPENSES, d)
+export const deleteExpense = (id) => deleteDoc_(COLS.EXPENSES, id)
 
 // ── Complete Sale (atomic) ──
 export async function completeSale({ cartItems, customerData, total, invoiceNumber }) {

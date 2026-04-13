@@ -3,8 +3,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, Tag, Truck, Users,
-  ShoppingCart, FileText, ArrowLeftRight, Menu, X, Store, BarChart3, BookOpen
-} from 'lucide-react'
+  ShoppingCart, FileText, ArrowLeftRight, Menu, X, Store, BarChart3, BookOpen, TrendingDown
 import { useStore } from '../../context/StoreContext'
 
 const nav = [
@@ -16,6 +15,7 @@ const nav = [
   { to: '/pos',         icon: ShoppingCart,    label: 'نقطة البيع' },
   { to: '/invoices',    icon: FileText,        label: 'الفواتير' },
   { to: '/ledger',      icon: BookOpen,        label: 'المديونيات' },
+  { to: '/expenses',    icon: TrendingDown,    label: 'المصروفات' },
   { to: '/transactions',icon: ArrowLeftRight,  label: 'المعاملات' },
   { to: '/reports',     icon: BarChart3,       label: 'التقارير' },
 ]
