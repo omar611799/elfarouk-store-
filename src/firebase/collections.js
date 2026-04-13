@@ -98,7 +98,17 @@ export const addTransaction = (d) => addDoc_(COLS.TRANSACTIONS, d)
 
 // ── Complete Sale (atomic) ──
 export async function completeSale({ cartItems, customerData, total, invoiceNumber }) {
-  const paidAmount = Number(customerData.paidAmount ?? total)
+  let paidAmount = 0;
+  let paymentsBreakdown = {};
+
+  if (customerData.payments) {
+    paymentsBreakdown = customerData.payments;
+    paidAmount = Number(paymentsBreakdown.cash || 0) + Number(paymentsBreakdown.visa || 0) + Number(paymentsBreakdown.instapay || 0);
+  } else {
+    paidAmount = Number(customerData.paidAmount ?? total);
+    paymentsBreakdown = { cash: paidAmount };
+  }
+
   const dueAmount  = Math.max(0, total - paidAmount)
   const paymentStatus = dueAmount === 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid'
 
@@ -122,6 +132,7 @@ export async function completeSale({ cartItems, customerData, total, invoiceNumb
     total,
     customerData,
     paidAmount,
+    payments: paymentsBreakdown,
     dueAmount,
     paymentStatus,
     createdAt: serverTimestamp(),

@@ -71,6 +71,13 @@ export default function Invoices() {
                 {inv.dueAmount > 0 && (
                   <p className="text-red-400 text-xs">متبقي: {Number(inv.dueAmount).toLocaleString()} ج.م</p>
                 )}
+                {inv.payments && (
+                  <div className="flex flex-wrap gap-2 text-[10px] bg-slate-800/50 p-2 rounded-lg mt-1 border border-white/5">
+                    {Number(inv.payments.cash || 0) > 0 && <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded">كاش: {Number(inv.payments.cash).toLocaleString()}</span>}
+                    {Number(inv.payments.visa || 0) > 0 && <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded">فيزا: {Number(inv.payments.visa).toLocaleString()}</span>}
+                    {Number(inv.payments.instapay || 0) > 0 && <span className="bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded">إنستا باي: {Number(inv.payments.instapay).toLocaleString()}</span>}
+                  </div>
+                )}
                 <button
                   onClick={e => { e.stopPropagation(); sendWhatsApp(inv) }}
                   className="w-full bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded-xl flex items-center justify-center gap-2 mt-2 transition-all"

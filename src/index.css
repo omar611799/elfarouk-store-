@@ -5,31 +5,63 @@
 * { font-family: 'Cairo', sans-serif; }
 
 body {
-  @apply bg-slate-950 text-white;
+  @apply bg-background text-slate-200 overflow-x-hidden;
   direction: rtl;
+  /* Premium background with image and overlay */
+  background-image: 
+    linear-gradient(rgba(11, 15, 25, 0.85), rgba(11, 15, 25, 0.95)),
+    url('/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { @apply bg-slate-900; }
-::-webkit-scrollbar-thumb { @apply bg-slate-600 rounded-full; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { @apply bg-background; }
+::-webkit-scrollbar-thumb { @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors; }
 
-.card {
-  @apply bg-slate-900 border border-slate-800 rounded-2xl p-4;
+/* Custom Utilities for Premium Look */
+@layer components {
+  .glass {
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-glass;
+  }
+  
+  .glass-card {
+    @apply glass rounded-2xl p-5 hover:bg-white/[0.04] transition-all duration-300;
+  }
+
+  .glass-button {
+    @apply relative overflow-hidden bg-white/5 border border-white/10 text-white font-medium px-4 py-2 rounded-xl transition-all duration-300 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95;
+  }
+
+  .btn-primary {
+    @apply relative overflow-hidden bg-primary-500 hover:bg-primary-500 hover:shadow-glow text-white font-semibold px-4 py-2 rounded-xl transition-all duration-300 active:scale-95 border border-primary-400/50;
+  }
+
+  /* Add subtle shine effect to primary buttons */
+  .btn-primary::after {
+    content: '';
+    @apply absolute top-0 -left-[100%] w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg] transition-all duration-500;
+  }
+  .btn-primary:hover::after {
+    @apply left-[100%];
+  }
+
+  .btn-ghost {
+    @apply bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 text-slate-200 font-medium px-4 py-2 rounded-xl transition-all duration-300 active:scale-95;
+  }
+
+  .input {
+    @apply bg-white/[0.03] border border-white/10 text-white rounded-xl px-4 py-2.5 w-full focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 focus:bg-white/[0.05] transition-all duration-300 placeholder-slate-500 backdrop-blur-sm;
+  }
+
+  /* Keep legacy .card for backward compatibility but styled better */
+  .card {
+    @apply glass-card;
+  }
+
+  .badge-green  { @apply bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded-full font-medium shadow-[0_0_10px_rgba(16,185,129,0.1)]; }
+  .badge-red    { @apply bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs px-2.5 py-1 rounded-full font-medium shadow-[0_0_10px_rgba(244,63,94,0.1)]; }
+  .badge-yellow { @apply bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs px-2.5 py-1 rounded-full font-medium shadow-[0_0_10px_rgba(245,158,11,0.1)]; }
+  .badge-blue   { @apply bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs px-2.5 py-1 rounded-full font-medium shadow-[0_0_10px_rgba(14,165,233,0.1)]; }
 }
-
-.btn-primary {
-  @apply bg-primary-500 hover:bg-primary-600 text-white font-semibold px-4 py-2 rounded-xl transition-all active:scale-95;
-}
-
-.btn-ghost {
-  @apply bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-4 py-2 rounded-xl transition-all active:scale-95;
-}
-
-.input {
-  @apply bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 w-full focus:outline-none focus:border-primary-500 transition-colors;
-}
-
-.badge-green  { @apply bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full; }
-.badge-red    { @apply bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full; }
-.badge-yellow { @apply bg-yellow-500/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full; }
-.badge-blue   { @apply bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full; }
