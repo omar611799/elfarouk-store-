@@ -107,25 +107,43 @@ export default function POS() {
   }
 
   useEffect(() => {
-    let scanner = null;
-    if (showScanner) {
-      scanner = new Html5QrcodeScanner('reader', { 
-        fps: 10, 
-        qrbox: { width: 250, height: 150 },
-        aspectRatio: 1.0
-      });
-      scanner.render((decodedText) => {
-        const matched = products.find(p => p.sku === decodedText || p.id === decodedText);
-        if (matched) {
-          cartAdd(matched);
-          toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
-          setShowScanner(false);
-        } else {
-          toast.error(`كود غير معروف: ${decodedText}`);
-        }
-      });
-    }
-    return () => { if (scanner) scanner.clear().catch(console.error); };
+    import('html5-qrcode').then(({ Html5Qrcode }) => {
+      let html5QrCode = null;
+      if (showScanner) {
+        html5QrCode = new Html5Qrcode('reader');
+        html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
+          (decodedText) => {
+            const matched = products.find(p => p.sku === decodedText || p.id === decodedText);
+            if (matched) {
+              cartAdd(matched);
+              toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
+              setShowScanner(false);
+            } else {
+              toast.error(`كود غير معروف: ${decodedText}`);
+            }
+          },
+          (errorMessage) => {
+            // Background scanning errors can be ignored
+          }
+        ).catch(err => {
+          console.error("Camera start error:", err);
+          toast.error("تأكد من إعطاء صلاحية الكاميرا للمتصفح");
+        });
+      }
+      
+      // Cleanup: Store instance on window or local ref so we don't return an async cleanup function
+      window._currentQrCode = html5QrCode;
+    });
+
+    return () => { 
+      if (window._currentQrCode) {
+        window._currentQrCode.stop().then(() => {
+          window._currentQrCode.clear();
+        }).catch(console.error);
+      }
+    };
   }, [showScanner, products, cartAdd]);
 
   const handleSale = async () => {
