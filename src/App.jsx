@@ -18,6 +18,7 @@ import Reports from './pages/Reports'
 import Receipt from './pages/Receipt'
 import Quotes from './pages/Quotes'
 import QuotePrint from './pages/QuotePrint'
+import Reminders from './pages/Reminders'
 import LoadingScreen from './components/LoadingScreen'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -60,6 +61,7 @@ function AppRouter() {
               <Route path="expenses"     element={<Expenses />} />
               <Route path="transactions" element={<Transactions />} />
               <Route path="reports"      element={<Reports />} />
+              <Route path="reminders"    element={<Reminders />} />
             </>
           ) : (
             // Cashier fallback index

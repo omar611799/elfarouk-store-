@@ -3,7 +3,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, Tag, Truck, Users,
-  ShoppingCart, FileText, ArrowLeftRight, Menu, X, Store, BarChart3, BookOpen, TrendingDown, ClipboardList
+  ShoppingCart, FileText, ArrowLeftRight, Menu, X, Store, BarChart3, BookOpen, TrendingDown, ClipboardList, Bell
 } from 'lucide-react'
 import { useStore } from '../../context/StoreContext'
 import { useAuth } from '../../context/AuthContext'
@@ -22,6 +22,7 @@ const nav = [
   { to: '/expenses',    icon: TrendingDown,    label: 'المصروفات',    adminOnly: true },
   { to: '/transactions',icon: ArrowLeftRight,  label: 'المعاملات',    adminOnly: true },
   { to: '/reports',     icon: BarChart3,       label: 'التقارير',     adminOnly: true },
+  { to: '/reminders',   icon: Bell,            label: 'المنبهات',     adminOnly: true },
 ]
 
 export default function Layout() {
