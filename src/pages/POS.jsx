@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Search, Plus, Minus, Trash2, ShoppingCart, Send, MessageCircle, Mic, CreditCard, Banknote, Smartphone, CalendarClock } from 'lucide-react'
+import { Search, Plus, Minus, Trash2, ShoppingCart, Send, MessageCircle, Mic, CreditCard, Banknote, Smartphone, CalendarClock, Camera } from 'lucide-react'
+import { Html5QrcodeScanner } from 'html5-qrcode'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { QRCodeSVG } from 'qrcode.react'
@@ -64,6 +65,7 @@ export default function POS() {
   const [saving, setSaving]   = useState(false)
   const [doneInvoice, setDoneInvoice] = useState(null)
   const [isListening, setIsListening] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
 
   const filtered = useMemo(() => {
     const terms = getSearchTerms(search)
@@ -119,6 +121,39 @@ export default function POS() {
     
     recognition.start()
   }
+
+  // Barcode Scanner Logic
+  useEffect(() => {
+    let scanner = null;
+    if (showScanner) {
+      scanner = new Html5QrcodeScanner('reader', { 
+        fps: 10, 
+        qrbox: { width: 250, height: 150 },
+        aspectRatio: 1.0
+      });
+
+      scanner.render((decodedText) => {
+        // Success
+        const matched = products.find(p => p.sku === decodedText || p.id === decodedText);
+        if (matched) {
+          cartAdd(matched);
+          toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
+          if (window.navigator.vibrate) window.navigator.vibrate(100);
+          setShowScanner(false); // Close after success to avoid double scans
+        } else {
+          toast.error(`كود غير معروف: ${decodedText}`);
+        }
+      }, (err) => {
+        // Ignore errors (scanning in progress)
+      });
+    }
+
+    return () => {
+      if (scanner) {
+        scanner.clear().catch(console.error);
+      }
+    };
+  }, [showScanner, products, cartAdd]);
 
   const handleSale = async () => {
     if (cart.length === 0 || !customer.name) return
