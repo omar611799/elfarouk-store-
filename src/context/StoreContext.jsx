@@ -4,14 +4,15 @@ import { listenCol, COLS, addProduct, updateProduct, deleteProduct,
   addCategory, deleteCategory, addSupplier, updateSupplier, deleteSupplier,
   addCustomer, updateCustomer, deleteCustomer,
   updateProductStock, addTransaction, completeSale,
-  payInvoiceDebt, deleteInvoiceAndReturnStock,
+  payInvoiceDebt, deleteInvoiceAndReturnStock, returnInvoiceItems,
+  addQuote, deleteQuote, importProductsBatch,
   addExpense, deleteExpense } from '../firebase/collections'
 
 const StoreContext = createContext(null)
 
 const init = {
   products: [], categories: [], suppliers: [],
-  customers: [], invoices: [], transactions: [], expenses: [],
+  customers: [], invoices: [], transactions: [], expenses: [], quotes: [],
   loading: true,
   cart: [],
 }
@@ -46,6 +47,7 @@ export function StoreProvider({ children }) {
       listenCol(COLS.SUPPLIERS,    data => dispatch({ type: 'SET', key: 'suppliers',    data })),
       listenCol(COLS.CUSTOMERS,    data => dispatch({ type: 'SET', key: 'customers',    data })),
       listenCol(COLS.INVOICES,     data => dispatch({ type: 'SET', key: 'invoices',     data })),
+      listenCol(COLS.QUOTATIONS,   data => dispatch({ type: 'SET', key: 'quotes',       data })),
       listenCol(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data })),
       listenCol(COLS.EXPENSES,     data => dispatch({ type: 'SET', key: 'expenses',     data })),
     ]
@@ -163,6 +165,36 @@ export function StoreProvider({ children }) {
       toast.success('تم حذف الفاتورة واسترداد المخزون بنجاح')
     } catch (e) { toast.error(e.message); throw e }
   }
+  
+  const handleReturnItems = async (params) => {
+    try {
+      await returnInvoiceItems(params)
+      toast.success('تم إرجاع القطع وتسوية المبالغ بنجاح')
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
+  const handleSaveQuote = async (data) => {
+    try {
+      const id = await addQuote(data);
+      toast.success('تم حفظ عرض السعر بنجاح');
+      return id;
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
+  const handleDeleteQuote = async (id) => {
+    try {
+      await deleteQuote(id);
+      toast.success('تم مسح عرض السعر');
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
+  const handleImportProductsBatch = async (products) => {
+    try {
+      const res = await importProductsBatch(products);
+      toast.success(`تم بنجاح! إضافة: ${res.addedCount} | تحديث: ${res.updatedCount}`);
+      return res;
+    } catch (e) { toast.error(e.message); throw e }
+  }
 
   // ── Cart ──
   const cartAdd    = (item) => dispatch({ type: 'CART_ADD', item })
@@ -190,6 +222,10 @@ export function StoreProvider({ children }) {
       completeSale: handleCompleteSale,
       payInvoiceDebt: handlePayInvoiceDebt,
       deleteInvoice: handleDeleteInvoice,
+      returnInvoiceItems: handleReturnItems,
+      saveQuote: handleSaveQuote,
+      deleteQuote: handleDeleteQuote,
+      importProductsBatch: handleImportProductsBatch,
       addExpense: handleAddExpense,
       deleteExpense: handleDeleteExpense,
       cartAdd, cartQty, cartRemove, cartClear,

@@ -19,9 +19,11 @@ export const COLS = {
   PRODUCTS: 'products',
   CATEGORIES: 'categories',
   SUPPLIERS: 'suppliers',
+  CUSTOMERS: 'customers',
   INVOICES: 'invoices',
   TRANSACTIONS: 'transactions',
   EXPENSES: 'expenses',
+  QUOTATIONS: 'quotations',
 }
 
 // ── Real-time listeners (onSnapshot) ──
@@ -273,4 +275,189 @@ export async function payInvoiceDebt(invoiceId, paymentAmount, note) {
   });
 
   await batch.commit();
+}
+
+// ── Partial Return ──
+export async function returnInvoiceItems({ invoiceId, itemsToReturn }) {
+  const inv = await getDoc_(COLS.INVOICES, invoiceId);
+  if (!inv) throw new Error('الفاتورة غير موجودة');
+
+  const batch = writeBatch(db);
+  let refundValue = 0;
+  
+  // Create a copy of the items to modify
+  const newItems = [...(inv.items || [])];
+
+  // Restock products and update invoice mapped items
+  for (const retItem of itemsToReturn) {
+    if (retItem.qty <= 0) continue;
+
+    const itemIndex = newItems.findIndex(i => i.id === retItem.id);
+    if (itemIndex === -1) continue;
+
+    const originalItem = newItems[itemIndex];
+    const availableToReturn = originalItem.qty - (originalItem.returnedQty || 0);
+    
+    if (retItem.qty > availableToReturn) {
+      throw new Error(`لا يمكن إرجاع كمية لـ ${originalItem.name} أكبر من المشتراة.`);
+    }
+
+    // Update item line
+    newItems[itemIndex] = {
+      ...originalItem,
+      returnedQty: (originalItem.returnedQty || 0) + retItem.qty
+    };
+
+    refundValue += (originalItem.price * retItem.qty);
+
+    // Increase product stock
+    const p = await getDoc_(COLS.PRODUCTS, retItem.id);
+    if (p) {
+      batch.update(doc(db, COLS.PRODUCTS, retItem.id), {
+        quantity: Math.max(0, (p.quantity || 0) + retItem.qty),
+        updatedAt: serverTimestamp(),
+      });
+    }
+  }
+
+  if (refundValue === 0) return; // Nothing was actually returned
+
+  // Financial recalculation
+  const oldDueAmount = inv.dueAmount || 0;
+  const oldPaidAmount = inv.paidAmount || 0;
+  const newTotal = Math.max(0, (inv.total || 0) - refundValue);
+
+  let newDueAmount = oldDueAmount;
+  let newPaidAmount = oldPaidAmount;
+  let cashRefunded = 0;
+
+  if (oldDueAmount > 0) {
+    if (oldDueAmount >= refundValue) {
+      newDueAmount -= refundValue;
+    } else {
+      cashRefunded = refundValue - oldDueAmount;
+      newDueAmount = 0;
+      newPaidAmount = Math.max(0, oldPaidAmount - cashRefunded);
+    }
+  } else {
+    cashRefunded = refundValue;
+    newPaidAmount = Math.max(0, oldPaidAmount - cashRefunded);
+  }
+
+  // Determine new payment status
+  const paymentStatus = (newTotal === 0 && newDueAmount === 0) ? 'paid' 
+                      : (newDueAmount === 0) ? 'paid' 
+                      : (newPaidAmount > 0) ? 'partial' : 'unpaid';
+
+  // Adjust invoice breakdown if cash was refunded
+  const newPaymentsBreakdown = { ...(inv.payments || {}) };
+  if (cashRefunded > 0) {
+    newPaymentsBreakdown.cash = Math.max(0, (Number(newPaymentsBreakdown.cash) || 0) - cashRefunded);
+  }
+
+  // Update Invoice
+  batch.update(doc(db, COLS.INVOICES, invoiceId), {
+    items: newItems,
+    total: newTotal,
+    dueAmount: newDueAmount,
+    paidAmount: newPaidAmount,
+    paymentStatus,
+    payments: newPaymentsBreakdown,
+    updatedAt: serverTimestamp(),
+  });
+
+  // Calculate debt and paid drops to apply to Customer
+  const debtDrop = oldDueAmount - newDueAmount;
+  const paidDrop = oldPaidAmount - newPaidAmount;
+
+  if (inv.customerData?.phone) {
+    const existing = await findCustomerByPhone(inv.customerData.phone);
+    if (existing) {
+      batch.update(doc(db, COLS.CUSTOMERS, existing.id), {
+        totalSpent: Math.max(0, (existing.totalSpent || 0) - refundValue),
+        debtTotal: Math.max(0, (existing.debtTotal || 0) - debtDrop),
+        paidTotal: Math.max(0, (existing.paidTotal || 0) - paidDrop),
+      });
+    }
+  }
+
+  // Create a transaction for the return
+  let txDetails = `مرتجع جزئي للفاتورة ${inv.number}.`;
+  if (cashRefunded > 0) txDetails += ` رد نقدية: ${cashRefunded} ج.م.`;
+  if (debtDrop > 0) txDetails += ` خصم آجل: ${debtDrop} ج.م.`;
+
+  const txRef = doc(collection(db, COLS.TRANSACTIONS));
+  batch.set(txRef, {
+    type: 'return',
+    refId: invoiceId,
+    details: txDetails,
+    amount: -refundValue,
+    createdAt: serverTimestamp(),
+  });
+
+  await batch.commit();
+}
+
+// ── Quotations (عروض الأسعار) ──
+export const addQuote = (d) => addDoc_(COLS.QUOTATIONS, d)
+export const deleteQuote = (id) => deleteDoc_(COLS.QUOTATIONS, id)
+
+// ── Bulk Import Excel (استيراد مجمع) ──
+export async function importProductsBatch(productsData) {
+  // We chunk batches of 500 for Firestore limit
+  const chunkSize = 400; 
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  for (let i = 0; i < productsData.length; i += chunkSize) {
+    const chunk = productsData.slice(i, i + chunkSize);
+    const batch = writeBatch(db);
+
+    for (const item of chunk) {
+      if (!item.name) continue; // safety
+
+      // check if exists by SKU or Exact Name
+      let existsRefId = null;
+      
+      const qSku = item.sku ? query(collection(db, COLS.PRODUCTS), where('sku', '==', item.sku)) : null;
+      if (qSku) {
+        const snap = await getDocs(qSku);
+        if (!snap.empty) existsRefId = snap.docs[0].id;
+      }
+      
+      if (!existsRefId) {
+        const qName = query(collection(db, COLS.PRODUCTS), where('name', '==', item.name));
+        const snap = await getDocs(qName);
+        if (!snap.empty) existsRefId = snap.docs[0].id;
+      }
+
+      if (existsRefId) {
+        // Update price and quantity
+        batch.update(doc(db, COLS.PRODUCTS, existsRefId), {
+          price: Number(item.price) || 0,
+          quantity: Number(item.quantity) || 0,
+          category: item.category || '',
+          updatedAt: serverTimestamp()
+        });
+        updatedCount++;
+      } else {
+        // Add new
+        const docRef = doc(collection(db, COLS.PRODUCTS));
+        batch.set(docRef, {
+          name: item.name,
+          sku: item.sku || '',
+          price: Number(item.price) || 0,
+          quantity: Number(item.quantity) || 0,
+          category: item.category || '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        addedCount++;
+      }
+    }
+    
+    await batch.commit();
+  }
+  
+  return { addedCount, updatedCount };
 }

@@ -1,6 +1,6 @@
 import { useStore } from '../context/StoreContext'
 import { Package, Users, FileText, TrendingUp, AlertTriangle, ShoppingCart, TrendingDown } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { motion } from 'framer-motion'
 
 const container = {
@@ -45,14 +45,16 @@ export default function Dashboard() {
   
   invoices.forEach(inv => {
     if (!inv.customerData?.reminders) return;
-    const invDate = inv.createdAt?.toDate?.() || new Date(inv.createdAt);
+    const createdAtDate = inv.createdAt?.toDate?.() || new Date(inv.createdAt);
+    const invDate = isNaN(createdAtDate.getTime()) ? now : createdAtDate;
     
     inv.customerData.reminders.forEach(rem => {
+      if (!rem.months) return;
       const dueDate = new Date(invDate);
       dueDate.setMonth(dueDate.getMonth() + rem.months);
       
       const diffDays = Math.floor((dueDate - now) / (1000 * 60 * 60 * 24));
-      if (diffDays <= 7) { // Alert within a week
+      if (!isNaN(diffDays) && diffDays <= 7) { // Alert within a week
         activeReminders.push({
           id: `${inv.id}-${rem.productId}`,
           customerName: inv.customerData.name,
@@ -129,7 +131,7 @@ export default function Dashboard() {
               />
               <Bar dataKey="total" name="المبيعات" radius={[8, 8, 0, 0]}>
                 {monthlyData.map((entry, index) => (
-                  <cell key={`cell-${index}`} fill={`url(#colorPv)`} />
+                  <Cell key={`cell-${index}`} fill={`url(#colorPv)`} />
                 ))}
               </Bar>
               <defs>

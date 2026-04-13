@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Plus, Search, Edit2, Trash2, AlertTriangle, Package } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import toast from 'react-hot-toast'
+
+import * as XLSX from 'xlsx'
 
 const EMPTY = { name: '', category: '', price: '', cost: '', quantity: '', minStock: '5', sku: '', supplier: '' }
 
@@ -16,12 +19,13 @@ const itemVariant = {
 }
 
 export default function Products() {
-  const { products, categories, suppliers, addProduct, updateProduct, deleteProduct } = useStore()
+  const { products, categories, suppliers, addProduct, updateProduct, deleteProduct, importProductsBatch } = useStore()
   const [search, setSearch]     = useState('')
   const [catFilter, setCatFilter] = useState('')
   const [modal, setModal]       = useState(false)
   const [editing, setEditing]   = useState(null)
   const [form, setForm]         = useState(EMPTY)
+  const fileInputRef = useRef(null)
 
   const filtered = products.filter(p =>
     (!search    || p.name?.includes(search) || p.sku?.includes(search)) &&
@@ -46,13 +50,69 @@ export default function Products() {
     close()
   }
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws);
+        
+        const formatted = data.map(row => ({
+          name: row['الاسم'] || row['name'] || '',
+          price: Number(row['السعر'] || row['price'] || 0),
+          quantity: Number(row['الكمية'] || row['quantity'] || 0),
+          category: row['الفئة'] || row['category'] || '',
+          sku: String(row['الكود'] || row['sku'] || ''),
+        })).filter(item => item.name && item.price > 0);
+
+        if (formatted.length === 0) {
+          toast.error('لا يمكن قراءة الإكسيل. يرجى التأكد من أسماء الأعمدة (الاسم، السعر).');
+          return;
+        }
+
+        if (window.confirm(`تم العثور على ${formatted.length} منتج صالح. هل تريد تحديث المخزن بهم الآن؟`)) {
+          const loadingToast = toast.loading('جاري الاستيراد والتحديث، يرجى الانتظار...');
+          await importProductsBatch(formatted);
+          toast.dismiss(loadingToast);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('حدث خطأ أثناء قراءة الملف');
+      }
+      e.target.value = null;
+    };
+    reader.readAsBinaryString(file);
+  }
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-white">قطع الغيار</h1>
-        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={openAdd} className="btn-primary flex items-center gap-2 text-sm">
-          <Plus size={16} /> إضافة قطعة
-        </motion.button>
+        <div className="flex gap-2">
+          <input
+            type="file"
+            accept=".xlsx, .xls, .csv"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+          />
+          <motion.button
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl flex items-center gap-2 text-sm transition-colors shadow-glow"
+            title="استيراد وتحديث المخزن من ملف Excel"
+          >
+            <UploadCloud size={16} /> رفع إكسيل
+          </motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={openAdd} className="btn-primary flex items-center gap-2 text-sm">
+            <Plus size={16} /> إضافة قطعة
+          </motion.button>
+        </div>
       </div>
 
       {/* Filters */}

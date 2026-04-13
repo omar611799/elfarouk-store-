@@ -42,12 +42,22 @@ const getSearchTerms = (str) => {
   return Array.from(terms)
 }
 
+import { useEffect } from 'react'
+
 export default function POS() {
-  const { products, cart, cartAdd, cartQty, cartRemove, cartClear, cartTotal, completeSale } = useStore()
+  const { products, cart, cartAdd, cartQty, cartRemove, cartClear, cartTotal, completeSale, saveQuote } = useStore()
 
   const [search, setSearch]   = useState('')
   const [catFilter, setCat]   = useState('')
   const [customer, setCustomer] = useState({ name: '', phone: '', nationalId: '', carModel: '', licensePlate: '' })
+  
+  useEffect(() => {
+    const pending = localStorage.getItem('pendingQuoteCustomer');
+    if (pending) {
+      setCustomer(JSON.parse(pending));
+      localStorage.removeItem('pendingQuoteCustomer');
+    }
+  }, []);
   
   const [payments, setPayments] = useState({ cash: '', visa: '', instapay: '' })
   const [reminders, setReminders] = useState({}) // { productId: months }
@@ -86,9 +96,25 @@ export default function POS() {
     }
     
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript
-      setSearch(transcript)
-      toast.success(`تم التقاط: ${transcript}`)
+      const transcript = event.results[0][0].transcript;
+      toast.success(`تم التقاط: ${transcript}`);
+      
+      // Auto-insert logic
+      const terms = getSearchTerms(transcript);
+      const matched = products.filter(p => {
+        if (p.quantity <= 0) return false;
+        if (catFilter && p.category !== catFilter) return false;
+        if (terms.length === 0) return true;
+        return terms.some(t => p.name?.toLowerCase().includes(t) || p.sku?.toLowerCase().includes(t));
+      });
+
+      if (matched.length === 1) {
+        cartAdd(matched[0]);
+        toast.success(`تمت إضافة ${matched[0].name} تلقائياً لللائحة!`, { icon: '🪄' });
+        setSearch(''); // Clear search so POS is ready again
+      } else {
+        setSearch(transcript); // Set search term if there are multiple or no results
+      }
     }
     
     recognition.start()
@@ -123,6 +149,26 @@ export default function POS() {
       setSaving(false)
     }
   }
+
+  const handleCreateQuotation = async () => {
+    if (cart.length === 0 || !customer.name) return;
+    setSaving(true);
+    try {
+      const quoteNumber = `QTE-${Date.now()}`;
+      await saveQuote({
+        number: quoteNumber,
+        items: cart,
+        total: cartTotal,
+        customerData: customer,
+        createdAt: new Date(),
+      });
+      // Clear for next action
+      cartClear();
+      setCustomer({ name: '', phone: '', nationalId: '', carModel: '', licensePlate: '' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const sendWhatsApp = () => {
     if (!doneInvoice) return
@@ -306,14 +352,25 @@ export default function POS() {
           </div>
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-          onClick={handleSale} disabled={cart.length === 0 || !customer.name || saving}
-          className="btn-primary w-full flex items-center justify-center gap-2 py-3 disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-glow shrink-0"
-        >
-          <Send size={16} />
-          {saving ? 'جار الحفظ...' : 'إتمام البيع والتأكيد'}
-        </motion.button>
+        <div className="flex gap-2 shrink-0">
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            onClick={handleCreateQuotation} disabled={cart.length === 0 || !customer.name || saving}
+            className="flex-1 bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center gap-2 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold transition-all"
+            title="حفظ التسعيرة (بدون خصم من المخزن)"
+          >
+            حفظ كعرض سعر
+          </motion.button>
+          
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            onClick={handleSale} disabled={cart.length === 0 || !customer.name || saving}
+            className="flex-[2] btn-primary flex items-center justify-center gap-2 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-glow font-bold"
+          >
+            <Send size={16} />
+            {saving ? 'جار الحفظ...' : 'إتمام البيع'}
+          </motion.button>
+        </div>
       </motion.div>
     </div>
   )
