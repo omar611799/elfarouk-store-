@@ -1,21 +1,33 @@
-import { useParams, Navigate } from 'react'
+import { useParams, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { useStore } from '../context/StoreContext'
 import { CheckCircle2, ShieldCheck, Download, Store } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export default function Receipt() {
   const { id } = useParams()
-  const { invoices, loading } = useStore()
-  
-  if (loading) return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  const { invoices } = useStore()
+  const [isSearching, setIsSearching] = useState(true)
 
+  useEffect(() => {
+    // Wait for StoreContext to fetch from Firebase
+    const t = setTimeout(() => setIsSearching(false), 3000)
+    return () => clearTimeout(t)
+  }, [])
+  
   const inv = invoices.find(i => i.id === id)
 
-  if (!inv) return <Navigate to="/" />
+  if (!inv) {
+    if (isSearching) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
+          <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-primary-400 mt-4 font-bold animate-pulse text-sm">جاري البحث عن الفاتورة الرقمية...</p>
+        </div>
+      )
+    }
+    return <Navigate to="/" />
+  }
 
   const isPaid = inv.dueAmount === 0
   
