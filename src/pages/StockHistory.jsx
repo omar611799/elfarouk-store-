@@ -148,11 +148,11 @@ export default function StockHistory() {
                   <div className="flex flex-col lg:items-end justify-center gap-1">
                     <div className="flex items-center gap-2 text-[10px] text-slate-200 font-black font-display leading-none">
                         <Calendar size={12} className="text-electric-400/50" />
-                        <span>{date.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })}</span>
+                        <span>{date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black leading-none mt-1">
                         <Clock size={12} className="opacity-30" />
-                        <span>{date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>{date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   </div>
                 </motion.div>

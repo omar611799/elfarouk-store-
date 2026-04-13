@@ -104,9 +104,9 @@ export default function Customers() {
             </div>
 
             <div className="md:px-10 py-2 border-x border-white/5 hidden md:flex flex-col items-center justify-center min-w-[150px]">
-              <p className="text-xl font-black text-white font-display tracking-tight leading-none mb-1">{Number(c.totalSpent || 0).toLocaleString()} <span className="text-[10px] text-slate-500 font-normal">ج.م</span></p>
+              <p className="text-xl font-black text-white font-display tracking-tight leading-none mb-1">{Number(c.totalSpent || 0).toLocaleString('en-US')} <span className="text-[10px] text-slate-500 font-normal">ج.م</span></p>
               <span className="text-[8px] text-slate-600 font-black uppercase tracking-widest">إجمالي المشتريات</span>
-              {c.debtTotal > 0 && <span className="badge-red mt-2 !text-[9px] !px-3 font-black tracking-tighter">مديونية: {Number(c.debtTotal).toLocaleString()}</span>}
+              {c.debtTotal > 0 && <span className="badge-red mt-2 !text-[9px] !px-3 font-black tracking-tighter">مديونية: {Number(c.debtTotal).toLocaleString('en-US')}</span>}
             </div>
 
             <div className="flex gap-2 opacity-30 group-hover:opacity-100 transition-all">
@@ -195,7 +195,7 @@ export default function Customers() {
                                         <Calendar size={14} />
                                     </div>
                                     <span className="text-slate-400 text-xs font-black uppercase tracking-widest">
-                                        {(inv.createdAt?.toDate?.() || new Date(inv.createdAt)).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                        {(inv.createdAt?.toDate?.() || new Date(inv.createdAt)).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}
                                     </span>
                                 </div>
                                 <div className="badge-blue !bg-obsidian-900/50 !text-[8px] tracking-tighter">رقم {inv.number}</div>
@@ -209,14 +209,14 @@ export default function Customers() {
                                             {item.returnedQty > 0 && <span className="badge-red !py-0.5 !px-2 mt-1 !text-[7px]">مرتجع: {item.returnedQty}</span>}
                                         </div>
                                         <div className="text-left flex flex-col items-end">
-                                            <p className="text-electric-400 font-black font-display text-sm">{item.price?.toLocaleString()} ج.م</p>
+                                            <p className="text-electric-400 font-black font-display text-sm">{item.price?.toLocaleString('en-US')} ج.م</p>
                                             <p className="text-[9px] text-slate-600 font-black uppercase mt-1">الكمية: {item.qty}</p>
                                         </div>
                                     </div>
                                 ))}
                                 <div className="pt-4 mt-2 border-t border-white/5 flex justify-between items-center px-2">
                                     <span className="text-[10px] text-slate-600 font-black uppercase tracking-widest">إجمالي الفاتورة</span>
-                                    <span className="text-sm font-black text-white font-display tracking-tight">{inv.total?.toLocaleString()} ج.م</span>
+                                    <span className="text-sm font-black text-white font-display tracking-tight">{inv.total?.toLocaleString('en-US')} ج.م</span>
                                 </div>
                              </div>
                         </div>

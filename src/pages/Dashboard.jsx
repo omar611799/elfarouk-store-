@@ -43,7 +43,7 @@ export default function Dashboard() {
     const data = Array.from({ length: 6 }, (_, i) => {
       const d = new Date()
       d.setMonth(d.getMonth() - (5 - i))
-      const month = d.toLocaleString('ar-EG', { month: 'short' })
+      const month = d.toLocaleString('en-US', { month: 'short' })
       const total = invoices
         .filter(inv => {
           const invDate = inv.createdAt?.toDate?.() || new Date(inv.createdAt)
@@ -83,9 +83,9 @@ export default function Dashboard() {
   }, [invoices])
 
   const stats = [
-    { label: 'إجمالي المبيعات', value: `${totalSales.toLocaleString()} ج.م`, icon: ShoppingCart, color: 'text-electric-400', bg: 'bg-electric-500/10' },
-    { label: 'صافي الربح',    value: `${netProfit.toLocaleString()} ج.م`,    icon: TrendingUp,   color: 'text-emerald-400',  bg: 'bg-emerald-500/10' },
-    { label: 'المصاريف',     value: `${totalExpenses.toLocaleString()} ج.م`, icon: TrendingDown, color: 'text-rose-400',     bg: 'bg-rose-500/10' },
+    { label: 'إجمالي المبيعات', value: `${totalSales.toLocaleString('en-US')} ج.م`, icon: ShoppingCart, color: 'text-electric-400', bg: 'bg-electric-500/10' },
+    { label: 'صافي الربح',    value: `${netProfit.toLocaleString('en-US')} ج.م`,    icon: TrendingUp,   color: 'text-emerald-400',  bg: 'bg-emerald-500/10' },
+    { label: 'المصاريف',     value: `${totalExpenses.toLocaleString('en-US')} ج.م`, icon: TrendingDown, color: 'text-rose-400',     bg: 'bg-rose-500/10' },
     { label: 'قطع الغيار',    value: totalProducts,                 icon: Package,      color: 'text-cyan-400',     bg: 'bg-cyan-500/10' },
   ]
 
@@ -111,7 +111,7 @@ export default function Dashboard() {
         <div className="card !p-3 !rounded-2xl flex items-center gap-3 bg-white/5 border-white/10 shrink-0">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
           <span className="text-xs font-black text-slate-300 uppercase tracking-widest leading-none">
-            {new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </span>
         </div>
       </div>
@@ -246,7 +246,7 @@ export default function Dashboard() {
                   <p className="text-[10px] text-slate-500 mt-1 uppercase font-black tracking-tighter opacity-60">#{inv.number}</p>
                 </div>
                 <div className="text-left flex flex-col items-end gap-2 shrink-0">
-                  <p className="text-sm font-black text-emerald-400 tracking-tight">{inv.total?.toLocaleString()} <span className="text-[8px] opacity-70">ج.م</span></p>
+                  <p className="text-sm font-black text-emerald-400 tracking-tight">{inv.total?.toLocaleString('en-US')} <span className="text-[8px] opacity-70">ج.م</span></p>
                   <span className={inv.paymentStatus === 'paid' ? 'badge-green' : inv.paymentStatus === 'partial' ? 'badge-yellow' : 'badge-red'}>
                     {inv.paymentStatus === 'paid' ? 'مدفوع' : inv.paymentStatus === 'partial' ? 'جزئي' : 'غير مدفوع'}
                   </span>

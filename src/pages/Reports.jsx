@@ -112,7 +112,7 @@ export default function Reports() {
                 <motion.div key={p.id} whileHover={{ y: -4 }} className="glass-card border-rose-500/10 hover:border-rose-500/30 transition-all relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 blur-2xl pointer-events-none" />
                   <p className="font-bold text-white mb-1">{p.name}</p>
-                  <p className="text-xs text-rose-400 font-medium mb-3">{p.lastSold ? `آخر بيع: ${p.lastSold.toLocaleDateString('ar-EG')}` : 'لم تُباع أبداً'}</p>
+                  <p className="text-xs text-rose-400 font-medium mb-3">{p.lastSold ? `آخر بيع: ${p.lastSold.toLocaleDateString('en-GB')}` : 'لم تُباع أبداً'}</p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-400">الرصيد المتاح:</span>
                     <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded-md">{p.currentStock} قطعة</span>
@@ -163,7 +163,7 @@ export default function Reports() {
                   <p className="text-xs text-slate-400 mt-0.5">{p.category || 'بدون فئة'}</p>
                 </div>
                 <div className="text-left shrink-0">
-                  <p className="text-sm font-bold text-emerald-400">{p.profit.toLocaleString()}</p>
+                  <p className="text-sm font-bold text-emerald-400">{p.profit.toLocaleString('en-US')}</p>
                   <p className="text-[10px] text-slate-500">ج.م</p>
                 </div>
               </motion.div>

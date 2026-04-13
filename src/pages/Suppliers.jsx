@@ -72,7 +72,7 @@ export default function Suppliers() {
               <p className="font-semibold text-white text-sm">{s.name}</p>
               <div className="flex items-center gap-2">
                 {s.phone && <p className="text-xs text-slate-400">{s.phone}</p>}
-                {s.debtTotal > 0 && <span className="bg-red-500/10 text-red-500 text-[10px] px-2 py-0.5 rounded border border-red-500/20 font-bold">مديونية: {s.debtTotal.toLocaleString()}</span>}
+                {s.debtTotal > 0 && <span className="bg-red-500/10 text-red-500 text-[10px] px-2 py-0.5 rounded border border-red-500/20 font-bold">مديونية: {s.debtTotal.toLocaleString('en-US')}</span>}
               </div>
             </div>
             <div className="flex gap-1">
@@ -162,7 +162,7 @@ export default function Suppliers() {
                              <div className="flex justify-between items-center mb-2 pr-2">
                                 <div className="flex items-center gap-2 text-[10px] text-slate-400">
                                     <Calendar size={12} className={item.type === 'purchase' ? 'text-primary-400' : 'text-emerald-400'} />
-                                    {new Date(item.createdAt?.seconds * 1000).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    {new Date(item.createdAt?.seconds * 1000).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}
                                 </div>
                                 <div className={`text-[10px] px-2 py-0.5 rounded-md border font-bold ${item.type === 'purchase' ? 'bg-primary-500/5 text-primary-400 border-primary-500/10' : 'bg-emerald-500/5 text-emerald-400 border-emerald-500/10'}`}>
                                     {item.type === 'purchase' ? 'فاتورة توريد' : 'سداد قسط'}
@@ -176,12 +176,12 @@ export default function Suppliers() {
                                         {item.items?.map((p, i) => (
                                             <div key={i} className="flex justify-between items-center text-[11px]">
                                                 <span className="text-slate-300">{p.name} (x{p.qty})</span>
-                                                <span className="text-white">{(p.cost * p.qty).toLocaleString()}</span>
+                                                <span className="text-white">{(p.cost * p.qty).toLocaleString('en-US')}</span>
                                             </div>
                                         ))}
                                         <div className="border-t border-white/5 pt-2 mt-2 flex justify-between font-bold text-xs uppercase">
                                             <span className="text-slate-400">إجمالي الفاتورة:</span>
-                                            <span className="text-primary-400">{item.total?.toLocaleString()} ج.م</span>
+                                            <span className="text-primary-400">{item.total?.toLocaleString('en-US')} ج.م</span>
                                         </div>
                                     </>
                                 ) : (
@@ -193,7 +193,7 @@ export default function Suppliers() {
                                                 <p className="text-[10px] text-slate-400 mt-0.5">{item.details}</p>
                                             </div>
                                         </div>
-                                        <p className="text-emerald-400 font-bold text-sm">{(Math.abs(item.amount)).toLocaleString()} ج.م</p>
+                                        <p className="text-emerald-400 font-bold text-sm">{(Math.abs(item.amount)).toLocaleString('en-US')} ج.م</p>
                                     </div>
                                 )}
                              </div>
@@ -219,7 +219,7 @@ export default function Suppliers() {
                     </div>
                     <h2 className="text-xl font-bold text-white mb-1">تسجيل سداد دفعة</h2>
                     <p className="text-xs text-slate-400">للمورد: <span className="text-emerald-400 font-bold">{payModal.name}</span></p>
-                    <p className="text-xs text-rose-400 mt-2 font-bold bg-rose-500/5 inline-block px-3 py-1 rounded-full border border-rose-500/10">إجمالي المديونية الحالية: {payModal.debtTotal?.toLocaleString()} ج.م</p>
+                    <p className="text-xs text-rose-400 mt-2 font-bold bg-rose-500/5 inline-block px-3 py-1 rounded-full border border-rose-500/10">إجمالي المديونية الحالية: {payModal.debtTotal?.toLocaleString('en-US')} ج.م</p>
                 </div>
                 
                 <div className="p-6 space-y-4">

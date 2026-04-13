@@ -27,7 +27,7 @@ export default function CustomerPortal() {
     const items = []
     history.forEach(inv => {
       const date = inv.createdAt?.toDate?.() || new Date(inv.createdAt)
-      const dateStr = date.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })
+      const dateStr = date.toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
       
       const invItems = inv.items || inv.cartItems || []
       invItems.forEach(item => {
@@ -92,7 +92,7 @@ export default function CustomerPortal() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="bg-[#1e293b] border border-white/5 rounded-3xl p-5 shadow-2xl">
                 <p className="text-slate-500 text-xs mb-1">إجمالي المشتريات</p>
-                <p className="text-2xl font-black text-white">{customer?.totalSpent?.toLocaleString() || '0'} <span className="text-xs text-slate-500">ج.م</span></p>
+                <p className="text-2xl font-black text-white">{customer?.totalSpent?.toLocaleString('en-US') || '0'} <span className="text-xs text-slate-500">ج.م</span></p>
             </div>
             <div className="bg-[#1e293b] border border-white/5 rounded-3xl p-5 shadow-2xl">
                 <p className="text-slate-500 text-xs mb-1">عدد الزيارات</p>
@@ -101,7 +101,7 @@ export default function CustomerPortal() {
             {customer?.debtTotal > 0 && (
                 <div className="col-span-2 md:col-span-1 bg-rose-500/10 border border-rose-500/20 rounded-3xl p-5 shadow-2xl">
                     <p className="text-rose-400 text-xs mb-1 font-bold">المبلغ المتبقي (آجل)</p>
-                    <p className="text-2xl font-black text-rose-400">{customer.debtTotal.toLocaleString()} <span className="text-xs">ج.م</span></p>
+                    <p className="text-2xl font-black text-rose-400">{customer.debtTotal.toLocaleString('en-US')} <span className="text-xs">ج.م</span></p>
                 </div>
             )}
         </div>
@@ -130,7 +130,7 @@ export default function CustomerPortal() {
                                 <div className="flex justify-between items-center mb-4 pr-4">
                                     <div className="flex flex-col">
                                         <span className="text-sm font-black text-white">
-                                            {date.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                            {date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                                         </span>
                                         <span className="text-[10px] text-slate-500 font-bold">فاتورة رقم #{inv.number}</span>
                                     </div>
@@ -152,7 +152,7 @@ export default function CustomerPortal() {
                                                 </div>
                                             </div>
                                             <div className="text-left">
-                                                <p className="text-sm font-black text-white">{(item.price * item.qty).toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">ج.م</span></p>
+                                                <p className="text-sm font-black text-white">{(item.price * item.qty).toLocaleString('en-US')} <span className="text-[10px] text-slate-400 font-normal">ج.م</span></p>
                                             </div>
                                         </div>
                                     ))}
@@ -160,8 +160,8 @@ export default function CustomerPortal() {
 
                                 {inv.dueAmount > 0 && (
                                     <div className="mr-8 mt-3 bg-rose-500/5 border border-rose-500/10 rounded-xl p-3 flex items-center justify-between">
-                                        <span className="text-[10px] text-rose-400 font-bold mb-1">تم دفع {inv.paidAmount?.toLocaleString()} ومتبقي عليك:</span>
-                                        <span className="text-rose-500 font-black text-xs">{inv.dueAmount?.toLocaleString()} ج.م</span>
+                                        <span className="text-[10px] text-rose-400 font-bold mb-1">تم دفع {inv.paidAmount?.toLocaleString('en-US')} ومتبقي عليك:</span>
+                                        <span className="text-rose-500 font-black text-xs">{inv.dueAmount?.toLocaleString('en-US')} ج.م</span>
                                     </div>
                                 )}
                             </div>

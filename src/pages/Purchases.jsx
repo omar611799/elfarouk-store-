@@ -160,7 +160,7 @@ export default function Purchases() {
                                     </div>
                                 </td>
                                 <td className="py-3 text-left pl-2 font-bold text-white">
-                                    {(Number(item.cost) * item.qty).toLocaleString()}
+                                    {(Number(item.cost) * item.qty).toLocaleString('en-US')}
                                 </td>
                                 <td className="py-3 text-center">
                                     <button onClick={() => removeItem(item.id)} className="text-slate-600 hover:text-red-400 p-2 transition-colors"><Trash2 size={16}/></button>
@@ -204,7 +204,7 @@ export default function Purchases() {
                 <div className="pt-2">
                     <div className="flex items-center justify-between text-slate-400 text-sm mb-2">
                         <span>إجمالي الفاتورة:</span>
-                        <span className="text-white font-bold">{total.toLocaleString()} ج.م</span>
+                        <span className="text-white font-bold">{total.toLocaleString('en-US')} ج.م</span>
                     </div>
                     <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/5">
                         <div>
@@ -224,7 +224,7 @@ export default function Purchases() {
                         {due > 0 && (
                             <div className="flex justify-between items-center text-xs pt-1">
                                 <span className="text-red-400 font-bold bg-red-400/10 px-2 py-0.5 rounded">سيتم تسجيل مديونية:</span>
-                                <span className="text-red-400 font-bold underline">{due.toLocaleString()} ج.م</span>
+                                <span className="text-red-400 font-bold underline">{due.toLocaleString('en-US')} ج.م</span>
                             </div>
                         )}
                         {due === 0 && total > 0 && (

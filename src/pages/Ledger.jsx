@@ -67,7 +67,7 @@ export default function Ledger() {
         </div>
         <div className="glass-card px-6 py-3 border-rose-500/30 bg-rose-500/5">
           <p className="text-slate-400 text-xs font-bold mb-1">إجمالي ديون السوق الآجلة</p>
-          <p className="text-2xl font-bold text-rose-400">{totalMarketDebt.toLocaleString()} ج.م</p>
+          <p className="text-2xl font-bold text-rose-400">{totalMarketDebt.toLocaleString('en-US')} ج.م</p>
         </div>
       </div>
 
@@ -100,7 +100,7 @@ export default function Ledger() {
                 <div className="flex items-center gap-6">
                   <div className="text-left">
                     <p className="text-xs font-bold text-slate-400 mb-1">إجمالي المتبقي عليه</p>
-                    <p className="text-xl font-bold text-rose-400">{group.totalDebt.toLocaleString()} ج.م</p>
+                    <p className="text-xl font-bold text-rose-400">{group.totalDebt.toLocaleString('en-US')} ج.م</p>
                   </div>
                   <ChevronDown size={20} className={`text-slate-400 transition-transform ${expandedCustomer === group.id ? 'rotate-180' : ''}`} />
                 </div>
@@ -124,17 +124,17 @@ export default function Ledger() {
                             </div>
                             <div className="flex items-center gap-2 text-xs text-slate-400">
                               <Calendar size={12} />
-                              {inv.createdAt?.toDate ? inv.createdAt.toDate().toLocaleDateString('ar-EG') : new Date(inv.createdAt).toLocaleDateString('ar-EG')}
+                              {inv.createdAt?.toDate ? inv.createdAt.toDate().toLocaleDateString('en-GB') : new Date(inv.createdAt).toLocaleDateString('en-GB')}
                             </div>
                             <p className="text-xs font-bold text-slate-500 mt-2">
-                              قيمة الفاتورة: {inv.total?.toLocaleString()} • المدفوع مسبقاً: <span className="text-emerald-400">{inv.paidAmount?.toLocaleString()}</span>
+                              قيمة الفاتورة: {inv.total?.toLocaleString('en-US')} • المدفوع مسبقاً: <span className="text-emerald-400">{inv.paidAmount?.toLocaleString('en-US')}</span>
                             </p>
                           </div>
                           
                           <div className="flex items-center gap-4 bg-slate-900/50 px-4 py-2 rounded-lg border border-rose-500/20">
                             <div>
                               <p className="text-[10px] text-slate-400">الآجل المتبقي</p>
-                              <p className="font-bold text-rose-400 text-lg">{inv.dueAmount?.toLocaleString()} ج</p>
+                              <p className="font-bold text-rose-400 text-lg">{inv.dueAmount?.toLocaleString('en-US')} ج</p>
                             </div>
                             <div className="w-px h-8 bg-white/10 mx-2" />
                             <button 
@@ -167,7 +167,7 @@ export default function Ledger() {
             
             <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 mb-4 text-center">
               <p className="text-xs text-rose-400 mb-1">المبلغ الإجمالي المتبقي للفاتورة</p>
-              <p className="text-2xl font-bold text-rose-500">{paymentModal.dueAmount?.toLocaleString()} ج.م</p>
+              <p className="text-2xl font-bold text-rose-500">{paymentModal.dueAmount?.toLocaleString('en-US')} ج.م</p>
             </div>
 
             <div className="space-y-4">

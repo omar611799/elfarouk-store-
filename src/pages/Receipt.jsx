@@ -61,7 +61,7 @@ export default function Receipt() {
           <div className="flex justify-between items-center mb-3">
             <span className="text-slate-500 text-sm font-medium">تاريخ الإصدار:</span>
             <span className="font-bold text-slate-800 text-sm">
-              {inv.createdAt?.toDate ? inv.createdAt.toDate().toLocaleDateString('ar-EG') : new Date(inv.createdAt).toLocaleDateString('ar-EG')}
+              {inv.createdAt?.toDate ? inv.createdAt.toDate().toLocaleDateString('en-GB') : new Date(inv.createdAt).toLocaleDateString('en-GB')}
             </span>
           </div>
           <div className="flex flex-col gap-1">
@@ -79,9 +79,9 @@ export default function Receipt() {
               <div key={i} className="flex justify-between items-start">
                 <div>
                   <p className="font-bold text-slate-800 text-sm">{item.name}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{item.qty} قطعة × {Number(item.price).toLocaleString()}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{item.qty} قطعة × {Number(item.price).toLocaleString('en-US')}</p>
                 </div>
-                <span className="font-bold text-slate-800 text-sm">{(item.qty * item.price).toLocaleString()} ج</span>
+                <span className="font-bold text-slate-800 text-sm">{(item.qty * item.price).toLocaleString('en-US')} ج</span>
               </div>
             ))}
           </div>
@@ -91,17 +91,17 @@ export default function Receipt() {
         <div className="px-6 py-6 bg-slate-900 text-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
           <div className="flex justify-between items-center mb-2">
             <span className="text-slate-400 font-medium">الإجمالي:</span>
-            <span className="text-lg font-bold">{inv.total?.toLocaleString()} ج.م</span>
+            <span className="text-lg font-bold">{inv.total?.toLocaleString('en-US')} ج.م</span>
           </div>
           <div className="flex justify-between items-center mb-4">
             <span className="text-slate-400 font-medium">تم سداد:</span>
-            <span className="text-emerald-400 font-bold">{inv.paidAmount?.toLocaleString()} ج.م</span>
+            <span className="text-emerald-400 font-bold">{inv.paidAmount?.toLocaleString('en-US')} ج.م</span>
           </div>
           
           {!isPaid && (
             <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/10">
               <span className="text-rose-400 font-medium">المتبقي:</span>
-              <span className="text-rose-400 font-bold text-lg">{inv.dueAmount?.toLocaleString()} ج.م</span>
+              <span className="text-rose-400 font-bold text-lg">{inv.dueAmount?.toLocaleString('en-US')} ج.م</span>
             </div>
           )}
 

@@ -42,7 +42,7 @@ export default function Reminders() {
     const msg = `السلام عليكم أ/ ${rem.customerName} 👋\n` +
       `معك الفاورق ستور لقطع غيار السيارات.\n` +
       `حبينا نفكر حضرتك بموعد صيانة/تغيير (${rem.itemName}) لسيارتك (${rem.carModel || 'المسجلة لدينا'}).\n` +
-      `آخر مرة تم التغيير كانت بتاريخ ${rem.invoiceDate.toLocaleDateString('ar-EG')} والآن حان موعد المراجعة لضمان سلامتك.\n` +
+      `آخر مرة تم التغيير كانت بتاريخ ${rem.invoiceDate.toLocaleDateString('en-GB')} والآن حان موعد المراجعة لضمان سلامتك.\n` +
       `تشرفنا بزيارتك في أي وقت 🙏`
       
     const phone = rem.phone ? rem.phone.replace(/^0/, '20') : ''
@@ -102,7 +102,7 @@ export default function Reminders() {
                           </span>
                         )}
                         <span className="flex items-center gap-1.5 text-xs text-slate-400">
-                          <Clock size={14} className="text-slate-500" /> تم البيع في: {rem.invoiceDate.toLocaleDateString('ar-EG')}
+                          <Clock size={14} className="text-slate-500" /> تم البيع في: {rem.invoiceDate.toLocaleDateString('en-GB')}
                         </span>
                       </div>
                     </div>
@@ -113,7 +113,7 @@ export default function Reminders() {
                       <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">تاريخ الاستحقاق</p>
                       <p className={`text-sm font-bold flex items-center gap-2 ${isPast ? 'text-red-400' : 'text-primary-400'}`}>
                         <Calendar size={14} />
-                        {rem.dueDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        {rem.dueDate.toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}
                       </p>
                     </div>
                     

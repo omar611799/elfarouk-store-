@@ -28,7 +28,7 @@ export default function Invoices() {
     const items = inv.items?.map(i => {
       let line = `- ${i.name} × ${i.qty}`;
       if (i.returnedQty > 0) line += ` (مرتجع ${i.returnedQty})`;
-      return line + ` = ${(i.price * i.qty).toLocaleString()} ج.م`;
+      return line + ` = ${(i.price * i.qty).toLocaleString('en-US')} ج.م`;
     }).join('\n') || ''
     
     const msg = `🧾 فاتورة من الفاروق ستور\n` +
@@ -36,8 +36,8 @@ export default function Invoices() {
       `العميل: ${inv.customerData?.name}\n` +
       `${inv.customerData?.carModel ? `العربية: ${inv.customerData.carModel}\n` : ''}` +
       `\nالمنتجات:\n${items}\n\n` +
-      `الإجمالي: ${inv.total?.toLocaleString()} ج.م\n` +
-      `${inv.dueAmount > 0 ? `المتبقي: ${inv.dueAmount?.toLocaleString()} ج.م\n` : '✅ مدفوع بالكامل\n'}` +
+      `الإجمالي: ${inv.total?.toLocaleString('en-US')} ج.م\n` +
+      `${inv.dueAmount > 0 ? `المتبقي: ${inv.dueAmount?.toLocaleString('en-US')} ج.م\n` : '✅ مدفوع بالكامل\n'}` +
       `شكراً لتعاملكم معنا 🙏`
     const phone = inv.customerData?.phone?.replace(/^0/, '20') || WHATSAPP
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
@@ -101,7 +101,7 @@ export default function Invoices() {
                 <p className="text-xs text-slate-400">#{inv.number}</p>
               </div>
               <div className="text-left flex-shrink-0">
-                <p className="font-bold text-primary-400 text-sm">{Number(inv.total || 0).toLocaleString()} ج.م</p>
+                <p className="font-bold text-primary-400 text-sm">{Number(inv.total || 0).toLocaleString('en-US')} ج.م</p>
                 <span className={inv.paymentStatus === 'paid' ? 'badge-green' : inv.paymentStatus === 'partial' ? 'badge-yellow' : 'badge-red'}>
                   {inv.paymentStatus === 'paid' ? 'مدفوع' : inv.paymentStatus === 'partial' ? 'جزئي' : 'غير مدفوع'}
                 </span>
@@ -125,13 +125,13 @@ export default function Invoices() {
                       <span className="text-slate-300 font-medium">{item.name}</span>
                       <span className="text-slate-500">الكمية: {item.qty} {item.returnedQty > 0 ? <span className="text-red-400 font-bold">(مرتجع: {item.returnedQty})</span> : ''}</span>
                     </div>
-                    <span className="text-slate-400 font-bold">{(item.price * item.qty).toLocaleString()} ج.م</span>
+                    <span className="text-slate-400 font-bold">{(item.price * item.qty).toLocaleString('en-US')} ج.م</span>
                   </div>
                 )})}
                 
                 {/* Finance Summary */}
                 {inv.dueAmount > 0 && (
-                  <p className="text-red-400 text-xs font-bold bg-red-500/10 p-2 rounded-lg inline-block my-2">المتبقي على المستلم: {Number(inv.dueAmount).toLocaleString()} ج.م</p>
+                  <p className="text-red-400 text-xs font-bold bg-red-500/10 p-2 rounded-lg inline-block my-2">المتبقي على المستلم: {Number(inv.dueAmount).toLocaleString('en-US')} ج.م</p>
                 )}
                 
                 {/* Actions Row */}
@@ -200,7 +200,7 @@ export default function Invoices() {
 
                       return (
                         <div className="mb-4">
-                          <p className="text-xs font-bold text-amber-300">إجمالي قيمة المرتجع المحددة: {returnSum.toLocaleString()} ج.م</p>
+                          <p className="text-xs font-bold text-amber-300">إجمالي قيمة المرتجع المحددة: {returnSum.toLocaleString('en-US')} ج.م</p>
                           <p className="text-[10px] text-slate-400 mt-1">{text}</p>
                         </div>
                       );

@@ -31,7 +31,7 @@ export default function Transactions() {
               </p>
             </div>
             <p className={`font-bold text-sm ${tx.type === 'sale' ? 'text-green-400' : 'text-slate-400'}`}>
-              {tx.type === 'sale' ? `+${Number(tx.amount || 0).toLocaleString()} ج.م` : `${tx.amount} قطعة`}
+              {tx.type === 'sale' ? `+${Number(tx.amount || 0).toLocaleString('en-US')} ج.م` : `${tx.amount} قطعة`}
             </p>
           </div>
         ))}

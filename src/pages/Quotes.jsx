@@ -57,7 +57,7 @@ export default function Quotes() {
                 <p className="text-xs text-slate-400">{quote.number}</p>
               </div>
               <div className="text-left flex-shrink-0">
-                <p className="font-bold text-amber-400 text-sm">{Number(quote.total || 0).toLocaleString()} ج.م</p>
+                <p className="font-bold text-amber-400 text-sm">{Number(quote.total || 0).toLocaleString('en-US')} ج.م</p>
                 <span className="text-[10px] text-slate-400">{new Date(quote.createdAt?.toDate?.() || Date.now()).toLocaleDateString()}</span>
               </div>
             </div>
@@ -71,7 +71,7 @@ export default function Quotes() {
                 {quote.items?.map((item, i) => (
                   <div key={i} className="flex justify-between items-center text-xs p-1.5 bg-black/20 rounded-lg">
                     <span className="text-slate-300 font-medium">{item.name} × {item.qty}</span>
-                    <span className="text-slate-400 font-bold">{(item.price * item.qty).toLocaleString()} ج.م</span>
+                    <span className="text-slate-400 font-bold">{(item.price * item.qty).toLocaleString('en-US')} ج.م</span>
                   </div>
                 ))}
                 

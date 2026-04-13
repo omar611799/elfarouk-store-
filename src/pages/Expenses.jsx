@@ -65,7 +65,7 @@ export default function Expenses() {
         <div className="flex items-center gap-3">
           <div className="glass-card px-6 py-3 border-rose-500/30 bg-rose-500/5">
             <p className="text-slate-400 text-xs font-bold mb-1">مصروفات الشهر الحالي</p>
-            <p className="text-2xl font-bold text-rose-400">{totalCurrentMonth.toLocaleString()} ج.م</p>
+            <p className="text-2xl font-bold text-rose-400">{totalCurrentMonth.toLocaleString('en-US')} ج.م</p>
           </div>
           <button onClick={() => setShowAddModal(true)} className="btn-primary h-full py-4 flex items-center gap-2">
             <Plus size={20} /> تسجيل مصروف
@@ -97,7 +97,7 @@ export default function Expenses() {
                       <theme.icon size={20} className={theme.color} />
                     </div>
                     <div>
-                      <p className="font-bold text-white text-lg">{Number(ex.amount).toLocaleString()} ج.م</p>
+                      <p className="font-bold text-white text-lg">{Number(ex.amount).toLocaleString('en-US')} ج.م</p>
                       <p className="text-slate-400 text-sm mt-0.5">{ex.note || 'بدون وصف'}</p>
                     </div>
                   </div>
@@ -108,7 +108,7 @@ export default function Expenses() {
                         {theme.label}
                       </span>
                       <p className="text-xs text-slate-500 mt-2 font-medium">
-                        {date.toLocaleDateString('ar-EG')} • {date.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'})}
+                        {date.toLocaleDateString('en-GB')} • {date.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}
                       </p>
                     </div>
                     <button 

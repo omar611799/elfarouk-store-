@@ -162,8 +162,8 @@ export default function Products() {
               </div>
 
               <div className="md:px-10 py-2 border-x border-white/5 hidden md:block">
-                <p className="font-black text-white text-2xl font-display tracking-tighter">{Number(p.price).toLocaleString()} <span className="text-xs text-slate-500 font-normal">ج.م</span></p>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1 opacity-60 text-left">التكلفة: {Number(p.cost || 0).toLocaleString()}</p>
+                <p className="font-black text-white text-2xl font-display tracking-tighter">{Number(p.price).toLocaleString('en-US')} <span className="text-xs text-slate-500 font-normal">ج.م</span></p>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1 opacity-60 text-left">التكلفة: {Number(p.cost || 0).toLocaleString('en-US')}</p>
               </div>
 
               <div className="flex gap-2 opacity-30 group-hover:opacity-100 transition-all">

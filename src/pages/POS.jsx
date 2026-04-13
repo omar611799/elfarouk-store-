@@ -176,7 +176,7 @@ export default function POS() {
 
   const sendWhatsApp = () => {
     if (!doneInvoice) return
-    const msg = `🧾 فاتورة من الفاروق ستور\nرقم الفاتورة: ${doneInvoice.number}\nالعميل: ${doneInvoice.customer.name}\nالإجمالي: ${doneInvoice.total.toLocaleString()} ج.م\n📌رابط الفاتورة: ${window.location.origin}/receipt/${doneInvoice.id}\nشكراً لتعاملكم معنا 🙏`
+    const msg = `🧾 فاتورة من الفاروق ستور\nرقم الفاتورة: ${doneInvoice.number}\nالعميل: ${doneInvoice.customer.name}\nالإجمالي: ${doneInvoice.total.toLocaleString('en-US')} ج.م\n📌رابط الفاتورة: ${window.location.origin}/receipt/${doneInvoice.id}\nشكراً لتعاملكم معنا 🙏`
     const phone = doneInvoice.customer.phone ? doneInvoice.customer.phone.replace(/^0/, '20') : WHATSAPP
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
   }
@@ -204,11 +204,11 @@ export default function POS() {
         </div>
         
         <p className="text-5xl font-black text-white tracking-tighter mb-4 font-display">
-            {doneInvoice.total.toLocaleString()} <span className="text-2xl text-slate-500 font-normal">ج.م</span>
+            {doneInvoice.total.toLocaleString('en-US')} <span className="text-2xl text-slate-500 font-normal">ج.م</span>
         </p>
 
         {doneInvoice.due > 0 && (
-            <div className="badge-red mb-10 py-2 px-6 !text-xs">المتبقي الآجل: {doneInvoice.due.toLocaleString()} ج.م</div>
+            <div className="badge-red mb-10 py-2 px-6 !text-xs">المتبقي الآجل: {doneInvoice.due.toLocaleString('en-US')} ج.م</div>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-6">
@@ -289,7 +289,7 @@ export default function POS() {
                   </div>
                    <div className="flex flex-col items-end">
                     <span className="text-[8px] text-slate-500 font-black uppercase tracking-widest mb-0.5">السعر</span>
-                    <span className="text-xl font-black text-white font-display">{Number(p.price).toLocaleString()} <span className="text-[10px] text-slate-500 font-normal">ج.م</span></span>
+                    <span className="text-xl font-black text-white font-display">{Number(p.price).toLocaleString('en-US')} <span className="text-[10px] text-slate-500 font-normal">ج.م</span></span>
                   </div>
                 </div>
               </div>
@@ -331,7 +331,7 @@ export default function POS() {
                         <div className="flex items-center gap-4">
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm text-white font-black truncate font-display leading-tight">{item.name}</p>
-                                <p className="text-[10px] text-electric-400 font-black mt-2 tracking-wide">{Number(item.price).toLocaleString()} ج.م</p>
+                                <p className="text-[10px] text-electric-400 font-black mt-2 tracking-wide">{Number(item.price).toLocaleString('en-US')} ج.م</p>
                             </div>
                             <div className="flex items-center gap-3 bg-obsidian-900 border border-white/5 rounded-2xl p-2 shrink-0">
                                 <button onClick={() => cartQty(item.id, item.qty - 1)} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors"><Minus size={14} className="text-slate-400" /></button>
@@ -357,7 +357,7 @@ export default function POS() {
             <div className="space-y-4 mb-8">
               <div className="flex justify-between items-center px-1">
                 <span className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">إجمالي السلة</span>
-                <span className="text-4xl font-black text-white font-display tracking-tighter">{cartTotal.toLocaleString()} <span className="text-sm font-normal text-slate-500">ج.م</span></span>
+                <span className="text-4xl font-black text-white font-display tracking-tighter">{cartTotal.toLocaleString('en-US')} <span className="text-sm font-normal text-slate-500">ج.م</span></span>
               </div>
             </div>
 

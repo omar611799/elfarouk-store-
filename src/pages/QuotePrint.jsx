@@ -39,7 +39,7 @@ export default function QuotePrint() {
           <div>
             <p>رقم العرض: <span className="font-normal">{quote.number}</span></p>
             <p>التاريخ: <span className="font-normal">
-              {new Date(quote.createdAt?.toDate?.() || Date.now()).toLocaleDateString('ar-EG')}
+              {new Date(quote.createdAt?.toDate?.() || Date.now()).toLocaleDateString('en-GB')}
             </span></p>
           </div>
           <div className="text-left">
@@ -65,8 +65,8 @@ export default function QuotePrint() {
                 <td className="py-2 px-1 text-center border font-bold text-gray-500">{idx + 1}</td>
                 <td className="py-2 px-2 border">{item.name}</td>
                 <td className="py-2 px-2 text-center border">{item.qty}</td>
-                <td className="py-2 px-2 text-center border">{Number(item.price).toLocaleString()}</td>
-                <td className="py-2 px-2 text-center border font-bold">{(item.price * item.qty).toLocaleString()}</td>
+                <td className="py-2 px-2 text-center border">{Number(item.price).toLocaleString('en-US')}</td>
+                <td className="py-2 px-2 text-center border font-bold">{(item.price * item.qty).toLocaleString('en-US')}</td>
               </tr>
             ))}
           </tbody>
@@ -76,7 +76,7 @@ export default function QuotePrint() {
           <div className="w-1/2 bg-gray-50 p-4 border-2 border-black rounded-lg">
             <div className="flex justify-between items-center text-lg font-bold">
               <span>الإجمالي الكلي:</span>
-              <span>{Number(quote.total).toLocaleString()} ج.م</span>
+              <span>{Number(quote.total).toLocaleString('en-US')} ج.م</span>
             </div>
           </div>
         </div>
