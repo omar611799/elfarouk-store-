@@ -317,22 +317,28 @@ export default function POS() {
 
         {showScanner && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden card !p-4 !bg-black/80 border-emerald-500/20 relative">
-                {!scannerError ? (
+                
+                <div className={`${scannerError ? 'hidden' : 'block'} mb-4`}>
                   <div id="reader" className="w-full max-w-sm mx-auto rounded-3xl overflow-hidden bg-black/50 min-h-[250px]"></div>
-                ) : (
-                  <div className="w-full max-w-sm mx-auto text-center py-10">
-                    <div className="w-16 h-16 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
-                      <Camera size={24} className="text-rose-400" />
+                </div>
+
+                {scannerError && (
+                  <div className="w-full max-w-sm mx-auto text-center py-6">
+                    <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-rose-500/20">
+                      <Camera size={20} className="text-rose-400" />
                     </div>
-                    <p className="text-rose-400 font-bold mb-2">تعذر تشغيل الكاميرا!</p>
-                    <p className="text-slate-400 text-xs mb-6 px-4">يرجى التأكد من صلاحيات المتصفح، أو يمكنك رفع صورة الباركود من الجهاز مباشرة.</p>
-                    
-                    <label className="btn-primary !bg-electric-600 hover:!bg-electric-500 cursor-pointer block w-full max-w-[200px] mx-auto text-sm">
-                      رفع صورة الباركود
-                      <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-                    </label>
+                    <p className="text-rose-400 text-sm font-bold">تعذر تشغيل الكاميرا آلياً</p>
                   </div>
                 )}
+
+                <div className="w-full max-w-sm mx-auto text-center border-t border-white/10 pt-4 mt-2">
+                  <p className="text-slate-400 text-xs mb-3">يمكنك رفع صورة الباركود مباشرة من اللابتوب</p>
+                  <label className="btn-primary !bg-electric-600 hover:!bg-electric-500 cursor-pointer inline-flex items-center justify-center w-full max-w-[200px] text-sm">
+                    رفع صورة الباركود
+                    <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                  </label>
+                </div>
+
                 <button onClick={() => { setShowScanner(false); setScannerError(false); }} className="absolute top-4 right-4 text-white/50 hover:text-white bg-white/10 p-2 rounded-full z-50"><X size={16} /></button>
             </motion.div>
         )}
