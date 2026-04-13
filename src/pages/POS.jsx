@@ -111,29 +111,41 @@ export default function POS() {
       let html5QrCode = null;
       if (showScanner) {
         html5QrCode = new Html5Qrcode('reader');
-        html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
-          (decodedText) => {
-            const matched = products.find(p => p.sku === decodedText || p.id === decodedText);
-            if (matched) {
-              cartAdd(matched);
-              toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
-              setShowScanner(false);
-            } else {
-              toast.error(`كود غير معروف: ${decodedText}`);
-            }
-          },
-          (errorMessage) => {
-            // Background scanning errors can be ignored
+        
+        Html5Qrcode.getCameras().then(devices => {
+          if (devices && devices.length) {
+            // Predictably select the back camera if multiple exist, otherwise use the only one available
+            const cameraId = devices.length > 1 ? devices[devices.length - 1].id : devices[0].id;
+            
+            html5QrCode.start(
+              cameraId,
+              { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
+              (decodedText) => {
+                const matched = products.find(p => p.sku === decodedText || p.id === decodedText);
+                if (matched) {
+                  cartAdd(matched);
+                  toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
+                  setShowScanner(false);
+                } else {
+                  toast.error(`كود غير معروف: ${decodedText}`);
+                }
+              },
+              (errorMessage) => {
+                // Ignore background frame errors
+              }
+            ).catch(err => {
+              console.error("Camera start error:", err);
+              toast.error("حدث خطأ أثناء تشغيل الكاميرا");
+            });
+          } else {
+            toast.error("لم يتم العثور على أية كاميرا!");
           }
-        ).catch(err => {
-          console.error("Camera start error:", err);
-          toast.error("تأكد من إعطاء صلاحية الكاميرا للمتصفح");
+        }).catch(err => {
+          console.error("Permission error:", err);
+          toast.error("الرجاء إعطاء صلاحية استخدام الكاميرا من إعدادات المتصفح");
         });
       }
       
-      // Cleanup: Store instance on window or local ref so we don't return an async cleanup function
       window._currentQrCode = html5QrCode;
     });
 
