@@ -6,13 +6,13 @@ import { listenCol, COLS, addProduct, updateProduct, deleteProduct,
   updateProductStock, addTransaction, completeSale,
   payInvoiceDebt, deleteInvoiceAndReturnStock, returnInvoiceItems,
   addQuote, deleteQuote, importProductsBatch,
-  addExpense, deleteExpense } from '../firebase/collections'
+  addExpense, deleteExpense, recordPurchase, paySupplierDebt } from '../firebase/collections'
 
 const StoreContext = createContext(null)
 
 const init = {
   products: [], categories: [], suppliers: [],
-  customers: [], invoices: [], transactions: [], expenses: [], quotes: [],
+  customers: [], invoices: [], transactions: [], expenses: [], quotes: [], purchases: [],
   loading: true,
   cart: [],
 }
@@ -50,6 +50,7 @@ export function StoreProvider({ children }) {
       listenCol(COLS.QUOTATIONS,   data => dispatch({ type: 'SET', key: 'quotes',       data })),
       listenCol(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data })),
       listenCol(COLS.EXPENSES,     data => dispatch({ type: 'SET', key: 'expenses',     data })),
+      listenCol(COLS.PURCHASES,    data => dispatch({ type: 'SET', key: 'purchases',    data })),
     ]
     dispatch({ type: 'LOADING', value: false })
     return () => unsubs.forEach(u => u())
@@ -126,7 +127,7 @@ export function StoreProvider({ children }) {
   // ── Stock ──
   const stockIn = async (productId, qty, note = '') => {
     try {
-      await updateProductStock(productId, qty)
+      await updateProductStock(productId, qty, 'stock_in', note)
       await addTransaction({ type: 'stockIn', refId: productId, details: `استلام ${qty} قطعة${note ? ' - ' + note : ''}`, amount: qty })
       toast.success(`تمت إضافة ${qty} قطعة`)
     } catch (e) { toast.error(e.message) }
@@ -136,7 +137,7 @@ export function StoreProvider({ children }) {
     const prod = state.products.find(p => p.id === productId)
     if (!prod || prod.quantity < qty) { toast.error('الكمية غير متوفرة'); return }
     try {
-      await updateProductStock(productId, -qty)
+      await updateProductStock(productId, -qty, 'stock_out', reason)
       await addTransaction({ type: 'stockOut', refId: productId, details: `صرف ${qty} قطعة${reason ? ' - ' + reason : ''}`, amount: qty })
       toast.success(`تم صرف ${qty} قطعة`)
     } catch (e) { toast.error(e.message) }
@@ -196,6 +197,21 @@ export function StoreProvider({ children }) {
     } catch (e) { toast.error(e.message); throw e }
   }
 
+  // ── Purchases ──
+  const handleRecordPurchase = async (data) => {
+    try {
+      await recordPurchase(data);
+      toast.success('تم تسجيل فاتورة الشراء وتحديث المخزون');
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
+  const handlePaySupplierDebt = async (supplierId, amount, note) => {
+    try {
+      await paySupplierDebt(supplierId, amount, note);
+      toast.success('تم تسجيل سداد المورد بنجاح');
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
   // ── Cart ──
   const cartAdd    = (item) => dispatch({ type: 'CART_ADD', item })
   const cartQty    = (id, qty) => dispatch({ type: 'CART_QTY', id, qty })
@@ -228,6 +244,8 @@ export function StoreProvider({ children }) {
       importProductsBatch: handleImportProductsBatch,
       addExpense: handleAddExpense,
       deleteExpense: handleDeleteExpense,
+      recordPurchase: handleRecordPurchase,
+      paySupplierDebt: handlePaySupplierDebt,
       cartAdd, cartQty, cartRemove, cartClear,
     }}>
       {children}

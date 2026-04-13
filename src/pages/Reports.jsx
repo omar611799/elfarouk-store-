@@ -30,11 +30,13 @@ export default function Reports() {
 
     invoices.forEach(inv => {
       const date = inv.createdAt?.toDate?.() || new Date(inv.createdAt)
-      inv.cartItems?.forEach(item => {
+      const invItems = inv.items || inv.cartItems || [] // Compatibility
+      invItems.forEach(item => {
         if (!productStats[item.id]) return
         productStats[item.id].qtySold += item.qty
-        const currentCost = products.find(p => p.id === item.id)?.cost || item.cost || 0
-        productStats[item.id].profit += (item.price - currentCost) * item.qty
+        // Prioritize cost recorded in the invoice, fallback to current product cost
+        const itemCost = item.cost !== undefined ? item.cost : (products.find(p => p.id === item.id)?.cost || 0)
+        productStats[item.id].profit += (item.price - itemCost) * item.qty
         
         if (!productStats[item.id].lastSold || date > productStats[item.id].lastSold) {
           productStats[item.id].lastSold = date

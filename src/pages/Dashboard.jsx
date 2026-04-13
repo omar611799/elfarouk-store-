@@ -20,7 +20,14 @@ export default function Dashboard() {
   const { products, customers, invoices, transactions, expenses } = useStore()
 
   const totalSales    = invoices.reduce((s, i) => s + (i.total || 0), 0)
-  const totalProfitRaw = invoices.reduce((s, i) => s + (i.total || 0) * 0.3, 0)
+  const totalProfitRaw = invoices.reduce((s, i) => {
+    if (!i.items || i.items.length === 0) return s + (i.total || 0) * 0.3 // Fallback for very old data
+    const invoiceProfit = i.items.reduce((sum, item) => {
+      const cost = item.cost !== undefined ? item.cost : (item.price * 0.7) // Fallback to 30% margin if cost missing
+      return sum + (item.price - cost) * (item.qty || 1)
+    }, 0)
+    return s + invoiceProfit
+  }, 0)
   const totalExpenses = (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0)
   const netProfit     = totalProfitRaw - totalExpenses
   const lowStock      = products.filter(p => p.quantity <= (p.minStock || 5))

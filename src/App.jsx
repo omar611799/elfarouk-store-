@@ -19,6 +19,8 @@ import Receipt from './pages/Receipt'
 import Quotes from './pages/Quotes'
 import QuotePrint from './pages/QuotePrint'
 import Reminders from './pages/Reminders'
+import Purchases from './pages/Purchases'
+import CustomerPortal from './pages/CustomerPortal'
 import LoadingScreen from './components/LoadingScreen'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -43,6 +45,7 @@ function AppRouter() {
       <Routes>
         <Route path="/receipt/:id" element={<Receipt />} />
         <Route path="/print-quote/:id" element={<QuotePrint />} />
+        <Route path="/portal/:phone" element={<CustomerPortal />} />
         <Route path="/" element={<Layout />}>
           {/* Admin and Cashier have POS, Products, Customers */}
           <Route path="pos"          element={<POS />} />
@@ -62,6 +65,7 @@ function AppRouter() {
               <Route path="transactions" element={<Transactions />} />
               <Route path="reports"      element={<Reports />} />
               <Route path="reminders"    element={<Reminders />} />
+              <Route path="purchases"    element={<Purchases />} />
             </>
           ) : (
             // Cashier fallback index

@@ -1,4 +1,4 @@
-import { useParams, Navigate } from 'react-router-dom'
+import { useParams, Navigate, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useStore } from '../context/StoreContext'
 import { CheckCircle2, ShieldCheck, Download, Store } from 'lucide-react'
@@ -108,6 +108,12 @@ export default function Receipt() {
           <button onClick={() => window.print()} className="w-full bg-primary-500 hover:bg-primary-600 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2">
             <Download size={18} /> حفظ الفاتورة (PDF)
           </button>
+
+          {inv.customerData?.phone && (
+            <Link to={`/portal/${inv.customerData.phone}`} className="w-full bg-white/5 hover:bg-white/10 text-slate-300 text-xs py-3 rounded-xl flex items-center justify-center gap-2 transition-colors mt-3 border border-white/5">
+                <ShieldCheck size={14} className="text-primary-400" /> متابعة سجل صيانة سيارتك بالكامل
+            </Link>
+          )}
           
           <div className="text-center mt-6 flex justify-center">
             <img src="/motor-icon.png" className="w-8 h-8 opacity-20 filter grayscale" alt="Logo" />

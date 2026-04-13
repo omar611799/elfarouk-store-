@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud, QrCode, Printer } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { QRCodeSVG } from 'qrcode.react'
 import toast from 'react-hot-toast'
 
 import * as XLSX from 'xlsx'
@@ -25,6 +26,7 @@ export default function Products() {
   const [modal, setModal]       = useState(false)
   const [editing, setEditing]   = useState(null)
   const [form, setForm]         = useState(EMPTY)
+  const [qrModal, setQrModal]   = useState(null)
   const fileInputRef = useRef(null)
 
   const filtered = products.filter(p =>
@@ -160,6 +162,9 @@ export default function Products() {
                 <p className="text-xs text-slate-500">تكلفة: {Number(p.cost || 0).toLocaleString()}</p>
               </div>
               <div className="flex gap-1">
+                <button onClick={() => setQrModal(p)} className="p-2 text-slate-400 hover:text-primary-400 hover:bg-primary-500/10 rounded-lg transition-all" title="توليد QR كود">
+                  <QrCode size={15} />
+                </button>
                 <button onClick={() => openEdit(p)} className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
                   <Edit2 size={15} />
                 </button>
@@ -227,6 +232,41 @@ export default function Products() {
                   {editing ? 'حفظ التعديلات' : 'إضافة'}
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+        
+        {/* QR Code Modal */}
+        {qrModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-2 bg-primary-500" />
+                <button onClick={() => setQrModal(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">✕</button>
+                
+                <h3 className="text-xl font-bold text-slate-900 mb-1">{qrModal.name}</h3>
+                <p className="text-sm text-slate-500 mb-6">كود: {qrModal.sku || qrModal.id}</p>
+                
+                <div className="bg-slate-50 p-6 rounded-2xl inline-block border-2 border-slate-100 shadow-inner mb-6">
+                    <QRCodeSVG 
+                        id="product-qr"
+                        value={qrModal.sku || qrModal.id} 
+                        size={180}
+                        level="H"
+                        includeMargin={true}
+                    />
+                </div>
+                
+                <div className="flex flex-col gap-3">
+                    <button 
+                        onClick={() => window.print()}
+                        className="bg-slate-950 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-lg"
+                    >
+                        <Printer size={18} /> طباعة الملصق
+                    </button>
+                    <p className="text-[10px] text-slate-400 px-4">
+                        يمكنك استخدام كاميرا برنامج "الفاروق ستور" لمسح هذا الكود في صفحة المبيعات والبحث عن القطعة فوراً.
+                    </p>
+                </div>
             </motion.div>
           </motion.div>
         )}

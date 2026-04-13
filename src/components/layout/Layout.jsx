@@ -3,7 +3,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, Tag, Truck, Users,
-  ShoppingCart, FileText, ArrowLeftRight, Menu, X, Store, BarChart3, BookOpen, TrendingDown, ClipboardList, Bell
+  ShoppingCart, FileText, ArrowLeftRight, Menu, X, Store, BarChart3, BookOpen, TrendingDown, ClipboardList, Bell, ShoppingBag
 } from 'lucide-react'
 import { useStore } from '../../context/StoreContext'
 import { useAuth } from '../../context/AuthContext'
@@ -14,6 +14,7 @@ const nav = [
   { to: '/products',    icon: Package,         label: 'قطع الغيار',   adminOnly: false },
   { to: '/categories',  icon: Tag,             label: 'الفئات',       adminOnly: true },
   { to: '/suppliers',   icon: Truck,           label: 'الموردين',     adminOnly: true },
+  { to: '/purchases',   icon: ShoppingBag,     label: 'المشتريات',    adminOnly: true },
   { to: '/customers',   icon: Users,           label: 'العملاء',      adminOnly: false },
   { to: '/pos',         icon: ShoppingCart,    label: 'نقطة البيع',   adminOnly: false },
   { to: '/invoices',    icon: FileText,        label: 'الفواتير',     adminOnly: true },
