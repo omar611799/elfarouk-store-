@@ -228,15 +228,24 @@ export default function POS() {
         <div className="flex gap-2">
           <div className="relative flex-1 flex items-center">
             <Search size={16} className="absolute right-3 text-slate-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث باسم القطعة (مثال: قماش يظهر تيل)..." className="input pr-9 pl-12 text-sm w-full font-medium placeholder:font-normal" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث باسم القطعة (مثال: قماش يظهر تيل)..." className="input pr-9 pl-24 text-sm w-full font-medium placeholder:font-normal" />
             
-            <motion.button
-              whileTap={{ scale: 0.9 }} onClick={startVoiceSearch}
-              className={`absolute left-2 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isListening ? 'bg-rose-500/20 text-rose-400 shadow-[0_0_15px_rgba(243,24,96,0.5)] animate-pulse' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 hover:text-primary-300'}`}
-              title="تحدث للبحث"
-            >
-              <Mic size={16} />
-            </motion.button>
+            <div className="absolute left-2 flex gap-1">
+              <motion.button
+                whileTap={{ scale: 0.9 }} onClick={() => setShowScanner(!showScanner)}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${showScanner ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 hover:text-primary-300'}`}
+                title="مسح باركود (كاميرا)"
+              >
+                <Camera size={16} />
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.9 }} onClick={startVoiceSearch}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isListening ? 'bg-rose-500/20 text-rose-400 shadow-[0_0_15px_rgba(243,24,96,0.5)] animate-pulse' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 hover:text-primary-300'}`}
+                title="تحدث للبحث"
+              >
+                <Mic size={16} />
+              </motion.button>
+            </div>
           </div>
           <select value={catFilter} onChange={e => setCat(e.target.value)} className="input w-32 text-sm">
             <option value="">كافة الفئات</option>
@@ -245,6 +254,15 @@ export default function POS() {
             ))}
           </select>
         </div>
+
+        {/* Scanner Div */}
+        <AnimatePresence>
+          {showScanner && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+               <div id="reader" className="w-full max-w-sm mx-auto overflow-hidden rounded-xl border-2 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.1)] bg-black/40"></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {filtered.map(p => (

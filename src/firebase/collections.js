@@ -24,6 +24,7 @@ export const COLS = {
   TRANSACTIONS: 'transactions',
   EXPENSES: 'expenses',
   QUOTATIONS: 'quotations',
+  USERS: 'users',
 }
 
 // ── Real-time listeners (onSnapshot) ──

@@ -6,26 +6,31 @@ import {
   ShoppingCart, FileText, ArrowLeftRight, Menu, X, Store, BarChart3, BookOpen, TrendingDown, ClipboardList
 } from 'lucide-react'
 import { useStore } from '../../context/StoreContext'
+import { useAuth } from '../../context/AuthContext'
+import { LogOut, ShieldCheck, User as UserIcon } from 'lucide-react'
 
 const nav = [
-  { to: '/',            icon: LayoutDashboard, label: 'الرئيسية' },
-  { to: '/products',    icon: Package,         label: 'قطع الغيار' },
-  { to: '/categories',  icon: Tag,             label: 'الفئات' },
-  { to: '/suppliers',   icon: Truck,           label: 'الموردين' },
-  { to: '/customers',   icon: Users,           label: 'العملاء' },
-  { to: '/pos',         icon: ShoppingCart,    label: 'نقطة البيع' },
-  { to: '/invoices',    icon: FileText,        label: 'الفواتير' },
-  { to: '/quotes',      icon: ClipboardList,   label: 'عروض أسعار' },
-  { to: '/ledger',      icon: BookOpen,        label: 'المديونيات' },
-  { to: '/expenses',    icon: TrendingDown,    label: 'المصروفات' },
-  { to: '/transactions',icon: ArrowLeftRight,  label: 'المعاملات' },
-  { to: '/reports',     icon: BarChart3,       label: 'التقارير' },
+  { to: '/',            icon: LayoutDashboard, label: 'الرئيسية',     adminOnly: true },
+  { to: '/products',    icon: Package,         label: 'قطع الغيار',   adminOnly: false },
+  { to: '/categories',  icon: Tag,             label: 'الفئات',       adminOnly: true },
+  { to: '/suppliers',   icon: Truck,           label: 'الموردين',     adminOnly: true },
+  { to: '/customers',   icon: Users,           label: 'العملاء',      adminOnly: false },
+  { to: '/pos',         icon: ShoppingCart,    label: 'نقطة البيع',   adminOnly: false },
+  { to: '/invoices',    icon: FileText,        label: 'الفواتير',     adminOnly: true },
+  { to: '/quotes',      icon: ClipboardList,   label: 'عروض أسعار',    adminOnly: true },
+  { to: '/ledger',      icon: BookOpen,        label: 'المديونيات',   adminOnly: true },
+  { to: '/expenses',    icon: TrendingDown,    label: 'المصروفات',    adminOnly: true },
+  { to: '/transactions',icon: ArrowLeftRight,  label: 'المعاملات',    adminOnly: true },
+  { to: '/reports',     icon: BarChart3,       label: 'التقارير',     adminOnly: true },
 ]
 
 export default function Layout() {
   const [open, setOpen] = useState(false)
   const { cartCount } = useStore()
+  const { currentUser, logout } = useAuth()
   const location = useLocation()
+
+  const allowedNav = nav.filter(n => currentUser?.role === 'admin' || !n.adminOnly)
 
   return (
     <div className="flex h-screen overflow-hidden bg-transparent text-slate-200 selection:bg-primary-500/30">
@@ -65,7 +70,7 @@ export default function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 p-4 overflow-y-auto space-y-1.5 scrollbar-thin">
-          {nav.map(({ to, icon: Icon, label }) => (
+          {allowedNav.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -107,6 +112,25 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        {/* User Profile & Logout */}
+        <div className="p-4 border-t border-white/5 bg-white/[0.02]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center">
+              {currentUser?.role === 'admin' ? <ShieldCheck size={20} className="text-amber-400" /> : <UserIcon size={20} className="text-blue-400" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white truncate">{currentUser?.name}</p>
+              <p className="text-xs text-slate-400">{currentUser?.role === 'admin' ? 'مدير النظام' : 'بائع / كاشير'}</p>
+            </div>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 active:bg-red-500/30 transition-colors text-sm font-bold"
+          >
+            <LogOut size={16} /> تسجيل الخروج
+          </button>
+        </div>
       </aside>
 
       {/* Main */}

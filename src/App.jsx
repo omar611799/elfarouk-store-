@@ -21,52 +21,79 @@ import QuotePrint from './pages/QuotePrint'
 import LoadingScreen from './components/LoadingScreen'
 import ErrorBoundary from './components/ErrorBoundary'
 
+// Auth
+import { AuthProvider, useAuth } from './context/AuthContext'
+import Login from './pages/Login'
+
+function AppRouter() {
+  const { currentUser, loading: authLoading } = useAuth()
+  
+  if (authLoading) return <LoadingScreen />
+  if (!currentUser) return <Login />
+
+  return (
+    <BrowserRouter>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: { background: '#1e293b', color: '#fff', border: '1px solid #334155' },
+        }}
+      />
+      <Routes>
+        <Route path="/receipt/:id" element={<Receipt />} />
+        <Route path="/print-quote/:id" element={<QuotePrint />} />
+        <Route path="/" element={<Layout />}>
+          {/* Admin and Cashier have POS, Products, Customers */}
+          <Route path="pos"          element={<POS />} />
+          <Route path="products"     element={<Products />} />
+          <Route path="customers"    element={<Customers />} />
+          
+          {/* Admin Only Paths */}
+          {currentUser.role === 'admin' ? (
+            <>
+              <Route index element={<Dashboard />} />
+              <Route path="categories"   element={<Categories />} />
+              <Route path="suppliers"    element={<Suppliers />} />
+              <Route path="invoices"     element={<Invoices />} />
+              <Route path="quotes"       element={<Quotes />} />
+              <Route path="ledger"       element={<Ledger />} />
+              <Route path="expenses"     element={<Expenses />} />
+              <Route path="transactions" element={<Transactions />} />
+              <Route path="reports"      element={<Reports />} />
+            </>
+          ) : (
+            // Cashier fallback index
+            <Route index element={<Navigate to="/pos" />} />
+          )}
+
+          <Route path="*" element={<Navigate to="/" />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
 export default function App() {
-  const [loading, setLoading] = useState(true)
+  const [splashLoading, setSplashLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate initial loading time for the cool splash screen effect
-    const t = setTimeout(() => setLoading(false), 2500)
+    const t = setTimeout(() => setSplashLoading(false), 2000)
     return () => clearTimeout(t)
   }, [])
 
   return (
-    <StoreProvider>
-      <AnimatePresence>
-        {loading && <LoadingScreen />}
-      </AnimatePresence>
-      
-      {!loading && (
-        <ErrorBoundary>
-          <BrowserRouter>
-            <Toaster
-              position="top-center"
-              toastOptions={{
-                style: { background: '#1e293b', color: '#fff', border: '1px solid #334155' },
-              }}
-            />
-            <Routes>
-              <Route path="/receipt/:id" element={<Receipt />} />
-              <Route path="/print-quote/:id" element={<QuotePrint />} />
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="products"     element={<Products />} />
-                <Route path="categories"   element={<Categories />} />
-                <Route path="suppliers"    element={<Suppliers />} />
-                <Route path="customers"    element={<Customers />} />
-                <Route path="pos"          element={<POS />} />
-                <Route path="invoices"     element={<Invoices />} />
-                <Route path="quotes"       element={<Quotes />} />
-                <Route path="ledger"       element={<Ledger />} />
-                <Route path="expenses"     element={<Expenses />} />
-                <Route path="transactions" element={<Transactions />} />
-                <Route path="reports"      element={<Reports />} />
-                <Route path="*"            element={<Navigate to="/" />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </ErrorBoundary>
-      )}
-    </StoreProvider>
+    <AuthProvider>
+      <StoreProvider>
+        <AnimatePresence>
+          {splashLoading && <LoadingScreen />}
+        </AnimatePresence>
+        
+        {!splashLoading && (
+          <ErrorBoundary>
+            <AppRouter />
+          </ErrorBoundary>
+        )}
+      </StoreProvider>
+    </AuthProvider>
   )
 }
