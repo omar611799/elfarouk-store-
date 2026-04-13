@@ -149,11 +149,12 @@ export async function completeSale({ cartItems, customerData, total, invoiceNumb
   const paymentStatus = dueAmount === 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid'
 
   const batch = writeBatch(db)
+  const invRef = doc(collection(db, COLS.INVOICES))
 
   // Deduct stock and Log
   for (const item of cartItems) {
     const p = await getDoc_(COLS.PRODUCTS, item.id)
-    const newQty = Math.max(0, (p?.quantity || 0) - item.qty)
+    const newQty = Math.max(0, (p?.quantity || 0) - Number(item.qty))
     batch.update(doc(db, COLS.PRODUCTS, item.id), {
       quantity: newQty,
       updatedAt: serverTimestamp(),
@@ -492,6 +493,7 @@ export async function importProductsBatch(productsData) {
         // Update price and quantity
         batch.update(doc(db, COLS.PRODUCTS, existsRefId), {
           price: Number(item.price) || 0,
+          cost: Number(item.cost) || 0,
           quantity: Number(item.quantity) || 0,
           category: item.category || '',
           updatedAt: serverTimestamp()
@@ -504,6 +506,7 @@ export async function importProductsBatch(productsData) {
           name: item.name,
           sku: item.sku || '',
           price: Number(item.price) || 0,
+          cost: Number(item.cost) || 0,
           quantity: Number(item.quantity) || 0,
           category: item.category || '',
           createdAt: serverTimestamp(),

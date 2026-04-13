@@ -21,6 +21,7 @@ import QuotePrint from './pages/QuotePrint'
 import Reminders from './pages/Reminders'
 import Purchases from './pages/Purchases'
 import CustomerPortal from './pages/CustomerPortal'
+import StockHistory from './pages/StockHistory'
 import LoadingScreen from './components/LoadingScreen'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -60,6 +61,7 @@ function AppRouter() {
               <Route path="suppliers"    element={<Suppliers />} />
               <Route path="invoices"     element={<Invoices />} />
               <Route path="quotes"       element={<Quotes />} />
+              <Route path="stock-history" element={<StockHistory />} />
               <Route path="ledger"       element={<Ledger />} />
               <Route path="expenses"     element={<Expenses />} />
               <Route path="transactions" element={<Transactions />} />

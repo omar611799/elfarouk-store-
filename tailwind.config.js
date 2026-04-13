@@ -6,44 +6,49 @@ export default {
     extend: {
       fontFamily: {
         arabic: ['Cairo', 'sans-serif'],
+        display: ['Outfit', 'Inter', 'sans-serif'],
       },
       colors: {
-        background: '#0B0F19',
-        surface: '#111827',
-        surfaceHighlight: '#1F2937',
+        obsidian: {
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          800: '#1e293b',
+          900: '#0f172a',
+          950: '#020617', // Deep orbit black
+        },
+        electric: {
+          50: '#eef2ff',
+          100: '#e0e7ff',
+          400: '#818cf8',
+          500: '#6366f1', // Electric Indigo
+          600: '#4f46e5',
+        },
         primary: {
           50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa',
           300: '#fdba74', 400: '#fb923c', 500: '#f97316',
           600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12',
-          glow: '#f9731680'
         },
-        glass: {
-          100: 'rgba(255, 255, 255, 0.1)',
-          200: 'rgba(255, 255, 255, 0.05)',
-          300: 'rgba(255, 255, 255, 0.03)',
-        }
       },
       backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'glass-gradient': 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)',
+        'nebula': 'radial-gradient(circle at center, rgba(99, 102, 241, 0.15) 0%, rgba(2, 6, 23, 0) 70%)',
+        'mesh': 'url("https://grainy-gradients.vercel.app/noise.svg")',
       },
       boxShadow: {
-        'glow': '0 0 20px rgba(249, 115, 22, 0.15)',
-        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
+        'premium': '0 0 50px -12px rgb(0 0 0 / 0.5)',
+        'neon': '0 0 20px -5px rgba(99, 102, 241, 0.5)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.5s ease-out',
-        'slide-up': 'slideUp 0.5s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'pulse-glow': 'pulseGlow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'float': 'float 6s ease-in-out infinite',
       },
       keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
+        pulseGlow: {
+          '0%, 100%': { opacity: '0.5', transform: 'scale(1)' },
+          '50%': { opacity: '0.8', transform: 'scale(1.05)' },
         },
-        slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
         }
       }
     },

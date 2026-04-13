@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Search, Plus, Minus, Trash2, ShoppingCart, Send, MessageCircle, Mic, CreditCard, Banknote, Smartphone, CalendarClock, Camera } from 'lucide-react'
+import { Search, Plus, Minus, Trash2, ShoppingCart, Send, MessageCircle, Mic, CreditCard, Banknote, Smartphone, CalendarClock, Camera, Sparkles, X, ChevronLeft } from 'lucide-react'
 import { Html5QrcodeScanner } from 'html5-qrcode'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -10,12 +10,12 @@ const WHATSAPP = import.meta.env.VITE_WHATSAPP_NUMBER || '201115329887'
 
 const container = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.03 } }
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } }
 }
 
 const itemVariant = {
-  hidden: { opacity: 0, scale: 0.95 },
-  show: { opacity: 1, scale: 1 }
+  hidden: { opacity: 0, y: 20, scale: 0.95 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } }
 }
 
 const SYNONYM_MAP = [
@@ -43,10 +43,8 @@ const getSearchTerms = (str) => {
   return Array.from(terms)
 }
 
-
-
 export default function POS() {
-  const { products, cart, cartAdd, cartQty, cartRemove, cartClear, cartTotal, completeSale, saveQuote } = useStore()
+  const { products, customers, cart, cartAdd, cartQty, cartRemove, cartClear, cartTotal, completeSale, saveQuote } = useStore()
 
   const [search, setSearch]   = useState('')
   const [catFilter, setCat]   = useState('')
@@ -61,7 +59,7 @@ export default function POS() {
   }, []);
   
   const [payments, setPayments] = useState({ cash: '', visa: '', instapay: '' })
-  const [reminders, setReminders] = useState({}) // { productId: months }
+  const [reminders, setReminders] = useState({}) 
   const [saving, setSaving]   = useState(false)
   const [doneInvoice, setDoneInvoice] = useState(null)
   const [isListening, setIsListening] = useState(false)
@@ -77,6 +75,15 @@ export default function POS() {
     })
   }, [products, search, catFilter])
 
+  const suggestedCustomers = useMemo(() => {
+    if (!customer.name && !customer.phone) return [];
+    if (customer.name.length < 2 && customer.phone.length < 3) return [];
+    return customers.filter(c => 
+      c.name?.toLowerCase().includes(customer.name.toLowerCase()) || 
+      c.phone?.includes(customer.phone)
+    ).slice(0, 5);
+  }, [customers, customer.name, customer.phone]);
+
   const totalPaid = Number(payments.cash || 0) + Number(payments.visa || 0) + Number(payments.instapay || 0)
   const due = Math.max(0, cartTotal - totalPaid)
 
@@ -89,40 +96,16 @@ export default function POS() {
     const recognition = new SpeechRecognition()
     recognition.lang = 'ar-EG'
     recognition.interimResults = false
-    
     recognition.onstart = () => setIsListening(true)
     recognition.onend = () => setIsListening(false)
-    recognition.onerror = () => {
-      setIsListening(false)
-      toast.error('لم نتمكن من التقاط الصوت')
-    }
-    
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
-      toast.success(`تم التقاط: ${transcript}`);
-      
-      // Auto-insert logic
-      const terms = getSearchTerms(transcript);
-      const matched = products.filter(p => {
-        if (p.quantity <= 0) return false;
-        if (catFilter && p.category !== catFilter) return false;
-        if (terms.length === 0) return true;
-        return terms.some(t => p.name?.toLowerCase().includes(t) || p.sku?.toLowerCase().includes(t));
-      });
-
-      if (matched.length === 1) {
-        cartAdd(matched[0]);
-        toast.success(`تمت إضافة ${matched[0].name} تلقائياً لللائحة!`, { icon: '🪄' });
-        setSearch(''); // Clear search so POS is ready again
-      } else {
-        setSearch(transcript); // Set search term if there are multiple or no results
-      }
+      setSearch(transcript);
+      toast.success(`تم البحث عن: ${transcript}`, { icon: '🎙️' });
     }
-    
     recognition.start()
   }
 
-  // Barcode Scanner Logic
   useEffect(() => {
     let scanner = null;
     if (showScanner) {
@@ -131,28 +114,18 @@ export default function POS() {
         qrbox: { width: 250, height: 150 },
         aspectRatio: 1.0
       });
-
       scanner.render((decodedText) => {
-        // Success
         const matched = products.find(p => p.sku === decodedText || p.id === decodedText);
         if (matched) {
           cartAdd(matched);
           toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
-          if (window.navigator.vibrate) window.navigator.vibrate(100);
-          setShowScanner(false); // Close after success to avoid double scans
+          setShowScanner(false);
         } else {
           toast.error(`كود غير معروف: ${decodedText}`);
         }
-      }, (err) => {
-        // Ignore errors (scanning in progress)
       });
     }
-
-    return () => {
-      if (scanner) {
-        scanner.clear().catch(console.error);
-      }
-    };
+    return () => { if (scanner) scanner.clear().catch(console.error); };
   }, [showScanner, products, cartAdd]);
 
   const handleSale = async () => {
@@ -161,21 +134,18 @@ export default function POS() {
     try {
       const invoiceNumber = `INV-${Date.now()}`
       const finalPayments = totalPaid === 0 ? { cash: cartTotal, visa: 0, instapay: 0 } : payments
-      
       const invoiceReminders = Object.entries(reminders)
         .filter(([_, months]) => months > 0)
         .map(([id, months]) => {
           const item = cart.find(i => i.id === id)
           return { productId: id, name: item?.name || 'قطعة', months }
         })
-      
       const id = await completeSale({
         cartItems: cart,
         customerData: { ...customer, payments: finalPayments, reminders: invoiceReminders },
         total: cartTotal,
         invoiceNumber,
       })
-
       setDoneInvoice({ id, number: invoiceNumber, total: cartTotal, customer, due: totalPaid === 0 ? 0 : due })
       setCustomer({ name: '', phone: '', nationalId: '', carModel: '', licensePlate: '' })
       setPayments({ cash: '', visa: '', instapay: '' })
@@ -189,17 +159,16 @@ export default function POS() {
     if (cart.length === 0 || !customer.name) return;
     setSaving(true);
     try {
-      const quoteNumber = `QTE-${Date.now()}`;
       await saveQuote({
-        number: quoteNumber,
+        number: `QTE-${Date.now()}`,
         items: cart,
         total: cartTotal,
         customerData: customer,
         createdAt: new Date(),
       });
-      // Clear for next action
       cartClear();
       setCustomer({ name: '', phone: '', nationalId: '', carModel: '', licensePlate: '' });
+      toast.success('تم حفظ عرض السعر بنجاح');
     } finally {
       setSaving(false);
     }
@@ -207,13 +176,7 @@ export default function POS() {
 
   const sendWhatsApp = () => {
     if (!doneInvoice) return
-    const msg = `🧾 فاتورة من الفاروق ستور\n` +
-      `رقم الفاتورة: ${doneInvoice.number}\n` +
-      `العميل: ${doneInvoice.customer.name}\n` +
-      `الإجمالي: ${doneInvoice.total.toLocaleString()} ج.م\n` +
-      `${doneInvoice.due > 0 ? `المتبقي الآجل: ${doneInvoice.due.toLocaleString()} ج.م\n` : ''}` +
-      `📌رابط الفاتورة: ${window.location.origin}/receipt/${doneInvoice.id}\n` +
-      `شكراً لتعاملكم معنا 🙏`
+    const msg = `🧾 فاتورة من الفاروق ستور\nرقم الفاتورة: ${doneInvoice.number}\nالعميل: ${doneInvoice.customer.name}\nالإجمالي: ${doneInvoice.total.toLocaleString()} ج.م\n📌رابط الفاتورة: ${window.location.origin}/receipt/${doneInvoice.id}\nشكراً لتعاملكم معنا 🙏`
     const phone = doneInvoice.customer.phone ? doneInvoice.customer.phone.replace(/^0/, '20') : WHATSAPP
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
   }
@@ -227,134 +190,162 @@ export default function POS() {
   }
 
   if (doneInvoice) return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md mx-auto space-y-4 pt-4 pb-10">
-      <div className="glass-card text-center border-green-500/30 bg-green-500/[0.05] relative overflow-hidden flex flex-col items-center">
-        <div className="absolute inset-0 bg-green-500/10 blur-[100px] pointer-events-none" />
-        <h2 className="text-2xl font-bold text-white mb-1 relative z-10">تم البيع بنجاح! 🎉</h2>
-        <p className="text-slate-400 text-sm relative z-10">فاتورة #{doneInvoice.number}</p>
-        
-        {/* QR Code */}
-        <div className="bg-white p-3 rounded-2xl mx-auto my-4 shadow-lg shadow-green-500/20 relative z-10 transition-transform hover:scale-105">
-          <QRCodeSVG value={`${window.location.origin}/receipt/${doneInvoice.id}`} size={140} />
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-2xl mx-auto py-20 px-6">
+      <div className="card text-center relative overflow-hidden flex flex-col items-center py-16">
+        <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-emerald-500/50 via-emerald-400 to-emerald-500/50" />
+        <div className="w-24 h-24 bg-emerald-500/10 rounded-[2rem] flex items-center justify-center mb-8 border border-emerald-500/20 shadow-neon">
+          <Send size={40} className="text-emerald-400" />
         </div>
-        <p className="text-xs text-green-400 font-bold mb-2 relative z-10">دع العميل يمسح الـ QR لحفظ فاتورته الرقمية 📱</p>
+        <h2 className="text-4xl font-black text-white mb-3 font-display">تم البيع بنجاح!</h2>
+        <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-10">إيصال رقم: {doneInvoice.number}</p>
         
-        <p className="text-3xl font-bold text-primary-400 mt-2 relative z-10">{doneInvoice.total.toLocaleString()} ج.م</p>
-        {doneInvoice.due > 0 && <p className="text-red-400 text-sm mt-1 font-bold relative z-10">متبقي: {doneInvoice.due.toLocaleString()} ج.م</p>}
+        <div className="bg-white p-6 rounded-[2.5rem] mx-auto mb-10 shadow-premium group transition-transform hover:scale-105 border-8 border-white/5">
+          <QRCodeSVG value={`${window.location.origin}/receipt/${doneInvoice.id}`} size={200} />
+        </div>
+        
+        <p className="text-5xl font-black text-white tracking-tighter mb-4 font-display">
+            {doneInvoice.total.toLocaleString()} <span className="text-2xl text-slate-500 font-normal">ج.م</span>
+        </p>
+
+        {doneInvoice.due > 0 && (
+            <div className="badge-red mb-10 py-2 px-6 !text-xs">المتبقي الآجل: {doneInvoice.due.toLocaleString()} ج.م</div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-6">
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={sendWhatsApp} className="btn-primary !bg-green-600 hover:!bg-green-500 !shadow-[0_0_20px_rgba(22,163,74,0.4)]">
+                <MessageCircle size={20} /> واتساب العميل
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setDoneInvoice(null)} className="btn-ghost">
+                عملية بيع جديدة
+            </motion.button>
+        </div>
       </div>
-      
-      <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={sendWhatsApp} className="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-glow">
-        <MessageCircle size={20} /> إرسال عبر واتساب
-      </motion.button>
-      <button onClick={() => setDoneInvoice(null)} className="btn-ghost w-full text-sm py-3">
-        بيع جديد
-      </button>
     </motion.div>
   )
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-full">
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex-1 space-y-4">
-        <h1 className="text-xl font-bold text-white tracking-wide flex items-center justify-between">
-          <span>نقطة البيع (POS)</span>
-          <span className="text-xs text-primary-400 border border-primary-500/20 bg-primary-500/10 px-2 py-1 rounded-md">مزود بالذكاء الاصطناعي 🧠</span>
-        </h1>
-
-        <div className="flex gap-2">
-          <div className="relative flex-1 flex items-center">
-            <Search size={16} className="absolute right-3 text-slate-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث باسم القطعة (مثال: قماش يظهر تيل)..." className="input pr-9 pl-24 text-sm w-full font-medium placeholder:font-normal" />
-            
-            <div className="absolute left-2 flex gap-1">
-              <motion.button
-                whileTap={{ scale: 0.9 }} onClick={() => setShowScanner(!showScanner)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${showScanner ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 hover:text-primary-300'}`}
-                title="مسح باركود (كاميرا)"
-              >
-                <Camera size={16} />
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.9 }} onClick={startVoiceSearch}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isListening ? 'bg-rose-500/20 text-rose-400 shadow-[0_0_15px_rgba(243,24,96,0.5)] animate-pulse' : 'bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 hover:text-primary-300'}`}
-                title="تحدث للبحث"
-              >
-                <Mic size={16} />
-              </motion.button>
+    <div className="flex flex-col xl:flex-row gap-8 pb-20 pt-4">
+      <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} className="flex-1 space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+                <h1 className="text-3xl font-black text-white tracking-tight font-display flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-electric-500/10 border border-white/10 flex items-center justify-center shadow-neon">
+                        <Sparkles size={22} className="text-electric-400" />
+                    </div>
+                    معرض قطع الغيار
+                </h1>
+                <p className="text-slate-500 text-xs font-black uppercase tracking-widest mt-2 ml-1">اختر القطع المطلوبة لبدء العملية</p>
             </div>
-          </div>
-          <select value={catFilter} onChange={e => setCat(e.target.value)} className="input w-32 text-sm">
-            <option value="">كافة الفئات</option>
-            {[...new Set(products.map(p => p.category).filter(Boolean))].map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+
+            <div className="flex items-center gap-2">
+                <div className="relative group">
+                    <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-electric-400 transition-colors" />
+                    <input 
+                        value={search} 
+                        onChange={e => setSearch(e.target.value)} 
+                        placeholder="ابحث بالاسم أو الكود..." 
+                        className="input pr-12 pl-28 !w-72 md:!w-96 text-sm" 
+                    />
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 flex gap-1">
+                        <button onClick={() => setShowScanner(!showScanner)} className={`p-2 rounded-xl transition-all ${showScanner ? 'bg-emerald-500/20 text-emerald-400 shadow-neon' : 'bg-white/5 text-slate-500 hover:text-white'}`}>
+                            <Camera size={18} />
+                        </button>
+                        <button onClick={startVoiceSearch} className={`p-2 rounded-xl transition-all ${isListening ? 'bg-rose-500/20 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.5)] animate-pulse' : 'bg-white/5 text-slate-500 hover:text-white'}`}>
+                            <Mic size={18} />
+                        </button>
+                    </div>
+                </div>
+                <select value={catFilter} onChange={e => setCat(e.target.value)} className="input !w-40 text-xs font-black uppercase tracking-widest">
+                    <option value="">كافة الفئات</option>
+                    {[...new Set(products.map(p => p.category).filter(Boolean))].map(c => (
+                    <option key={c} value={c}>{c}</option>
+                    ))}
+                </select>
+            </div>
         </div>
 
-        {/* Scanner Div */}
-        <AnimatePresence>
-          {showScanner && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-               <div id="reader" className="w-full max-w-sm mx-auto overflow-hidden rounded-xl border-2 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.1)] bg-black/40"></div>
+        {showScanner && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden card !p-2 !bg-black/60 border-emerald-500/20">
+                <div id="reader" className="w-full max-w-sm mx-auto rounded-3xl overflow-hidden"></div>
+                <button onClick={() => setShowScanner(false)} className="absolute top-4 right-4 text-white/50 hover:text-white bg-white/10 p-2 rounded-full"><X size={16} /></button>
             </motion.div>
-          )}
-        </AnimatePresence>
+        )}
 
-        <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
           {filtered.map(p => (
-            <motion.button variants={itemVariant} whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} key={p.id} onClick={() => cartAdd(p)}
-              className="glass-card text-right hover:border-primary-500/50 hover:bg-primary-500/5 transition-all text-left group">
-              <p className="font-semibold text-white text-sm truncate">{p.name}</p>
-              {p.category && <p className="text-xs text-primary-400/80 mt-0.5">{p.category}</p>}
-              <p className="text-primary-400 font-bold mt-2 text-sm">{Number(p.price).toLocaleString()} ج.م</p>
-              <span className={`text-xs ${p.quantity <= 5 ? 'text-red-400 font-bold' : 'text-slate-400'}`}>
-                متوفر: {p.quantity}
-              </span>
+            <motion.button variants={itemVariant} whileHover={{ y: -8, scale: 1.02 }} whileTap={{ scale: 0.98 }} key={p.id} onClick={() => cartAdd(p)}
+              className="card !p-0 flex flex-col group overflow-hidden border-white/5 hover:border-electric-500/30 text-right">
+              <div className="absolute top-4 left-4 bg-obsidian-950/80 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full z-10">
+                <p className="text-[10px] font-black text-electric-400 uppercase tracking-widest">{p.category || 'عام'}</p>
+              </div>
+              <div className="p-6 pt-12 flex-1 flex flex-col items-end transition-all duration-500 bg-gradient-to-br from-transparent to-white/[0.02] group-hover:to-electric-500/[0.05]">
+                <h3 className="text-white font-black text-lg mb-2 group-hover:text-electric-400 transition-colors font-display text-right w-full leading-tight">{p.name}</h3>
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-6">SKU: {p.sku || 'N/A'}</p>
+                
+                <div className="mt-auto w-full flex items-center justify-between border-t border-white/5 pt-4">
+                  <div className={`flex flex-col items-start ${p.quantity <= 5 ? 'animate-pulse' : ''}`}>
+                    <span className="text-[8px] text-slate-500 font-black uppercase tracking-widest mb-0.5">المتوفر</span>
+                    <span className={`text-[10px] font-black ${p.quantity <= 5 ? 'text-rose-400' : 'text-slate-300'}`}>{p.quantity} قطعة</span>
+                  </div>
+                   <div className="flex flex-col items-end">
+                    <span className="text-[8px] text-slate-500 font-black uppercase tracking-widest mb-0.5">السعر</span>
+                    <span className="text-xl font-black text-white font-display">{Number(p.price).toLocaleString()} <span className="text-[10px] text-slate-500 font-normal">ج.م</span></span>
+                  </div>
+                </div>
+              </div>
             </motion.button>
           ))}
           {filtered.length === 0 && (
-            <div className="col-span-3 text-center py-8 text-slate-500 text-sm glass-card border-dashed">لا توجد منتجات مطابقة لهذا البحث</div>
+            <div className="col-span-full py-32 text-center opacity-20">
+              <p className="text-slate-500 font-black uppercase tracking-[0.4em] text-sm">لم يتم العثور على قطع تطابق بحثك</p>
+            </div>
           )}
         </motion.div>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="lg:w-80 space-y-4 flex flex-col h-full lg:max-h-[calc(100vh-2rem)]">
-        <div className="glass-card flex-1 overflow-hidden flex flex-col p-3">
-          <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="font-bold text-white flex items-center gap-2 text-sm">
-              <ShoppingCart size={16} className="text-primary-400" /> السلة
+      {/* Cart & Sidbar */}
+      <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} className="xl:w-[450px] shrink-0 space-y-6">
+        <div className="card !p-0 flex flex-col h-[650px] sticky top-8">
+          <div className="p-8 border-b border-white/5 flex items-center justify-between">
+            <h2 className="text-xl font-black text-white font-display flex items-center gap-3">
+                <ShoppingCart size={22} className="text-electric-400" />
+                سلة البيع
             </h2>
-            {cart.length > 0 && <button onClick={cartClear} className="text-xs text-red-400 hover:text-red-300">مسح الكل</button>}
+            {cart.length > 0 && <button onClick={cartClear} className="text-[10px] font-black text-rose-400 uppercase tracking-widest hover:text-rose-300 transition-colors">مسح الكل</button>}
           </div>
 
-          <div className="flex-1 overflow-y-auto pr-1 space-y-2 scrollbar-thin">
+          <div className="flex-1 overflow-y-auto p-6 scrollbar-none custom-scrollbar space-y-4">
             <AnimatePresence>
               {cart.length === 0 ? (
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-slate-500 text-sm text-center py-10">السلة فارغة</motion.p>
+                <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
+                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4 border border-white/10">
+                        <ShoppingCart size={40} className="text-slate-500" />
+                    </div>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">السلة فارغة حالياً</p>
+                </div>
               ) : (
                 cart.map(item => {
                   const rem = reminders[item.id] || 0;
                   return (
-                    <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} key={item.id} className="flex flex-col bg-slate-800/40 border border-white/5 rounded-xl px-2 py-2 group transition-colors">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-white font-bold truncate">{item.name}</p>
-                          <p className="text-[10px] text-primary-400 font-bold mt-0.5">{Number(item.price).toLocaleString()} ج.م</p>
+                    <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} key={item.id} className="bg-obsidian-950/40 rounded-3xl p-5 border border-white/5 hover:border-white/10 transition-all group">
+                        <div className="flex items-center gap-4">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm text-white font-black truncate font-display leading-tight">{item.name}</p>
+                                <p className="text-[10px] text-electric-400 font-black mt-2 tracking-wide">{Number(item.price).toLocaleString()} ج.م</p>
+                            </div>
+                            <div className="flex items-center gap-3 bg-obsidian-900 border border-white/5 rounded-2xl p-2 shrink-0">
+                                <button onClick={() => cartQty(item.id, item.qty - 1)} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors"><Minus size={14} className="text-slate-400" /></button>
+                                <span className="text-white text-sm font-black w-4 text-center">{item.qty}</span>
+                                <button onClick={() => cartQty(item.id, item.qty + 1)} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors"><Plus size={14} className="text-slate-400" /></button>
+                            </div>
+                            <button onClick={() => cartRemove(item.id)} className="w-10 h-10 text-rose-500 hover:bg-rose-500/10 rounded-2xl flex items-center justify-center transition-all"><Trash2 size={16} /></button>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button onClick={() => cartQty(item.id, item.qty - 1)} className="w-6 h-6 bg-white/5 rounded-lg flex items-center justify-center hover:bg-white/20"><Minus size={12} className="text-slate-300" /></button>
-                          <span className="text-white text-xs w-4 text-center font-bold">{item.qty}</span>
-                          <button onClick={() => cartQty(item.id, item.qty + 1)} className="w-6 h-6 bg-white/5 rounded-lg flex items-center justify-center hover:bg-white/20"><Plus size={12} className="text-slate-300" /></button>
-                          <button onClick={() => cartRemove(item.id)} className="w-6 h-6 text-red-400 hover:bg-red-500/20 rounded-lg flex items-center justify-center ml-1"><Trash2 size={12} /></button>
+                        <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2">
+                            <button onClick={() => toggleReminder(item.id)} className={`flex items-center gap-2 text-[10px] px-4 py-2 rounded-xl transition-all duration-300 font-black uppercase tracking-tighter ${rem > 0 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-white/5 text-slate-500 border border-transparent'}`}>
+                            <CalendarClock size={14} />
+                            {rem === 0 ? 'تعيين تذكير صيانة' : `تذكير بعد ${rem} شهر`}
+                            </button>
                         </div>
-                      </div>
-                      
-                      {/* Reminder Toggle */}
-                      <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between">
-                        <button onClick={() => toggleReminder(item.id)} className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-md transition-colors ${rem > 0 ? 'bg-amber-500/20 text-amber-400 font-bold' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>
-                          <CalendarClock size={12} />
-                          {rem === 0 ? 'بدون تذكير للصيانة' : rem === 1 ? 'تنبيه بعد شهر' : rem === 3 ? 'تنبيه لـ ٣ شهور' : rem === 6 ? 'تنبيه لـ ٦ شهور' : 'سنة كاملة'}
-                        </button>
-                      </div>
                     </motion.div>
                   )
                 })
@@ -362,67 +353,87 @@ export default function POS() {
             </AnimatePresence>
           </div>
 
-          {cart.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-white/10 shrink-0">
-              <div className="flex justify-between text-sm font-bold px-1">
-                <span className="text-slate-300">الإجمالي</span>
-                <span className="text-primary-400 tracking-wide text-base">{cartTotal.toLocaleString()} ج.م</span>
+          <div className="p-8 border-t border-white/5 bg-obsidian-950/20 backdrop-blur-md">
+            <div className="space-y-4 mb-8">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">إجمالي السلة</span>
+                <span className="text-4xl font-black text-white font-display tracking-tighter">{cartTotal.toLocaleString()} <span className="text-sm font-normal text-slate-500">ج.م</span></span>
               </div>
             </div>
-          )}
-        </div>
 
-        <div className="glass-card space-y-3 shrink-0 p-3">
-          <h2 className="font-bold text-white text-xs flex items-center gap-2">بيانات العميل والدفع</h2>
-          <div className="space-y-1.5">
-            <input value={customer.name} onChange={e => setCustomer(p => ({ ...p, name: e.target.value }))} placeholder="الاسم *" className="input text-xs py-1.5" />
-            <div className="flex gap-1.5">
-              <input value={customer.carModel} onChange={e => setCustomer(p => ({ ...p, carModel: e.target.value }))} placeholder="نوع العربية" className="input flex-1 text-xs py-1.5" />
-              <input value={customer.phone} onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))} placeholder="رقم الهاتف" className="input flex-1 text-xs py-1.5" />
+            <div className="space-y-4">
+                <div className="relative group">
+                    <input 
+                        value={customer.name} 
+                        onChange={e => setCustomer(p => ({ ...p, name: e.target.value }))} 
+                        placeholder="اسم العميل..." 
+                        className="input !py-4 pr-12 text-sm" 
+                    />
+                    <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-electric-400 transition-colors" />
+                    
+                    {suggestedCustomers.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-3 bg-obsidian-900/95 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-premium z-50 overflow-hidden divide-y divide-white/5">
+                        {suggestedCustomers.map(sc => (
+                            <button 
+                            key={sc.id} 
+                            onClick={() => setCustomer({ name: sc.name, phone: sc.phone || '', carModel: sc.carModel || '', licensePlate: sc.licensePlate || '', nationalId: sc.nationalId || '' })}
+                            className="w-full text-right px-6 py-4 hover:bg-electric-500/10 transition-all flex justify-between items-center group"
+                            >
+                            <div className="flex items-center gap-2">
+                                <ChevronLeft size={16} className="text-slate-700 group-hover:text-electric-400 group-hover:-translate-x-1 transition-all" />
+                                <span className="text-electric-400 font-black text-[10px] uppercase tracking-widest">{sc.phone}</span>
+                            </div>
+                            <span className="text-white text-sm font-black font-display">{sc.name}</span>
+                            </button>
+                        ))}
+                        </div>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="relative group">
+                         <input value={customer.carModel} onChange={e => setCustomer(p => ({ ...p, carModel: e.target.value }))} placeholder="نوع العربية" className="input !py-4 text-xs font-bold" />
+                    </div>
+                    <div className="relative group">
+                         <input value={customer.phone} onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))} placeholder="رقم الموبايل" className="input !py-4 text-xs font-bold" />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                    <div className="relative border border-emerald-500/10 bg-emerald-500/[0.02] rounded-2xl group focus-within:border-emerald-500/40 transition-colors">
+                        <Banknote size={20} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500/30" />
+                        <input type="number" value={payments.cash} onChange={e => setPayments(p => ({...p, cash: e.target.value}))} placeholder="كاش" className="w-full bg-transparent border-none focus:ring-0 pr-10 pl-4 py-4 text-xs font-black text-emerald-400 placeholder-emerald-500/30" />
+                    </div>
+                     <div className="relative border border-blue-500/10 bg-blue-500/[0.02] rounded-2xl group focus-within:border-blue-500/40 transition-colors">
+                        <CreditCard size={20} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500/30" />
+                        <input type="number" value={payments.visa} onChange={e => setPayments(p => ({...p, visa: e.target.value}))} placeholder="فيزا" className="w-full bg-transparent border-none focus:ring-0 pr-10 pl-4 py-4 text-xs font-black text-blue-400 placeholder-blue-500/30" />
+                    </div>
+                    <div className="relative border border-purple-500/10 bg-purple-500/[0.02] rounded-2xl group focus-within:border-purple-500/40 transition-colors">
+                        <Smartphone size={20} className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-500/30" />
+                        <input type="number" value={payments.instapay} onChange={e => setPayments(p => ({...p, instapay: e.target.value}))} placeholder="إنستا" className="w-full bg-transparent border-none focus:ring-0 pr-10 pl-4 py-4 text-xs font-black text-purple-400 placeholder-purple-500/30" />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                    <motion.button
+                        whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}
+                        onClick={handleCreateQuotation} disabled={cart.length === 0 || !customer.name || saving}
+                        className="btn-ghost !py-4 opacity-50 hover:opacity-100 disabled:opacity-20 flex-1 text-[10px] font-black uppercase tracking-widest"
+                    >
+                        حفظ كعرض سعر
+                    </motion.button>
+                    
+                    <motion.button
+                        whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}
+                        onClick={handleSale} disabled={cart.length === 0 || !customer.name || saving}
+                        className="btn-primary !py-4 flex-1 text-sm font-black uppercase tracking-[0.2em] shadow-neon disabled:opacity-20"
+                    >
+                        <Send size={18} />
+                        {saving ? 'جار الحفظ...' : 'إتمام البيع'}
+                    </motion.button>
+                </div>
             </div>
           </div>
-          
-          <div className="pt-2 border-t border-white/5 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Banknote size={14} className="text-emerald-400 w-5" />
-              <input type="number" value={payments.cash} onChange={e => setPayments(p => ({...p, cash: e.target.value}))} placeholder="كاش" className="input flex-1 text-xs py-1.5 border-emerald-500/20 focus:border-emerald-500" />
-            </div>
-            <div className="flex items-center gap-2">
-              <CreditCard size={14} className="text-blue-400 w-5" />
-              <input type="number" value={payments.visa} onChange={e => setPayments(p => ({...p, visa: e.target.value}))} placeholder="فيزا" className="input flex-1 text-xs py-1.5 border-blue-500/20 focus:border-blue-500" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Smartphone size={14} className="text-purple-400 w-5" />
-              <input type="number" value={payments.instapay} onChange={e => setPayments(p => ({...p, instapay: e.target.value}))} placeholder="إنستا باي" className="input flex-1 text-xs py-1.5 border-purple-500/20 focus:border-purple-500" />
-            </div>
-            
-            {(totalPaid > 0 || due > 0) && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex justify-between items-center text-xs px-1 pt-1 font-bold">
-                <span className="text-slate-400">المدفوع: <span className="text-emerald-400">{totalPaid.toLocaleString()}</span></span>
-                {due > 0 && <span className="text-red-400">آجل: {due.toLocaleString()}</span>}
-              </motion.div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex gap-2 shrink-0">
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            onClick={handleCreateQuotation} disabled={cart.length === 0 || !customer.name || saving}
-            className="flex-1 bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center gap-2 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold transition-all"
-            title="حفظ التسعيرة (بدون خصم من المخزن)"
-          >
-            حفظ كعرض سعر
-          </motion.button>
-          
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            onClick={handleSale} disabled={cart.length === 0 || !customer.name || saving}
-            className="flex-[2] btn-primary flex items-center justify-center gap-2 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-glow font-bold"
-          >
-            <Send size={16} />
-            {saving ? 'جار الحفظ...' : 'إتمام البيع'}
-          </motion.button>
         </div>
       </motion.div>
     </div>

@@ -1,67 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&family=Outfit:wght@100;200;300;400;500;600;700;800;900&family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-* { font-family: 'Cairo', sans-serif; }
+@layer base {
+  body {
+    @apply bg-obsidian-950 text-slate-200 antialiased selection:bg-electric-500/30 font-display;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.1) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(249, 115, 22, 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
 
-body {
-  @apply bg-background text-slate-200 overflow-x-hidden;
-  direction: rtl;
-  /* Premium background with image and overlay */
-  background-image: 
-    linear-gradient(rgba(11, 15, 25, 0.85), rgba(11, 15, 25, 0.95)),
-    url('/background.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Outfit', sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+  }
 }
 
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { @apply bg-background; }
-::-webkit-scrollbar-thumb { @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors; }
-
-/* Custom Utilities for Premium Look */
 @layer components {
-  .glass {
-    @apply bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-glass;
+  /* Premium Nebula Cards */
+  .card {
+    @apply bg-obsidian-900/40 border border-white/5 rounded-[2rem] p-8 backdrop-blur-3xl shadow-premium transition-all duration-500 relative overflow-hidden;
   }
-  
+  .card::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none;
+  }
+  .card:hover {
+    @apply border-white/10 -translate-y-1 shadow-neon;
+  }
+
   .glass-card {
-    @apply glass rounded-2xl p-5 hover:bg-white/[0.04] transition-all duration-300;
+    @apply bg-white/[0.03] border border-white/[0.08] rounded-[2rem] p-8 backdrop-blur-2xl shadow-2xl;
   }
 
-  .glass-button {
-    @apply relative overflow-hidden bg-white/5 border border-white/10 text-white font-medium px-4 py-2 rounded-xl transition-all duration-300 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95;
-  }
-
+  /* Neon Button System */
   .btn-primary {
-    @apply relative overflow-hidden bg-primary-500 hover:bg-primary-500 hover:shadow-glow text-white font-semibold px-4 py-2 rounded-xl transition-all duration-300 active:scale-95 border border-primary-400/50;
+    @apply relative overflow-hidden bg-electric-600 hover:bg-electric-500 text-white font-bold px-8 py-3.5 rounded-2xl transition-all duration-300 shadow-neon active:scale-95 flex items-center justify-center gap-3 active:brightness-90;
   }
-
-  /* Add subtle shine effect to primary buttons */
   .btn-primary::after {
     content: '';
-    @apply absolute top-0 -left-[100%] w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg] transition-all duration-500;
-  }
-  .btn-primary:hover::after {
-    @apply left-[100%];
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-700 ease-in-out;
   }
 
   .btn-ghost {
-    @apply bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 text-slate-200 font-medium px-4 py-2 rounded-xl transition-all duration-300 active:scale-95;
+    @apply bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 text-slate-300 font-semibold px-6 py-3 rounded-2xl transition-all duration-300 active:scale-95;
   }
 
+  /* Futuristic Inputs */
   .input {
-    @apply bg-white/[0.03] border border-white/10 text-white rounded-xl px-4 py-2.5 w-full focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 focus:bg-white/[0.05] transition-all duration-300 placeholder-slate-500 backdrop-blur-sm;
+    @apply bg-obsidian-950/50 border border-white/10 text-white rounded-2xl px-6 py-3.5 w-full focus:outline-none focus:border-electric-500/50 focus:ring-4 focus:ring-electric-500/10 transition-all duration-500 placeholder-slate-600 font-medium;
   }
 
-  /* Keep legacy .card for backward compatibility but styled better */
-  .card {
-    @apply glass-card;
-  }
+  /* Advanced Badges */
+  .badge-green  { @apply bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]; }
+  .badge-red    { @apply bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest shadow-[0_0_15px_-3px_rgba(244,63,94,0.3)]; }
+  .badge-yellow { @apply bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest shadow-[0_0_15px_-3px_rgba(245,158,11,0.3)]; }
+  .badge-blue   { @apply bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest shadow-[0_0_15px_-3px_rgba(6,182,212,0.3)]; }
+}
 
-  .badge-green  { @apply bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded-full font-medium shadow-[0_0_10px_rgba(16,185,129,0.1)]; }
-  .badge-red    { @apply bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs px-2.5 py-1 rounded-full font-medium shadow-[0_0_10px_rgba(244,63,94,0.1)]; }
-  .badge-yellow { @apply bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs px-2.5 py-1 rounded-full font-medium shadow-[0_0_10px_rgba(245,158,11,0.1)]; }
-  .badge-blue   { @apply bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs px-2.5 py-1 rounded-full font-medium shadow-[0_0_10px_rgba(14,165,233,0.1)]; }
+/* Animations & Utilities */
+.text-glow {
+  text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+}
+
+.bg-nebula-glow {
+  @apply animate-pulse-glow;
+  background: radial-gradient(circle at center, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
 }
