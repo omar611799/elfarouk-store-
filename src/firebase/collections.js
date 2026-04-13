@@ -174,3 +174,99 @@ export async function completeSale({ cartItems, customerData, total, invoiceNumb
 
   return invRef.id
 }
+
+// ── Delete Invoice (Return stock) ──
+export async function deleteInvoiceAndReturnStock(invoiceId) {
+  const inv = await getDoc_(COLS.INVOICES, invoiceId);
+  if (!inv) throw new Error('الفاتورة غير موجودة');
+
+  const batch = writeBatch(db);
+
+  // Return stock
+  for (const item of (inv.items || [])) {
+    const p = await getDoc_(COLS.PRODUCTS, item.id);
+    if (p) {
+      const newQty = (p.quantity || 0) + item.qty;
+      batch.update(doc(db, COLS.PRODUCTS, item.id), {
+        quantity: newQty,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  }
+
+  // Deduct from customer if applicable
+  if (inv.customerData?.phone) {
+    const existing = await findCustomerByPhone(inv.customerData.phone);
+    if (existing) {
+      batch.update(doc(db, COLS.CUSTOMERS, existing.id), {
+        totalSpent: Math.max(0, (existing.totalSpent || 0) - (inv.total || 0)),
+        invoiceCount: Math.max(0, (existing.invoiceCount || 0) - 1),
+        debtTotal: Math.max(0, (existing.debtTotal || 0) - (inv.dueAmount || 0)),
+        paidTotal: Math.max(0, (existing.paidTotal || 0) - (inv.paidAmount || 0)),
+      });
+    }
+  }
+
+  // Delete invoice
+  batch.delete(doc(db, COLS.INVOICES, invoiceId));
+
+  // Add a transaction for the cancellation
+  const txRef = doc(collection(db, COLS.TRANSACTIONS));
+  batch.set(txRef, {
+    type: 'invoice_deleted',
+    refId: invoiceId,
+    details: `استرداد مخزون وحذف فاتورة - رقم ${inv.number}`,
+    amount: -(inv.total || 0),
+    createdAt: serverTimestamp(),
+  });
+
+  await batch.commit();
+}
+
+// ── Pay Debt ──
+export async function payInvoiceDebt(invoiceId, paymentAmount, note) {
+  const inv = await getDoc_(COLS.INVOICES, invoiceId);
+  if (!inv) throw new Error('الفاتورة غير موجودة');
+
+  const payment = Number(paymentAmount);
+  if (payment <= 0 || payment > inv.dueAmount) throw new Error('مبلغ السداد غير منطقي');
+
+  const newPaidAmount = (inv.paidAmount || 0) + payment;
+  const newDueAmount = Math.max(0, (inv.dueAmount || 0) - payment);
+  const paymentStatus = newDueAmount === 0 ? 'paid' : 'partial';
+
+  const newPaymentsBreakdown = { ...(inv.payments || {}) };
+  // Add payment to cash by default representing debt collected to drawer
+  newPaymentsBreakdown.cash = (Number(newPaymentsBreakdown.cash) || 0) + payment;
+
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, COLS.INVOICES, invoiceId), {
+    paidAmount: newPaidAmount,
+    dueAmount: newDueAmount,
+    paymentStatus,
+    payments: newPaymentsBreakdown,
+    updatedAt: serverTimestamp(),
+  });
+
+  if (inv.customerData?.phone) {
+    const existing = await findCustomerByPhone(inv.customerData.phone);
+    if (existing) {
+      batch.update(doc(db, COLS.CUSTOMERS, existing.id), {
+        debtTotal: Math.max(0, (existing.debtTotal || 0) - payment),
+        paidTotal: (existing.paidTotal || 0) + payment,
+      });
+    }
+  }
+
+  const txRef = doc(collection(db, COLS.TRANSACTIONS));
+  batch.set(txRef, {
+    type: 'debt_collection',
+    refId: invoiceId,
+    details: `تحصيل سداد من آجل الفاتورة ${inv.number}${note ? ' - ' + note : ''}`,
+    amount: payment,
+    createdAt: serverTimestamp(),
+  });
+
+  await batch.commit();
+}

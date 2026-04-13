@@ -3,7 +3,8 @@ import toast from 'react-hot-toast'
 import { listenCol, COLS, addProduct, updateProduct, deleteProduct,
   addCategory, deleteCategory, addSupplier, updateSupplier, deleteSupplier,
   addCustomer, updateCustomer, deleteCustomer,
-  updateProductStock, addTransaction, completeSale } from '../firebase/collections'
+  updateProductStock, addTransaction, completeSale,
+  payInvoiceDebt, deleteInvoiceAndReturnStock } from '../firebase/collections'
 
 const StoreContext = createContext(null)
 
@@ -137,6 +138,20 @@ export function StoreProvider({ children }) {
     } catch (e) { toast.error(e.message); throw e }
   }
 
+  const handlePayInvoiceDebt = async (invoiceId, amount, note) => {
+    try {
+      await payInvoiceDebt(invoiceId, amount, note)
+      toast.success('تم تسجيل سداد المديونية بنجاح')
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
+  const handleDeleteInvoice = async (invoiceId) => {
+    try {
+      await deleteInvoiceAndReturnStock(invoiceId)
+      toast.success('تم حذف الفاتورة واسترداد المخزون بنجاح')
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
   // ── Cart ──
   const cartAdd    = (item) => dispatch({ type: 'CART_ADD', item })
   const cartQty    = (id, qty) => dispatch({ type: 'CART_QTY', id, qty })
@@ -161,6 +176,8 @@ export function StoreProvider({ children }) {
       deleteCustomer: handleDeleteCustomer,
       stockIn, stockOut,
       completeSale: handleCompleteSale,
+      payInvoiceDebt: handlePayInvoiceDebt,
+      deleteInvoice: handleDeleteInvoice,
       cartAdd, cartQty, cartRemove, cartClear,
     }}>
       {children}

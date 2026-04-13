@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useStore } from '../context/StoreContext'
-import { FileText, MessageCircle, Search } from 'lucide-react'
+import { FileText, MessageCircle, Search, Trash2, AlertTriangle } from 'lucide-react'
 
 const WHATSAPP = import.meta.env.VITE_WHATSAPP_NUMBER || '201115329887'
 
 export default function Invoices() {
-  const { invoices } = useStore()
+  const { invoices, deleteInvoice } = useStore()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filtered = invoices.filter(i =>
     !search || i.customerData?.name?.includes(search) || String(i.number)?.includes(search)
@@ -40,7 +42,7 @@ export default function Invoices() {
       <div className="space-y-2">
         {filtered.map(inv => (
           <div key={inv.id} className="card cursor-pointer hover:border-slate-700 transition-all"
-            onClick={() => setSelected(selected?.id === inv.id ? null : inv)}>
+            onClick={() => { setSelected(selected?.id === inv.id ? null : inv); setDeleteConfirm(null); }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
                 <FileText size={18} className="text-blue-400" />
@@ -78,12 +80,52 @@ export default function Invoices() {
                     {Number(inv.payments.instapay || 0) > 0 && <span className="bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded">إنستا باي: {Number(inv.payments.instapay).toLocaleString()}</span>}
                   </div>
                 )}
-                <button
-                  onClick={e => { e.stopPropagation(); sendWhatsApp(inv) }}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded-xl flex items-center justify-center gap-2 mt-2 transition-all"
-                >
-                  <MessageCircle size={14} /> إرسال عبر واتساب
-                </button>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={e => { e.stopPropagation(); sendWhatsApp(inv) }}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded-xl flex items-center justify-center gap-2 transition-all"
+                  >
+                    <MessageCircle size={14} /> واتساب
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setDeleteConfirm(inv.id) }}
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2 rounded-xl flex items-center justify-center transition-all"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                {deleteConfirm === inv.id && (
+                  <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl" onClick={e => e.stopPropagation()}>
+                    <p className="text-xs font-bold text-red-400 flex items-center gap-2 mb-3">
+                      <AlertTriangle size={16} /> هل أنت متأكد من مسح الفاتورة واسترداد المخزون وخصم المديونية من العميل؟
+                    </p>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={async () => {
+                          setIsDeleting(true)
+                          try {
+                            await deleteInvoice(inv.id)
+                          } finally {
+                            setIsDeleting(false)
+                            setDeleteConfirm(null)
+                            setSelected(null)
+                          }
+                        }}
+                        disabled={isDeleting}
+                        className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-1.5 rounded-lg flex items-center justify-center gap-1 font-bold"
+                      >
+                        {isDeleting ? 'جاري الحذف...' : 'نعم، مسح واسترداد'}
+                      </button>
+                      <button 
+                        onClick={() => setDeleteConfirm(null)}
+                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-1.5 rounded-lg font-bold"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

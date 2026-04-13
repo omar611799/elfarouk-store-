@@ -11,6 +11,7 @@ import Suppliers from './pages/Suppliers'
 import Customers from './pages/Customers'
 import POS from './pages/POS'
 import Invoices from './pages/Invoices'
+import Ledger from './pages/Ledger'
 import Transactions from './pages/Transactions'
 import Reports from './pages/Reports'
 import Receipt from './pages/Receipt'
@@ -49,6 +50,7 @@ export default function App() {
               <Route path="customers"    element={<Customers />} />
               <Route path="pos"          element={<POS />} />
               <Route path="invoices"     element={<Invoices />} />
+              <Route path="ledger"       element={<Ledger />} />
               <Route path="transactions" element={<Transactions />} />
               <Route path="reports"      element={<Reports />} />
               <Route path="*"            element={<Navigate to="/" />} />
