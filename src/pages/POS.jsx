@@ -106,15 +106,37 @@ export default function POS() {
     recognition.start()
   }
 
+  const [scannerError, setScannerError] = useState(false)
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+      const html5QrCode = new Html5Qrcode('reader');
+      const decodedText = await html5QrCode.scanFileV2(file);
+      const matched = products.find(p => p.sku === decodedText?.decodedText || p.id === decodedText?.decodedText);
+      if (matched) {
+        cartAdd(matched);
+        toast.success(`تمت إضافة: ${matched.name}`, { icon: '📦' });
+        setShowScanner(false);
+        setScannerError(false);
+      } else {
+        toast.error(`كود غير معروف: ${decodedText?.decodedText}`);
+      }
+    } catch (err) {
+      toast.error('لم يتم العثور على باركود في الصورة');
+    }
+  };
+
   useEffect(() => {
     import('html5-qrcode').then(({ Html5Qrcode }) => {
       let html5QrCode = null;
-      if (showScanner) {
+      if (showScanner && !scannerError) {
         html5QrCode = new Html5Qrcode('reader');
         
         Html5Qrcode.getCameras().then(devices => {
-          if (devices && devices.length) {
-            // Predictably select the back camera if multiple exist, otherwise use the only one available
+          if (devices && devices.length > 0) {
             const cameraId = devices.length > 1 ? devices[devices.length - 1].id : devices[0].id;
             
             html5QrCode.start(
@@ -130,19 +152,18 @@ export default function POS() {
                   toast.error(`كود غير معروف: ${decodedText}`);
                 }
               },
-              (errorMessage) => {
-                // Ignore background frame errors
-              }
+              (errorMessage) => {}
             ).catch(err => {
               console.error("Camera start error:", err);
-              toast.error("حدث خطأ أثناء تشغيل الكاميرا");
+              setScannerError(true);
             });
           } else {
-            toast.error("لم يتم العثور على أية كاميرا!");
+            console.error("No cameras found");
+            setScannerError(true);
           }
         }).catch(err => {
           console.error("Permission error:", err);
-          toast.error("الرجاء إعطاء صلاحية استخدام الكاميرا من إعدادات المتصفح");
+          setScannerError(true);
         });
       }
       
@@ -153,10 +174,10 @@ export default function POS() {
       if (window._currentQrCode) {
         window._currentQrCode.stop().then(() => {
           window._currentQrCode.clear();
-        }).catch(console.error);
+        }).catch(() => {});
       }
     };
-  }, [showScanner, products, cartAdd]);
+  }, [showScanner, scannerError, products, cartAdd]);
 
   const handleSale = async () => {
     if (cart.length === 0 || !customer.name) return
@@ -295,9 +316,24 @@ export default function POS() {
         </div>
 
         {showScanner && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden card !p-2 !bg-black/60 border-emerald-500/20">
-                <div id="reader" className="w-full max-w-sm mx-auto rounded-3xl overflow-hidden"></div>
-                <button onClick={() => setShowScanner(false)} className="absolute top-4 right-4 text-white/50 hover:text-white bg-white/10 p-2 rounded-full"><X size={16} /></button>
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden card !p-4 !bg-black/80 border-emerald-500/20 relative">
+                {!scannerError ? (
+                  <div id="reader" className="w-full max-w-sm mx-auto rounded-3xl overflow-hidden bg-black/50 min-h-[250px]"></div>
+                ) : (
+                  <div className="w-full max-w-sm mx-auto text-center py-10">
+                    <div className="w-16 h-16 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
+                      <Camera size={24} className="text-rose-400" />
+                    </div>
+                    <p className="text-rose-400 font-bold mb-2">تعذر تشغيل الكاميرا!</p>
+                    <p className="text-slate-400 text-xs mb-6 px-4">يرجى التأكد من صلاحيات المتصفح، أو يمكنك رفع صورة الباركود من الجهاز مباشرة.</p>
+                    
+                    <label className="btn-primary !bg-electric-600 hover:!bg-electric-500 cursor-pointer block w-full max-w-[200px] mx-auto text-sm">
+                      رفع صورة الباركود
+                      <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                    </label>
+                  </div>
+                )}
+                <button onClick={() => { setShowScanner(false); setScannerError(false); }} className="absolute top-4 right-4 text-white/50 hover:text-white bg-white/10 p-2 rounded-full z-50"><X size={16} /></button>
             </motion.div>
         )}
 
