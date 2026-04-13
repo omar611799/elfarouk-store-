@@ -43,7 +43,7 @@ const getSearchTerms = (str) => {
   return Array.from(terms)
 }
 
-import { useEffect } from 'react'
+
 
 export default function POS() {
   const { products, cart, cartAdd, cartQty, cartRemove, cartClear, cartTotal, completeSale, saveQuote } = useStore()
