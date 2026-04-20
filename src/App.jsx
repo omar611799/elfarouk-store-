@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AnimatePresence } from 'framer-motion'
-import { StoreProvider } from './context/StoreContext'
+import { StoreProvider, useStore } from './context/StoreContext'
 import Layout from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
@@ -82,26 +82,32 @@ function AppRouter() {
 }
 
 export default function App() {
-  const [splashLoading, setSplashLoading] = useState(true)
-
-  useEffect(() => {
-    const t = setTimeout(() => setSplashLoading(false), 2000)
-    return () => clearTimeout(t)
-  }, [])
-
   return (
     <AuthProvider>
       <StoreProvider>
-        <AnimatePresence>
-          {splashLoading && <LoadingScreen />}
-        </AnimatePresence>
-        
-        {!splashLoading && (
-          <ErrorBoundary>
-            <AppRouter />
-          </ErrorBoundary>
-        )}
+        <StoreLoadingWrapper />
       </StoreProvider>
     </AuthProvider>
+  )
+}
+
+function StoreLoadingWrapper() {
+  const { loading: storeLoading } = useStore();
+  const [animFinished, setAnimFinished] = useState(false);
+  
+  return (
+    <>
+      <AnimatePresence>
+        {(storeLoading || !animFinished) && (
+          <LoadingScreen onFinished={() => setAnimFinished(true)} />
+        )}
+      </AnimatePresence>
+      
+      {!storeLoading && animFinished && (
+        <ErrorBoundary>
+          <AppRouter />
+        </ErrorBoundary>
+      )}
+    </>
   )
 }

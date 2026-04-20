@@ -1,12 +1,14 @@
 import { createContext, useContext, useEffect, useReducer, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { listenCol, COLS, addProduct, updateProduct, deleteProduct,
+import {
+  listenCol, listenColLimited, COLS, addProduct, updateProduct, deleteProduct,
   addCategory, deleteCategory, addSupplier, updateSupplier, deleteSupplier,
   addCustomer, updateCustomer, deleteCustomer,
   updateProductStock, addTransaction, completeSale,
   payInvoiceDebt, deleteInvoiceAndReturnStock, returnInvoiceItems,
   addQuote, deleteQuote, importProductsBatch,
-  addExpense, deleteExpense, recordPurchase, paySupplierDebt } from '../firebase/collections'
+  addExpense, deleteExpense, recordPurchase, paySupplierDebt
+} from '../firebase/collections'
 
 const StoreContext = createContext(null)
 
@@ -19,8 +21,8 @@ const init = {
 
 function reducer(state, action) {
   switch (action.type) {
-    case 'SET':      return { ...state, [action.key]: action.data }
-    case 'LOADING':  return { ...state, loading: action.value }
+    case 'SET': return { ...state, [action.key]: action.data }
+    case 'LOADING': return { ...state, loading: action.value }
     case 'CART_ADD': {
       const ex = state.cart.find(i => i.id === action.item.id)
       if (ex) return { ...state, cart: state.cart.map(i => i.id === action.item.id ? { ...i, qty: i.qty + 1 } : i) }
@@ -30,7 +32,7 @@ function reducer(state, action) {
       if (action.qty < 1) return { ...state, cart: state.cart.filter(i => i.id !== action.id) }
       return { ...state, cart: state.cart.map(i => i.id === action.id ? { ...i, qty: action.qty } : i) }
     case 'CART_REMOVE': return { ...state, cart: state.cart.filter(i => i.id !== action.id) }
-    case 'CART_CLEAR':  return { ...state, cart: [] }
+    case 'CART_CLEAR': return { ...state, cart: [] }
     default: return state
   }
 }
@@ -40,19 +42,24 @@ export function StoreProvider({ children }) {
 
   // ── Real-time listeners ──
   useEffect(() => {
-    dispatch({ type: 'LOADING', value: true })
+    // Start with core data to get the app functional
     const unsubs = [
-      listenCol(COLS.PRODUCTS,     data => dispatch({ type: 'SET', key: 'products',     data })),
-      listenCol(COLS.CATEGORIES,   data => dispatch({ type: 'SET', key: 'categories',   data })),
-      listenCol(COLS.SUPPLIERS,    data => dispatch({ type: 'SET', key: 'suppliers',    data })),
-      listenCol(COLS.CUSTOMERS,    data => dispatch({ type: 'SET', key: 'customers',    data })),
-      listenCol(COLS.INVOICES,     data => dispatch({ type: 'SET', key: 'invoices',     data })),
-      listenCol(COLS.QUOTATIONS,   data => dispatch({ type: 'SET', key: 'quotes',       data })),
-      listenCol(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data })),
-      listenCol(COLS.EXPENSES,     data => dispatch({ type: 'SET', key: 'expenses',     data })),
-      listenCol(COLS.PURCHASES,    data => dispatch({ type: 'SET', key: 'purchases',    data })),
+      listenCol(COLS.PRODUCTS, data => {
+        dispatch({ type: 'SET', key: 'products', data })
+        dispatch({ type: 'LOADING', value: false }) // Hide loading once we have products
+      }),
+      listenCol(COLS.CATEGORIES, data => dispatch({ type: 'SET', key: 'categories', data })),
+      listenCol(COLS.SUPPLIERS, data => dispatch({ type: 'SET', key: 'suppliers', data })),
+      listenCol(COLS.CUSTOMERS, data => dispatch({ type: 'SET', key: 'customers', data })),
+      
+      // Heavy collections - limit to last 100 for performance
+      listenColLimited(COLS.INVOICES, data => dispatch({ type: 'SET', key: 'invoices', data }), 100),
+      listenColLimited(COLS.QUOTATIONS, data => dispatch({ type: 'SET', key: 'quotes', data }), 50),
+      listenColLimited(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data }), 100),
+      listenColLimited(COLS.EXPENSES, data => dispatch({ type: 'SET', key: 'expenses', data }), 100),
+      listenColLimited(COLS.PURCHASES, data => dispatch({ type: 'SET', key: 'purchases', data }), 50),
     ]
-    dispatch({ type: 'LOADING', value: false })
+    
     return () => unsubs.forEach(u => u())
   }, [])
 
@@ -166,7 +173,7 @@ export function StoreProvider({ children }) {
       toast.success('تم حذف الفاتورة واسترداد المخزون بنجاح')
     } catch (e) { toast.error(e.message); throw e }
   }
-  
+
   const handleReturnItems = async (params) => {
     try {
       await returnInvoiceItems(params)
@@ -213,12 +220,12 @@ export function StoreProvider({ children }) {
   }
 
   // ── Cart ──
-  const cartAdd    = (item) => dispatch({ type: 'CART_ADD', item })
-  const cartQty    = (id, qty) => dispatch({ type: 'CART_QTY', id, qty })
+  const cartAdd = (item) => dispatch({ type: 'CART_ADD', item })
+  const cartQty = (id, qty) => dispatch({ type: 'CART_QTY', id, qty })
   const cartRemove = (id) => dispatch({ type: 'CART_REMOVE', id })
-  const cartClear  = () => dispatch({ type: 'CART_CLEAR' })
-  const cartTotal  = state.cart.reduce((s, i) => s + i.price * i.qty, 0)
-  const cartCount  = state.cart.reduce((s, i) => s + i.qty, 0)
+  const cartClear = () => dispatch({ type: 'CART_CLEAR' })
+  const cartTotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0)
+  const cartCount = state.cart.reduce((s, i) => s + i.qty, 0)
 
   return (
     <StoreContext.Provider value={{

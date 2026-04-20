@@ -12,6 +12,7 @@ import {
   writeBatch,
   where,
   getDocs,
+  limit,
 } from 'firebase/firestore'
 import { db } from './config'
 
@@ -32,6 +33,20 @@ export const COLS = {
 // ── Real-time listeners (onSnapshot) ──
 export function listenCol(col, callback) {
   const q = query(collection(db, col), orderBy('createdAt', 'desc'))
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+  })
+}
+
+/**
+ * Listens to a collection with a limit to improve initial load performance.
+ */
+export function listenColLimited(col, callback, limitCount = 100) {
+  const q = query(
+    collection(db, col), 
+    orderBy('createdAt', 'desc'), 
+    limit(limitCount)
+  )
   return onSnapshot(q, snap => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })))
   })
@@ -133,7 +148,22 @@ export const addExpense = (d) => addDoc_(COLS.EXPENSES, d)
 export const deleteExpense = (id) => deleteDoc_(COLS.EXPENSES, id)
 
 // ── Complete Sale (atomic) ──
-export async function completeSale({ cartItems, customerData, total, invoiceNumber }) {
+export async function completeSale({ items, cartItems, customerData, total, invoiceNumber }) {
+  const finalItems = items || cartItems || [];
+  let finalInvoiceNumber = invoiceNumber;
+
+  // Auto-generate invoice number if missing
+  if (!finalInvoiceNumber) {
+    const q = query(collection(db, COLS.INVOICES), orderBy('number', 'desc'), limit(1));
+    const snap = await getDocs(q);
+    let lastNum = 0;
+    if (!snap.empty) {
+      const lastData = snap.docs[0].data();
+      lastNum = parseInt(String(lastData.number).replace(/^\D+/g, '')) || 0;
+    }
+    finalInvoiceNumber = String(lastNum + 1).padStart(5, '0');
+  }
+
   let paidAmount = 0;
   let paymentsBreakdown = {};
 
@@ -152,7 +182,7 @@ export async function completeSale({ cartItems, customerData, total, invoiceNumb
   const invRef = doc(collection(db, COLS.INVOICES))
 
   // Deduct stock and Log
-  for (const item of cartItems) {
+  for (const item of finalItems) {
     const p = await getDoc_(COLS.PRODUCTS, item.id)
     const newQty = Math.max(0, (p?.quantity || 0) - Number(item.qty))
     batch.update(doc(db, COLS.PRODUCTS, item.id), {
@@ -169,19 +199,19 @@ export async function completeSale({ cartItems, customerData, total, invoiceNumb
       delta: -item.qty,
       newQty,
       refId: invRef.id,
-      note: `فاتورة رقم ${invoiceNumber}`,
+      note: `فاتورة رقم ${finalInvoiceNumber}`,
       createdAt: serverTimestamp()
     })
   }
 
   // Save invoice (Enrich items with current cost for profit calculation)
-  const enrichedItems = cartItems.map(item => ({
+  const enrichedItems = finalItems.map(item => ({
     ...item,
     cost: item.cost || 0 // cost should be passed from POS
   }))
 
   batch.set(invRef, {
-    number: invoiceNumber,
+    number: finalInvoiceNumber,
     items: enrichedItems,
     total,
     customerData,
@@ -198,7 +228,7 @@ export async function completeSale({ cartItems, customerData, total, invoiceNumb
   batch.set(txRef, {
     type: 'sale',
     refId: invRef.id,
-    details: `فاتورة ${invoiceNumber} - ${customerData.name}`,
+    details: `فاتورة ${finalInvoiceNumber} - ${customerData.name}`,
     amount: total,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -226,7 +256,7 @@ export async function completeSale({ cartItems, customerData, total, invoiceNumb
     })
   }
 
-  return invRef.id
+  return { id: invRef.id, number: finalInvoiceNumber }
 }
 
 // ── Delete Invoice (Return stock) ──

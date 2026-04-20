@@ -71,113 +71,121 @@ export default function Invoices() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white">الفواتير والمرتجعات</h1>
-        <span className="text-slate-400 text-sm">{invoices.length} فاتورة</span>
+    <div className="space-y-6 sm:space-y-8 pb-32">
+      <div className="flex items-center justify-between px-1">
+        <div>
+            <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight font-display flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-electric-500/10 border border-white/10 flex items-center justify-center shadow-neon">
+                    <FileText size={20} className="text-electric-400" />
+                </div>
+                الفواتير والمرتجعات
+            </h1>
+            <p className="text-slate-500 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] mt-2 ml-1">إجمالي الفواتير: {invoices.length}</p>
+        </div>
       </div>
 
-      <input value={search} onChange={e => setSearch(e.target.value)}
-        placeholder="بحث بالاسم أو رقم الفاتورة..." className="input text-sm" />
+      <div className="relative group px-1">
+        <Search size={16} className="absolute right-4 sm:right-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-electric-400 transition-colors" />
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="بحث بالاسم أو رقم الفاتورة..." className="input pr-10 sm:pr-12 text-sm" />
+      </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3 sm:space-y-4 px-1">
         {filtered.map(inv => {
           const isSelected = selected?.id === inv.id;
           const isReturningMode = returnMode === inv.id;
           const isDeletingMode = deleteConfirm === inv.id;
           
           return (
-          <div key={inv.id} className="card cursor-pointer hover:border-slate-700 transition-all overflow-hidden"
+          <div key={inv.id} className={`card !py-4 !px-4 sm:!py-5 sm:!px-8 cursor-pointer transition-all overflow-hidden ${isSelected ? 'border-electric-500/30' : 'hover:border-white/10'}`}
             onClick={() => { 
-                if (isReturningMode || isDeletingMode) return; // Prevent collapse if in action modes
+                if (isReturningMode || isDeletingMode) return; 
                 setSelected(isSelected ? null : inv); 
             }}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                <FileText size={18} className="text-blue-400" />
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-obsidian-950 border border-white/5 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                <FileText size={20} className="text-electric-400 opacity-50" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-white text-sm">{inv.customerData?.name}</p>
-                <p className="text-xs text-slate-400">#{inv.number}</p>
+                <p className="font-black text-white text-base sm:text-lg tracking-tight font-display truncate leading-tight mb-1">{inv.customerData?.name || 'عميل نقدي'}</p>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none">فــاتورة #{inv.number}</p>
               </div>
               <div className="text-left flex-shrink-0">
-                <p className="font-bold text-primary-400 text-sm">{Number(inv.total || 0).toLocaleString('en-US')} ج.م</p>
-                <span className={inv.paymentStatus === 'paid' ? 'badge-green' : inv.paymentStatus === 'partial' ? 'badge-yellow' : 'badge-red'}>
-                  {inv.paymentStatus === 'paid' ? 'مدفوع' : inv.paymentStatus === 'partial' ? 'جزئي' : 'غير مدفوع'}
-                </span>
+                <p className="font-black text-white text-base sm:text-lg font-display tracking-tight leading-none mb-1">{Number(inv.total || 0).toLocaleString('en-US')} <span className="text-[10px] text-slate-500 font-normal">ج.م</span></p>
+                <div className="flex justify-end">
+                    <span className={inv.paymentStatus === 'paid' ? 'badge-green !text-[8px] !px-2' : inv.paymentStatus === 'partial' ? 'badge-yellow !text-[8px] !px-2' : 'badge-red !text-[8px] !px-2'}>
+                    {inv.paymentStatus === 'paid' ? 'مدفوعة' : inv.paymentStatus === 'partial' ? 'جزئية' : 'غير مدفوعة'}
+                    </span>
+                </div>
               </div>
             </div>
 
             {isSelected && (
-              <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
+              <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
                 {inv.customerData?.carModel && (
-                  <p className="text-xs text-slate-400">العربية: {inv.customerData.carModel} {inv.customerData.licensePlate && `| ${inv.customerData.licensePlate}`}</p>
+                  <p className="text-[9px] text-slate-600 font-black uppercase tracking-widest bg-white/5 px-2 py-1 rounded-md w-fit">المعدات: {inv.customerData.carModel} {inv.customerData.licensePlate && `• ${inv.customerData.licensePlate}`}</p>
                 )}
                 
-                {/* Invoice Items List */}
-                {inv.items?.map((item, i) => {
-                  const maxReturn = item.qty - (item.returnedQty || 0);
-                  const remaining = maxReturn;
-                  
-                  return (
-                  <div key={i} className="flex justify-between items-center text-xs p-1.5 hover:bg-white/5 rounded-lg">
-                    <div className="flex flex-col">
-                      <span className="text-slate-300 font-medium">{item.name}</span>
-                      <span className="text-slate-500">الكمية: {item.qty} {item.returnedQty > 0 ? <span className="text-red-400 font-bold">(مرتجع: {item.returnedQty})</span> : ''}</span>
-                    </div>
-                    <span className="text-slate-400 font-bold">{(item.price * item.qty).toLocaleString('en-US')} ج.م</span>
-                  </div>
-                )})}
+                <div className="space-y-1.5 px-1 py-1 bg-black/20 rounded-2xl border border-white/[0.02]">
+                    {inv.items?.map((item, i) => (
+                        <div key={i} className="flex justify-between items-center text-[10px] p-2 hover:bg-white/5 rounded-xl">
+                            <div className="flex flex-col">
+                            <span className="text-slate-300 font-black font-display">{item.name}</span>
+                            <span className="text-slate-600 font-black uppercase text-[8px] mt-0.5">الكمية: {item.qty} {item.returnedQty > 0 ? <span className="text-rose-500">(مرتجع: {item.returnedQty})</span> : ''}</span>
+                            </div>
+                            <span className="text-white font-black font-display">{(item.price * item.qty).toLocaleString('en-US')} ج.م</span>
+                        </div>
+                    ))}
+                </div>
                 
-                {/* Finance Summary */}
                 {inv.dueAmount > 0 && (
-                  <p className="text-red-400 text-xs font-bold bg-red-500/10 p-2 rounded-lg inline-block my-2">المتبقي على المستلم: {Number(inv.dueAmount).toLocaleString('en-US')} ج.م</p>
+                  <div className="flex items-center gap-2 bg-rose-500/5 text-rose-500 p-2.5 rounded-xl border border-rose-500/10">
+                    <AlertTriangle size={14} className="shrink-0" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">المتبقي على المستلم: {Number(inv.dueAmount).toLocaleString('en-US')} ج.م</p>
+                  </div>
                 )}
                 
-                {/* Actions Row */}
                 {!isReturningMode && !isDeletingMode && (
                   <div className="flex gap-2 mt-4">
                     <button
                       onClick={e => { e.stopPropagation(); sendWhatsApp(inv) }}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold"
+                      className="flex-[1.5] bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 transition-all font-black uppercase tracking-widest shadow-lg shadow-emerald-500/10"
                     >
-                      <MessageCircle size={16} /> واتساب
+                      <MessageCircle size={14} /> واتساب
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); setReturnMode(inv.id); setReturnQtys({}); }}
-                      className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold"
+                      className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 py-3 rounded-xl flex items-center justify-center gap-2 transition-all font-black uppercase tracking-widest border border-amber-500/10"
                     >
-                      <CornerUpLeft size={16} /> مرتجع
+                      <CornerUpLeft size={14} /> مرتجع
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); setDeleteConfirm(inv.id); }}
-                      className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold"
+                      className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 py-3 rounded-xl flex items-center justify-center gap-2 transition-all font-black uppercase tracking-widest border border-amber-500/10"
                     >
-                      <Trash2 size={16} /> مسح
+                      <Trash2 size={14} /> مسح
                     </button>
                   </div>
                 )}
 
-                {/* Partial Return Mode */}
                 {isReturningMode && (
-                  <div className="mt-4 p-4 glass border-amber-500/20 rounded-xl" onClick={e => e.stopPropagation()}>
-                    <p className="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2"><CornerUpLeft size={16} /> إضافة مرتجع لبعض القطع</p>
+                  <div className="mt-4 p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5" onClick={e => e.stopPropagation()}>
+                    <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-3 flex items-center gap-2"><CornerUpLeft size={14} /> مرتجع جزئي للفاتورة</p>
                     
-                    <div className="space-y-3 mb-4">
+                    <div className="space-y-2 mb-4">
                       {inv.items?.map(item => {
                         const available = item.qty - (item.returnedQty || 0);
                         if (available <= 0) return null;
                         const returnVal = returnQtys[item.id] || 0;
                         
                         return (
-                          <div key={item.id} className="flex justify-between items-center bg-black/20 p-2 rounded-lg">
-                            <span className="text-xs text-white flex-1">{item.name}</span>
+                          <div key={item.id} className="flex justify-between items-center bg-black/20 p-2.5 rounded-xl border border-white/[0.02]">
+                            <span className="text-[10px] text-white font-display font-black flex-1 pr-2">{item.name}</span>
                             <div className="flex items-center gap-3">
-                              <span className="text-xs text-slate-400">سعر القطعة: {item.price}</span>
-                              <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1">
-                                <button onClick={() => handleReturnQtyChange(item.id, 1, available)} className="w-6 h-6 flex items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white"><Plus size={14}/></button>
-                                <span className="text-sm font-bold w-4 text-center text-amber-400">{returnVal}</span>
-                                <button onClick={() => handleReturnQtyChange(item.id, -1, available)} className="w-6 h-6 flex items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white"><Minus size={14}/></button>
+                              <div className="flex items-center gap-2 bg-obsidian-950/50 rounded-lg p-1 border border-white/5">
+                                <button onClick={() => handleReturnQtyChange(item.id, 1, available)} className="w-7 h-7 flex items-center justify-center rounded-md bg-white/5 hover:bg-white/10 text-white"><Plus size={14}/></button>
+                                <span className="text-sm font-black w-4 text-center text-amber-500 font-display">{returnVal}</span>
+                                <button onClick={() => handleReturnQtyChange(item.id, -1, available)} className="w-7 h-7 flex items-center justify-center rounded-md bg-white/5 hover:bg-white/10 text-white"><Minus size={14}/></button>
                               </div>
                             </div>
                           </div>
@@ -185,7 +193,6 @@ export default function Invoices() {
                       })}
                     </div>
                     
-                    {/* Return Financial Calculation Preview */}
                     {(() => {
                       const returnSum = Object.entries(returnQtys).reduce((sum, [id, qty]) => {
                         const it = inv.items.find(i => i.id === id);
@@ -193,15 +200,15 @@ export default function Invoices() {
                       }, 0);
                       
                       let text = '';
-                      if (returnSum === 0) text = 'لم يتم تحديد أي قطع لإرجاعها.';
-                      else if (inv.dueAmount >= returnSum) text = `سيتم خصم ${returnSum} ج.م بالكامل من المديونية الآجلة للمشتري.`;
-                      else if (inv.dueAmount > 0) text = `سقطت مديونية (${inv.dueAmount}) ج.م | وسيتم رد مبلغ نقدي كاش للعميل: ${returnSum - inv.dueAmount} ج.م`;
-                      else text = `يجب رد هذا المبلغ نقداً كاش للعميل: ${returnSum} ج.م`;
+                      if (returnSum === 0) text = 'حدد القطع لإتمام المرتجع.';
+                      else if (inv.dueAmount >= returnSum) text = `سيخصم (${returnSum}) من مديونية العميل.`;
+                      else if (inv.dueAmount > 0) text = `تصفير المديونية ورد (${returnSum - inv.dueAmount}) نقداً.`;
+                      else text = `يجب رد (${returnSum}) ج.م نقداً للعميل.`;
 
                       return (
-                        <div className="mb-4">
-                          <p className="text-xs font-bold text-amber-300">إجمالي قيمة المرتجع المحددة: {returnSum.toLocaleString('en-US')} ج.م</p>
-                          <p className="text-[10px] text-slate-400 mt-1">{text}</p>
+                        <div className="mb-4 px-1">
+                          <p className="text-[10px] font-black text-amber-300 uppercase tracking-widest">إجمالي المرتجع: {returnSum.toLocaleString('en-US')} ج.م</p>
+                          <p className="text-[9px] text-slate-500 font-black mt-1 uppercase tracking-tight">{text}</p>
                         </div>
                       );
                     })()}
@@ -210,25 +217,24 @@ export default function Invoices() {
                        <button 
                         onClick={() => submitPartialReturn(inv)}
                         disabled={isReturning || Object.values(returnQtys).every(q => q === 0)}
-                        className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs py-2.5 rounded-lg flex items-center justify-center gap-1 font-bold transition-all"
+                        className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-[10px] py-3 rounded-xl flex items-center justify-center gap-1 font-black uppercase tracking-widest transition-all"
                       >
                         {isReturning ? 'جاري التنفيذ...' : 'تأكيد المرتجع'}
                       </button>
                       <button 
                         onClick={() => setReturnMode(null)}
-                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2.5 rounded-lg font-bold transition-all"
+                        className="flex-1 bg-white/5 hover:bg-white/10 text-slate-400 text-[10px] py-3 rounded-xl font-black uppercase tracking-widest transition-all border border-white/5"
                       >
-                        إلغاء التراجع
+                        إلغاء
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* Delete Mode */}
                 {isDeletingMode && (
-                  <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl" onClick={e => e.stopPropagation()}>
-                    <p className="text-xs font-bold text-red-400 flex items-center gap-2 mb-3">
-                      <AlertTriangle size={16} /> مسح الفاتورة بالكامل، وتصفير المديونيات واسترداد أي بضاعة متبقية؟
+                  <div className="mt-4 p-4 bg-rose-500/5 border border-rose-500/20 rounded-2xl" onClick={e => e.stopPropagation()}>
+                    <p className="text-[10px] font-black text-rose-500 flex items-center gap-2 mb-4 uppercase tracking-tighter leading-snug">
+                      <AlertTriangle size={16} className="shrink-0" /> تصفير المديونية واسترداد البضاعة للفاتورة بالكامل؟
                     </p>
                     <div className="flex gap-2">
                       <button 
@@ -243,15 +249,15 @@ export default function Invoices() {
                           }
                         }}
                         disabled={isDeleting}
-                        className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-2.5 rounded-lg flex items-center justify-center gap-1 font-bold transition-all"
+                        className="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-[10px] py-3 rounded-xl flex items-center justify-center gap-1 font-black uppercase tracking-widest transition-all"
                       >
-                        {isDeleting ? 'جاري الحذف...' : 'نعم، مسح الفاتورة'}
+                        {isDeleting ? 'جاري الحذف...' : 'تأكيد الحذف'}
                       </button>
                       <button 
                         onClick={() => setDeleteConfirm(null)}
-                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2.5 rounded-lg font-bold transition-all"
+                        className="flex-1 bg-white/5 hover:bg-white/10 text-slate-400 text-[10px] py-3 rounded-xl font-black uppercase tracking-widest transition-all border border-white/5"
                       >
-                        إلغاء
+                        تراجع
                       </button>
                     </div>
                   </div>
@@ -259,11 +265,13 @@ export default function Invoices() {
               </div>
             )}
           </div>
-        )})}
+          )
+        })}
         
         {filtered.length === 0 && (
-          <div className="card text-center py-10">
-            <p className="text-slate-400 text-sm">لا توجد فواتير بعد</p>
+          <div className="card text-center py-20 border-dashed border-white/5 opacity-30">
+            <FileText size={50} className="text-slate-500 mx-auto mb-6" />
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">المخدم لا يحتوي على فواتير حالياً</p>
           </div>
         )}
       </div>

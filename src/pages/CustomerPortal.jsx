@@ -23,163 +23,159 @@ export default function CustomerPortal() {
     return sInvoices
   }, [invoices, phone])
 
-  const aggregatedHistory = useMemo(() => {
-    const items = []
-    history.forEach(inv => {
-      const date = inv.createdAt?.toDate?.() || new Date(inv.createdAt)
-      const dateStr = date.toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
-      
-      const invItems = inv.items || inv.cartItems || []
-      invItems.forEach(item => {
-        items.push({
-          date: dateStr,
-          rawDate: date,
-          name: item.name,
-          qty: item.qty,
-          price: item.price
-        })
-      })
-    })
-    return items
-  }, [history])
-
   if (!customer && history.length === 0) {
     return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
-            <div className="max-w-md space-y-4">
-                <AlertCircle size={64} className="text-rose-500 mx-auto" />
-                <h1 className="text-2xl font-bold text-white">عذراً، لم يتم العثور على بيانات</h1>
-                <p className="text-slate-400">يرجى التأكد من رقم الهاتف الصحيح أو مراجعة المحل.</p>
-            </div>
+        <div className="min-h-screen bg-obsidian-950 flex flex-col items-center justify-center p-6 text-center">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md space-y-6">
+                <div className="w-20 h-20 bg-rose-500/10 rounded-[2rem] flex items-center justify-center mx-auto border border-rose-500/20">
+                    <AlertCircle size={40} className="text-rose-500" />
+                </div>
+                <h1 className="text-3xl font-black text-white font-display tracking-tight">عذراً، لم يتم العثور على بيانات</h1>
+                <p className="text-slate-500 text-sm font-black uppercase tracking-widest leading-relaxed">يرجى التأكد من رقم الهاتف الصحيح أو مراجعة المتجر لتسجيل بياناتك.</p>
+                <div className="pt-4">
+                     <Link to="/" className="btn-ghost !px-8 py-3 text-[10px] font-black uppercase tracking-widest">العودة للرئيسية</Link>
+                </div>
+            </motion.div>
         </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-right font-sans pb-20 overflow-x-hidden">
+    <div className="min-h-screen bg-obsidian-950 text-right font-sans pb-20 overflow-x-hidden selection:bg-electric-500 selection:text-white" dir="rtl">
       {/* Premium Header */}
-      <div className="relative bg-primary-600 pt-16 pb-32 px-6 overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-            <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-white rounded-full blur-[120px]" />
-            <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-black rounded-full blur-[120px]" />
-        </div>
+      <div className="relative bg-obsidian-900 pt-16 pb-36 px-6 overflow-hidden border-b border-white/5">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-electric-500/10 blur-[150px] -mr-64 -mt-64 rounded-full" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-cyan-500/5 blur-[120px] -ml-40 -mb-40 rounded-full" />
         
-        <div className="max-w-4xl mx-auto relative z-10 flex flex-col md:flex-row items-center gap-8">
-            <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center border border-white/20 shadow-2xl overflow-hidden">
-                <div className="bg-white p-2 rounded-xl">
-                    <QRCodeSVG value={window.location.href} size={60} />
+        <div className="max-w-4xl mx-auto relative z-10 flex flex-col md:flex-row items-center gap-10">
+            <motion.div initial={{ rotate: -5, scale: 0.95 }} animate={{ rotate: 0, scale: 1 }} className="w-28 h-28 bg-white/[0.03] backdrop-blur-2xl rounded-[2.5rem] flex items-center justify-center border border-white/10 shadow-premium group overflow-hidden">
+                <div className="bg-white p-2.5 rounded-2xl group-hover:scale-110 transition-transform duration-500">
+                    <QRCodeSVG value={window.location.href} size={75} />
                 </div>
-            </div>
+            </motion.div>
             <div className="flex-1 text-center md:text-right">
-                <p className="text-primary-100 font-bold tracking-widest text-xs mb-2 uppercase">بوابة عملاء الفاروق ستور</p>
-                <h1 className="text-4xl md:text-5xl font-black text-white mb-4">مرحباً، أستاذ {customer?.name || 'العميل المميز'}</h1>
-                <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                    <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-full text-xs text-white border border-white/10">
-                        <Phone size={12} /> {phone}
+                <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-electric-400 font-black tracking-widest text-[10px] mb-3 uppercase leading-none">بوابة عمـلاء الفاروق ستور</motion.p>
+                <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl md:text-6xl font-black text-white mb-6 font-display tracking-tight">مرحباً، أستاذ {customer?.name || 'العميل المميز'}</motion.h1>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex flex-wrap justify-center md:justify-start gap-4">
+                    <span className="flex items-center gap-2.5 bg-white/5 backdrop-blur-md px-4 py-2 rounded-2xl text-[10px] font-black text-slate-300 border border-white/10 uppercase tracking-widest leading-none">
+                        <Phone size={14} className="text-electric-400" /> {phone}
                     </span>
                     {customer?.carModel && (
-                        <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-full text-xs text-white border border-white/10 uppercase font-bold">
-                            <Car size={12} /> {customer.carModel}
+                        <span className="flex items-center gap-2.5 bg-white/5 backdrop-blur-md px-4 py-2 rounded-2xl text-[10px] font-black text-slate-300 border border-white/10 uppercase tracking-widest leading-none">
+                            <Car size={14} className="text-electric-400" /> {customer.carModel}
                         </span>
                     )}
-                </div>
+                </motion.div>
             </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 -mt-20 relative z-20 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-24 relative z-20 space-y-6 sm:space-y-8">
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="bg-[#1e293b] border border-white/5 rounded-3xl p-5 shadow-2xl">
-                <p className="text-slate-500 text-xs mb-1">إجمالي المشتريات</p>
-                <p className="text-2xl font-black text-white">{customer?.totalSpent?.toLocaleString('en-US') || '0'} <span className="text-xs text-slate-500">ج.م</span></p>
-            </div>
-            <div className="bg-[#1e293b] border border-white/5 rounded-3xl p-5 shadow-2xl">
-                <p className="text-slate-500 text-xs mb-1">عدد الزيارات</p>
-                <p className="text-2xl font-black text-white">{customer?.invoiceCount || history.length}</p>
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="card p-6 sm:p-8 border-white/5 bg-obsidian-920/80 backdrop-blur-3xl shadow-premium">
+                <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-2 font-display">إجمالي المشتريات</p>
+                <p className="text-2xl sm:text-3xl font-black text-white font-display tracking-tighter">{customer?.totalSpent?.toLocaleString('en-US') || '0'} <small className="text-xs text-slate-500 font-normal">ج.م</small></p>
+            </motion.div>
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="card p-6 sm:p-8 border-white/5 bg-obsidian-920/80 backdrop-blur-3xl shadow-premium">
+                <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-2 font-display">عدد الزيارات</p>
+                <p className="text-2xl sm:text-3xl font-black text-white font-display tracking-tighter">{history.length}</p>
+            </motion.div>
             {customer?.debtTotal > 0 && (
-                <div className="col-span-2 md:col-span-1 bg-rose-500/10 border border-rose-500/20 rounded-3xl p-5 shadow-2xl">
-                    <p className="text-rose-400 text-xs mb-1 font-bold">المبلغ المتبقي (آجل)</p>
-                    <p className="text-2xl font-black text-rose-400">{customer.debtTotal.toLocaleString('en-US')} <span className="text-xs">ج.م</span></p>
-                </div>
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="col-span-2 md:col-span-1 card p-6 sm:p-8 border-rose-500/10 bg-rose-500/5 backdrop-blur-3xl shadow-premium lg:shadow-rose-500/5">
+                    <p className="text-rose-400 text-[9px] font-black uppercase tracking-widest mb-2 font-display">المبلغ المتبقي (آجل)</p>
+                    <p className="text-2xl sm:text-3xl font-black text-rose-400 font-display tracking-tighter">{customer.debtTotal.toLocaleString('en-US')} <small className="text-xs font-normal">ج.م</small></p>
+                </motion.div>
             )}
         </div>
 
         {/* Timeline */}
-        <div className="bg-[#0f172a]/80 backdrop-blur-xl border border-white/5 rounded-[40px] p-8 shadow-2xl">
-            <h2 className="text-2xl font-black text-white mb-8 flex items-center gap-3">
-                <History className="text-primary-500" /> سجل الصيانة والمشتريات
+        <div className="card p-6 sm:p-12 border-white/5 shadow-premium overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-electric-500/[0.03] blur-[100px] pointer-events-none" />
+            
+            <h2 className="text-2xl sm:text-4xl font-black text-white mb-12 flex items-center gap-4 font-display tracking-tight">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 bg-electric-500/10 rounded-2xl flex items-center justify-center border border-white/5 shadow-neon">
+                    <History size={24} className="text-electric-400" />
+                </div>
+                سجل المشتريات والصيانة
             </h2>
 
-            <div className="space-y-8">
+            <div className="space-y-10 sm:space-y-16">
                 {history.length === 0 ? (
-                    <div className="text-center py-20 opacity-30">
-                        <Wrench size={48} className="mx-auto mb-4" />
-                        <p>لا يوجد سجلات متاحة حالياً</p>
+                    <div className="text-center py-24 opacity-20 border border-dashed border-white/10 rounded-[2.5rem]">
+                        <Wrench size={56} className="mx-auto mb-6 text-slate-500" />
+                        <p className="text-xs sm:text-sm font-black uppercase tracking-[0.4em]">لا يوجد سجلات متاحة حالياً</p>
                     </div>
                 ) : (
                     history.map((inv, idx) => {
                         const date = inv.createdAt?.toDate?.() || new Date(inv.createdAt)
                         return (
-                            <div key={idx} className="relative pr-8 border-r-2 border-primary-500/20 last:border-transparent pb-4">
-                                <div className="absolute right-[-9px] top-0 w-4 h-4 rounded-full bg-primary-600 shadow-[0_0_15px_rgba(249,115,22,0.4)] flex items-center justify-center">
-                                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                                </div>
+                            <motion.div key={idx} initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} viewport={{ once: true }} className="relative pr-8 sm:pr-12 border-r-2 border-white/5 pb-4">
+                                <div className="absolute right-[-7px] top-0 w-3.5 h-3.5 rounded-full bg-electric-500 shadow-neon flex items-center justify-center" />
                                 
-                                <div className="flex justify-between items-center mb-4 pr-4">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-black text-white">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pr-6">
+                                    <div>
+                                        <span className="text-base sm:text-xl font-black text-white font-display block mb-1 leading-none">
                                             {date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                                         </span>
-                                        <span className="text-[10px] text-slate-500 font-bold">فاتورة رقم #{inv.number}</span>
+                                        <span className="text-[10px] text-slate-600 font-black uppercase tracking-widest mt-2 block">رقم الإيصال #{inv.number}</span>
                                     </div>
-                                    <div className="bg-primary-500/10 text-primary-400 text-[10px] px-3 py-1 rounded-full border border-primary-500/10 font-bold">
-                                        صيانة دورية
+                                    <div className="bg-emerald-500/10 text-emerald-400 text-[9px] font-black tracking-[0.2em] px-4 py-1.5 rounded-full border border-emerald-500/10 uppercase w-fit">
+                                        عملية موثقة
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-3 pr-4">
-                                    {(inv.items || inv.cartItems || []).map((item, i) => (
-                                        <div key={i} className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 flex items-center justify-between hover:bg-white/[0.05] transition-colors">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center">
-                                                    <Wrench size={18} className="text-slate-400" />
+                                <div className="grid grid-cols-1 gap-3 sm:gap-4 pr-0">
+                                    {(inv.items || []).map((item, i) => (
+                                        <div key={i} className="group bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.03] hover:border-electric-500/20 rounded-[1.5rem] p-4 sm:p-6 flex items-center justify-between transition-all duration-300">
+                                            <div className="flex items-center gap-4 sm:gap-6">
+                                                <div className="w-10 h-10 sm:w-14 sm:h-14 bg-obsidian-950 border border-white/5 rounded-xl sm:rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-xl">
+                                                    <Wrench size={18} className="text-slate-500 group-hover:text-electric-400 transition-colors" />
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-white">{item.name}</p>
-                                                    <p className="text-[10px] text-slate-500 mt-0.5">الكمية: {item.qty} قطعة</p>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm sm:text-lg font-black text-white font-display truncate leading-tight mb-1">{item.name}</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-600 font-black uppercase tracking-widest">الكمية: {item.qty} ق <span className="mx-1 opacity-20">•</span> {(item.price).toLocaleString('en-US')} ج</p>
                                                 </div>
                                             </div>
-                                            <div className="text-left">
-                                                <p className="text-sm font-black text-white">{(item.price * item.qty).toLocaleString('en-US')} <span className="text-[10px] text-slate-400 font-normal">ج.م</span></p>
+                                            <div className="text-left shrink-0">
+                                                <p className="text-sm sm:text-xl font-black text-white font-display tracking-tighter">{(item.price * item.qty).toLocaleString('en-US')} <small className="text-[9px] text-slate-500 font-normal pr-1 uppercase">ج.م</small></p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
 
                                 {inv.dueAmount > 0 && (
-                                    <div className="mr-8 mt-3 bg-rose-500/5 border border-rose-500/10 rounded-xl p-3 flex items-center justify-between">
-                                        <span className="text-[10px] text-rose-400 font-bold mb-1">تم دفع {inv.paidAmount?.toLocaleString('en-US')} ومتبقي عليك:</span>
-                                        <span className="text-rose-500 font-black text-xs">{inv.dueAmount?.toLocaleString('en-US')} ج.م</span>
+                                    <div className="mt-6 bg-rose-500/5 border border-rose-500/10 rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center border border-rose-500/10">
+                                                <CreditCard size={14} className="text-rose-500" />
+                                            </div>
+                                            <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest pl-2">متبقي عليك (آجل):</span>
+                                        </div>
+                                        <span className="text-rose-500 font-black text-sm sm:text-lg font-display tracking-tighter">{inv.dueAmount?.toLocaleString('en-US')} ج.م</span>
                                     </div>
                                 )}
-                            </div>
+                            </motion.div>
                         )
                     })
                 )}
             </div>
         </div>
 
-        <div className="bg-primary-600/10 border border-primary-500/20 rounded-3xl p-6 text-center">
-             <div className="w-12 h-12 bg-primary-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <MapPin size={24} className="text-primary-500" />
+        {/* Footer Contact */}
+        <div className="card !p-0 border-electric-500/10 overflow-hidden relative group">
+             <div className="absolute inset-0 bg-gradient-to-r from-electric-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+             <div className="p-8 sm:p-12 text-center relative z-10 flex flex-col items-center">
+                <div className="w-16 h-16 bg-electric-500/10 rounded-3xl flex items-center justify-center mb-6 border border-white/5 group-hover:scale-110 transition-transform shadow-neon">
+                    <MapPin size={28} className="text-electric-400" />
+                </div>
+                <h3 className="text-2xl font-black text-white mb-3 font-display tracking-tight">نفتخر بخدمتكم دائماً</h3>
+                <p className="text-[10px] text-slate-500 max-w-xs font-black uppercase tracking-widest mb-8 leading-relaxed opacity-60">الفاروق ستور - قطع غيار السيارات بجودة عالمية وأسعار تنافسية.</p>
+                <a href="tel:01000000000" className="inline-flex items-center gap-3 bg-electric-600 hover:bg-electric-500 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-neon transition-all active:scale-95">
+                    <Phone size={18} /> اتصـل بنا الآن
+                </a>
              </div>
-             <h3 className="text-white font-bold mb-1">نتشرف بزيارتك دائماً</h3>
-             <p className="text-xs text-slate-500 max-w-xs mx-auto mb-4">الفاروق ستور - أفضل قطع غيار لسيارتك بأعلى جودة وأفضل سعر</p>
-             <a href="tel:01000000000" className="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-glow transition-all active:scale-95">
-                <Phone size={16} /> اتصل بنا للاستفسار
-             </a>
         </div>
       </div>
     </div>
