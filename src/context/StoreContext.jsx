@@ -40,27 +40,40 @@ function reducer(state, action) {
 export function StoreProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, init)
 
-  // ── Real-time listeners ──
+  // ── Real-time listeners (Staggered for performance) ──
   useEffect(() => {
-    // Start with core data to get the app functional
-    const unsubs = [
+    const unsubs = [];
+
+    // Stage 1: Critical Data (Immediate)
+    const sub1 = [
       listenCol(COLS.PRODUCTS, data => {
         dispatch({ type: 'SET', key: 'products', data })
-        dispatch({ type: 'LOADING', value: false }) // Hide loading once we have products
+        dispatch({ type: 'LOADING', value: false }) // Initial bridge to UI
       }),
-      listenCol(COLS.CATEGORIES, data => dispatch({ type: 'SET', key: 'categories', data })),
-      listenCol(COLS.SUPPLIERS, data => dispatch({ type: 'SET', key: 'suppliers', data })),
-      listenCol(COLS.CUSTOMERS, data => dispatch({ type: 'SET', key: 'customers', data })),
-      
-      // Heavy collections - limit to last 100 for performance
-      listenColLimited(COLS.INVOICES, data => dispatch({ type: 'SET', key: 'invoices', data }), 100),
-      listenColLimited(COLS.QUOTATIONS, data => dispatch({ type: 'SET', key: 'quotes', data }), 50),
-      listenColLimited(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data }), 100),
-      listenColLimited(COLS.EXPENSES, data => dispatch({ type: 'SET', key: 'expenses', data }), 100),
-      listenColLimited(COLS.PURCHASES, data => dispatch({ type: 'SET', key: 'purchases', data }), 50),
-    ]
+      listenCol(COLS.CATEGORIES, data => dispatch({ type: 'SET', key: 'categories', data }))
+    ];
+    unsubs.push(...sub1);
+
+    // Stage 2: CRM & Partners (Delay 1s)
+    const stage2Timer = setTimeout(() => {
+      unsubs.push(listenCol(COLS.SUPPLIERS, data => dispatch({ type: 'SET', key: 'suppliers', data })));
+      unsubs.push(listenCol(COLS.CUSTOMERS, data => dispatch({ type: 'SET', key: 'customers', data })));
+    }, 1000);
+
+    // Stage 3: Heavy History (Delay 2.5s)
+    const stage3Timer = setTimeout(() => {
+      unsubs.push(listenColLimited(COLS.INVOICES, data => dispatch({ type: 'SET', key: 'invoices', data }), 100));
+      unsubs.push(listenColLimited(COLS.QUOTATIONS, data => dispatch({ type: 'SET', key: 'quotes', data }), 50));
+      unsubs.push(listenColLimited(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data }), 100));
+      unsubs.push(listenColLimited(COLS.EXPENSES, data => dispatch({ type: 'SET', key: 'expenses', data }), 100));
+      unsubs.push(listenColLimited(COLS.PURCHASES, data => dispatch({ type: 'SET', key: 'purchases', data }), 50));
+    }, 2500);
     
-    return () => unsubs.forEach(u => u())
+    return () => {
+      unsubs.forEach(u => typeof u === 'function' && u());
+      clearTimeout(stage2Timer);
+      clearTimeout(stage3Timer);
+    }
   }, [])
 
   // ── Products ──

@@ -143,7 +143,7 @@ export default function LoadingScreen({ onFinished }) {
 
       {/* Footer */}
       <div className="absolute bottom-10 text-[8px] text-slate-700 font-black tracking-[0.3em] uppercase opacity-40">
-        System Core v2.1 • Optimized
+        System Core v2.2 • Sequential Load
       </div>
     </motion.div>
   )

@@ -16,13 +16,13 @@ export default defineConfig({
       injectRegister: 'auto',
 
       manifest: {
-        name: 'الفاروق ستور',
-        short_name: 'الفاروق',
+        name: 'الفاروق ستور v2.2',
+        short_name: 'منظومة الفاروق',
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        background_color: '#0f172a',
-        theme_color: '#f97316',
+        background_color: '#020617',
+        theme_color: '#3b82f6',
         icons: [
           {
             src: '/icon-192.png',
@@ -38,6 +38,7 @@ export default defineConfig({
       },
 
       workbox: {
+        cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
         navigateFallback: '/index.html'
