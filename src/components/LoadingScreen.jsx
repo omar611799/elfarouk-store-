@@ -11,6 +11,8 @@ const STATUS_MESSAGES = [
 ];
 
 export default function LoadingScreen({ onFinished }) {
+  const [statusIndex, setStatusIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const [showRepair, setShowRepair] = useState(false);
 
   useEffect(() => {
