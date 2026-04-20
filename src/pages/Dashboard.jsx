@@ -108,7 +108,6 @@ export default function Dashboard() {
   }
 
   return (
-  return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 sm:space-y-10 pb-32">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 px-1">
         <div>
