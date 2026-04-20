@@ -330,92 +330,87 @@ export default function POS() {
   )
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 sm:gap-8 pb-40 pt-2 sm:pt-4">
-      <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} className="flex-1 space-y-6 sm:space-y-8">
+    <div className="flex flex-col xl:flex-row gap-6 sm:gap-8 pb-40 pt-0 sm:pt-4">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 space-y-4 sm:space-y-8">
         
-        {/* Sticky Mobile Search Header */}
-        <div className="sticky top-0 z-[40] bg-obsidian-950/80 backdrop-blur-xl sm:static sm:bg-transparent -mx-4 px-4 py-3 sm:p-0 border-b border-white/5 sm:border-0">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-electric-500/10 border border-white/10 flex items-center justify-center shadow-neon">
-                        <Sparkles size={20} className="text-electric-400" />
-                    </div>
-                    <div>
-                      <h1 className="text-lg sm:text-3xl font-black text-white tracking-tight font-display">نقطة البيع</h1>
+        {/* Dynamic Mobile Search Header - Slimmer & More Modern */}
+        <div className="sticky top-0 z-[40] bg-obsidian-950/90 backdrop-blur-2xl sm:static sm:bg-transparent -mx-4 px-4 py-4 sm:p-0 border-b border-white/5 sm:border-0">
+            <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between sm:hidden">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-electric-500/10 border border-white/10 flex items-center justify-center shadow-neon">
+                            <Sparkles size={18} className="text-electric-400" />
+                        </div>
+                        <h1 className="text-lg font-black text-white tracking-tight font-display">نقطة البيع</h1>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <div className="relative group flex-1 sm:flex-none">
+                    <div className="relative group flex-1">
                         <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-electric-400 transition-colors" />
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث باسم القطعة أو الكود..." className="input pr-11 pl-20 !w-full sm:!w-72 text-sm" />
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث عن أصناف..." className="input !bg-white/5 !border-white/10 !rounded-2xl pr-11 pl-20 !w-full text-sm font-bold" />
                         <div className="absolute left-2 top-1/2 -translate-y-1/2 flex gap-1">
-                            <button onClick={() => setShowScanner(!showScanner)} className={`p-1.5 rounded-lg transition-all ${showScanner ? 'bg-emerald-500/20 text-emerald-400 shadow-neon' : 'bg-white/5 text-slate-500 hover:text-white'}`}>
-                                <Camera size={16} />
-                            </button>
-                            <button onClick={startVoiceSearch} className={`p-1.5 rounded-lg transition-all ${isListening ? 'bg-rose-500/20 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.5)] animate-pulse' : 'bg-white/5 text-slate-500 hover:text-white'}`}>
-                                <Mic size={16} />
-                            </button>
+                            {showScanner ? (
+                                <button onClick={() => setShowScanner(false)} className="p-2 rounded-xl bg-rose-500/10 text-rose-400 active:scale-95 transition-all"><X size={18} /></button>
+                            ) : (
+                                <button onClick={() => setShowScanner(true)} className="p-2 rounded-xl bg-electric-500/10 text-electric-400 active:scale-95 transition-all"><Camera size={18} /></button>
+                            )}
+                            <button onClick={startVoiceSearch} className={`p-2 rounded-xl transition-all ${isListening ? 'bg-rose-500/20 text-rose-400 animate-pulse' : 'bg-white/5 text-slate-500'}`}><Mic size={18} /></button>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Mobile Category Horizontal Scroller */}
-            <div className="flex overflow-x-auto gap-2 pb-1 pt-3 scrollbar-hide sm:hidden">
-              <button onClick={() => setCat('')} className={`whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${!catFilter ? 'bg-electric-600 text-white border-electric-500 shadow-neon' : 'bg-white/5 text-slate-500 border-white/5'}`}>
-                الكل
-              </button>
-              {categoriesList.map(c => (
-                <button key={c} onClick={() => setCat(c)} className={`whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${catFilter === c ? 'bg-electric-600 text-white border-electric-500 shadow-neon' : 'bg-white/5 text-slate-500 border-white/5'}`}>
-                  {c}
-                </button>
-              ))}
+                {/* Modern Pill Navigation for Categories */}
+                <div className="flex overflow-x-auto gap-2 pb-1 no-scrollbar sm:hidden">
+                  <button onClick={() => setCat('')} className={`category-pill ${!catFilter ? 'category-pill-active' : 'category-pill-inactive'}`}>الكل</button>
+                  {categoriesList.map(c => (
+                    <button key={c} onClick={() => setCat(c)} className={`category-pill ${catFilter === c ? 'category-pill-active' : 'category-pill-inactive'}`}>{c}</button>
+                  ))}
+                </div>
             </div>
         </div>
 
-        {showScanner && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden card !p-4 !bg-black/80 border-emerald-500/20 relative">
-                <div className={`${scannerError ? 'hidden' : 'block'} mb-4`}>
-                  <div id="reader" className="w-full max-w-sm mx-auto rounded-3xl overflow-hidden bg-black/50 min-h-[250px]"></div>
-                </div>
-                {scannerError && (
-                  <div className="w-full max-w-sm mx-auto text-center py-4">
-                    <Camera size={20} className="text-rose-400 mx-auto mb-2" />
-                    <p className="text-slate-300 text-xs px-4 mb-4">{scannerError}</p>
-                    <button onClick={() => setRetryCamera(c => c + 1)} className="btn-ghost !py-2 text-[10px]">إعادة المحاولة</button>
-                  </div>
-                )}
-                <div className="w-full max-w-sm mx-auto text-center border-t border-white/10 pt-4">
-                  <label className="btn-primary !bg-electric-600 hover:!bg-electric-500 cursor-pointer inline-flex items-center justify-center w-full max-w-[200px] text-xs">
-                    فتح الكاميرا للباركود
+        {/* Improved Scanner UI */}
+        <AnimatePresence>
+          {showScanner && (
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="overflow-hidden bg-black/60 backdrop-blur-xl rounded-[2rem] border border-white/10 p-4 relative mb-4">
+                <div id="reader" className="w-full max-w-sm mx-auto rounded-3xl overflow-hidden bg-black min-h-[250px] shadow-2xl"></div>
+                <div className="mt-4 flex flex-col items-center gap-3">
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">ضع الباركود أمام الكاميرا</p>
+                  <label className="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-3 rounded-2xl flex items-center justify-center gap-3 text-xs font-bold cursor-pointer transition-all">
+                    <Camera size={16} /> اختيار صورة باركود
                     <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
                   </label>
                 </div>
-                <button onClick={() => { setShowScanner(false); setScannerError(null); }} className="absolute top-4 right-4 text-white/50 hover:text-white bg-white/10 p-2 rounded-full z-50"><X size={16} /></button>
             </motion.div>
-        )}
+          )}
+        </AnimatePresence>
 
-        {/* Mobile List View / Desktop Grid View */}
-        <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2.5 sm:gap-6">
+        {/* New Premium Grid/List Overhaul */}
+        <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-6">
           {filtered.map(p => (
-            <motion.button variants={itemVariant} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} key={p.id} onClick={() => handleCartAdd(p)}
-              className="card !p-0 flex flex-row sm:flex-col group overflow-hidden border-white/5 hover:border-electric-500/30 text-right h-16 sm:h-auto items-center sm:items-stretch active:bg-white/[0.02]">
+            <motion.button variants={itemVariant} onClick={() => handleCartAdd(p)} key={p.id}
+              className="mobile-card-premium flex flex-row items-center p-3 sm:p-6 group active:bg-electric-500/5 h-24 sm:h-auto">
               
-              <div className="hidden sm:block absolute top-3 left-3 bg-obsidian-950/80 backdrop-blur-md border border-white/5 px-2.5 py-0.5 rounded-full z-10">
-                <p className="text-[8px] sm:text-[9px] font-black text-electric-400 uppercase tracking-widest">{p.category || 'عام'}</p>
+              <div className="flex-1 min-w-0 pr-1">
+                <h3 className="text-white font-black text-sm sm:text-xl truncate font-display leading-snug">{p.name}</h3>
+                <div className="flex items-center gap-2 mt-1 sm:mt-2">
+                   <span className="text-[10px] sm:text-xs text-slate-500 font-bold bg-white/5 px-2 py-0.5 rounded-lg border border-white/5 uppercase tracking-tighter">{p.category || 'عام'}</span>
+                   <span className="text-[10px] sm:text-xs text-emerald-500/80 font-bold">متاح: {p.quantity}</span>
+                </div>
               </div>
 
-              {/* Mobile Swipe-like Info Area */}
-              <div className="flex-1 px-4 sm:p-6 sm:pt-12 text-right">
-                <h3 className="text-white font-black text-xs sm:text-lg truncate font-display leading-tight">{p.name}</h3>
-                <p className="text-slate-600 text-[8px] sm:text-[10px] font-black uppercase tracking-widest truncate sm:mt-1">SKU: {p.sku || 'N/A'}</p>
+              <div className="flex flex-col items-end gap-1 px-4 border-r border-white/5 h-12 justify-center">
+                <span className="text-lg sm:text-2xl font-black text-white font-display tracking-tight whitespace-nowrap">
+                  {Number(p.price).toLocaleString('en-US')}
+                  <span className="text-[10px] sm:text-xs text-slate-500 font-normal mr-1">ج.م</span>
+                </span>
               </div>
 
-              <div className="px-4 sm:p-6 sm:pt-0 shrink-0 sm:mt-auto border-r sm:border-r-0 sm:border-t border-white/5 flex flex-col justify-center items-end h-full">
-                <div className="sm:hidden text-[7px] text-slate-600 font-bold uppercase tracking-widest mb-0.5 leading-none">السعر</div>
-                <span className="text-sm sm:text-xl font-black text-white font-display leading-none">{Number(p.price).toLocaleString('en-US')} <span className="text-[8px] sm:text-[10px] text-slate-500 font-normal">ج.م</span></span>
-                <div className="hidden sm:block text-[8px] text-slate-600 font-black uppercase tracking-widest mt-1">متوفر: {p.quantity}</div>
+              <div className="ml-1">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-electric-600 text-white flex items-center justify-center shadow-[0_8px_20px_rgba(37,99,235,0.4)] group-active:scale-90 transition-transform">
+                  <Plus size={20} className="sm:w-8 sm:h-8" />
+                </div>
               </div>
             </motion.button>
           ))}
@@ -427,39 +422,53 @@ export default function POS() {
         </motion.div>
       </motion.div>
 
-      {/* Desktop Cart Aside */}
+      {/* Desktop Side Cart - Always Visible */}
       <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} className="xl:w-[420px] 2xl:w-[450px] shrink-0 hidden xl:block">
-        <div className="card !p-0 flex flex-col h-[calc(100vh-160px)] sticky top-8 border-white/10 shadow-premium overflow-hidden bg-obsidian-900/40 backdrop-blur-3xl">
+        <div className="card !p-0 flex flex-col h-[calc(100vh-120px)] sticky top-4 border-white/10 shadow-premium overflow-hidden bg-obsidian-900/40 backdrop-blur-3xl">
            <CartContent />
         </div>
       </motion.div>
 
-      {/* Floating Mobile Cart Bar */}
+      {/* Modern Floating Mobile Cart Bar - Premium Styling */}
       <AnimatePresence>
         {!isCartOpen && cart.length > 0 && (
-          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="fixed bottom-24 inset-x-4 h-16 bg-electric-600 rounded-2xl flex items-center justify-between px-6 z-[45] xl:hidden shadow-[0_15px_40px_rgba(37,99,235,0.4)] border border-white/20 active:scale-95 transition-transform" onClick={() => setIsCartOpen(true)}>
-            <div className="flex items-center gap-3">
-               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center border border-white/10">
-                  <ShoppingCart size={20} className="text-white" />
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }} 
+            animate={{ y: 0, opacity: 1 }} 
+            exit={{ y: 100, opacity: 0 }} 
+            className="fixed bottom-24 inset-x-4 h-18 bg-white text-slate-900 rounded-[2rem] flex items-center justify-between px-6 z-[45] xl:hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/20 active:scale-[0.98] transition-all"
+            onClick={() => setIsCartOpen(true)}
+          >
+            <div className="flex items-center gap-4">
+               <div className="relative">
+                  <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg">
+                    <ShoppingCart size={22} className="text-white" />
+                  </div>
+                  <span className="absolute -top-2 -right-2 bg-electric-600 text-white text-[10px] font-black w-6 h-6 rounded-xl border-4 border-white flex items-center justify-center">{cart.length}</span>
                </div>
                <div>
-                  <p className="text-[9px] text-blue-100 font-black uppercase tracking-widest leading-none mb-1 opacity-70">عدد الأصناف: {cart.length}</p>
-                  <p className="text-lg font-black text-white font-display leading-none tracking-tight">{cartTotal.toLocaleString('en-US')} ج.م</p>
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1 opacity-70">إجمالي الطلب</p>
+                  <p className="text-xl font-black text-slate-950 font-display leading-none tracking-tight">{cartTotal.toLocaleString('en-US')} <span className="text-xs font-normal opacity-50">ج.م</span></p>
                </div>
             </div>
-            <div className="flex items-center gap-2 text-white font-black text-[10px] uppercase tracking-[0.2em] opacity-90">
-               عرض السلة <ChevronLeft size={16} className="-rotate-90 animate-bounce" />
+            <div className="bg-slate-100 px-4 py-2.5 rounded-xl flex items-center gap-2 text-slate-900 font-black text-[10px] uppercase tracking-wider">
+               عرض السلة <ChevronLeft size={16} className="-rotate-90" />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Advanced Bottom Sheet for Cart */}
       <AnimatePresence>
         {isCartOpen && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] xl:hidden" onClick={() => setIsCartOpen(false)} />
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed bottom-0 inset-x-0 h-[92vh] bg-obsidian-950 rounded-t-[2.5rem] z-[110] xl:hidden overflow-hidden shadow-[0_-20px_60px_rgba(0,0,0,0.8)] border-t border-white/5">
-              <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto my-3" onClick={() => setIsCartOpen(false)} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[100] xl:hidden" onClick={() => setIsCartOpen(false)} />
+            <motion.div 
+                initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} 
+                transition={{ type: 'spring', damping: 30, stiffness: 300, mass: 0.8 }} 
+                className="fixed bottom-0 inset-x-0 h-[88vh] bg-obsidian-950 rounded-t-[3rem] z-[110] xl:hidden overflow-hidden shadow-[0_-20px_80px_rgba(0,0,0,1)] border-t border-white/5"
+            >
+              <div className="w-16 h-1.5 bg-white/10 rounded-full mx-auto mt-4 mb-2 active:bg-white/20 transition-all" onClick={() => setIsCartOpen(false)} />
               <CartContent />
             </motion.div>
           </>
