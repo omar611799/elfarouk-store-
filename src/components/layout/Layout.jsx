@@ -221,7 +221,7 @@ export default function Layout() {
           </div>
 
           {/* Bottom Tab Bar */}
-          <nav className="fixed bottom-0 inset-x-0 h-20 bg-obsidian-950/90 backdrop-blur-3xl border-t border-white/5 flex items-center justify-around px-4 z-50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
+          <nav className="fixed bottom-0 inset-x-0 h-20 bg-obsidian-950/90 backdrop-blur-3xl border-t border-white/5 flex items-center justify-around px-2 z-50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
             {bottomNavItems.map(({ to, icon: Icon, label }) => {
               const isPOS = to === '/pos';
               return (
@@ -230,17 +230,17 @@ export default function Layout() {
                   to={to}
                   end={to === '/'}
                   className={({ isActive }) => 
-                    `flex flex-col items-center justify-center gap-1.5 transition-all relative
+                    `flex flex-col items-center justify-center gap-1 transition-all relative w-16
                     ${isPOS ? 'invisible' : ''} 
                     ${isActive ? 'text-electric-400' : 'text-slate-600'}`
                   }
                 >
                   {({ isActive }) => (
                     <>
-                      <div className={`p-2 rounded-xl transition-all ${isActive ? 'bg-electric-500/10' : ''}`}>
-                         <Icon size={22} className={isActive ? 'drop-shadow-[0_0_12px_rgba(59,130,246,0.5)]' : ''} />
+                      <div className={`p-2 rounded-xl transition-all duration-300 ${isActive ? 'bg-electric-500/10 scale-110' : ''}`}>
+                         <Icon size={20} className={isActive ? 'drop-shadow-[0_0_12px_rgba(59,130,246,0.5)]' : ''} />
                       </div>
-                      <span className={`text-[9px] font-black tracking-widest transition-all uppercase ${isActive ? 'opacity-100' : 'opacity-40'}`}>{label}</span>
+                      <span className={`text-[8px] font-black tracking-widest transition-all uppercase ${isActive ? 'opacity-100' : 'opacity-40'}`}>{label}</span>
                     </>
                   )}
                 </NavLink>
@@ -248,8 +248,8 @@ export default function Layout() {
             })}
             
             {/* FAB Label Placeholder (Text only) */}
-            <div className="flex flex-col items-center justify-center gap-1.5 absolute left-1/2 -translate-x-1/2 pt-10">
-               <span className={`text-[9px] font-black tracking-widest uppercase opacity-40 ${location.pathname === '/pos' ? 'text-electric-400 opacity-100' : 'text-slate-600'}`}>بيع</span>
+            <div className="flex flex-col items-center justify-center gap-1.5 absolute left-1/2 -translate-x-1/2 bottom-2">
+               <span className={`text-[8px] font-black tracking-widest uppercase transition-all ${location.pathname === '/pos' ? 'text-electric-400 opacity-100' : 'text-slate-600 opacity-40'}`}>بيع</span>
             </div>
           </nav>
         </div>

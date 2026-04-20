@@ -48,14 +48,19 @@
 
   /* Clean Inputs */
   .input {
-    @apply bg-obsidian-950 border border-white/5 text-white rounded-2xl px-5 py-3.5 w-full focus:outline-none focus:border-electric-500 focus:ring-1 focus:ring-electric-500 transition-all duration-300 placeholder-slate-600 font-bold text-xs sm:text-sm;
+    @apply bg-obsidian-950 border border-white/5 text-white rounded-2xl px-5 py-3.5 w-full focus:outline-none focus:border-electric-500 focus:ring-1 focus:ring-electric-500 transition-all duration-300 placeholder-slate-600 font-bold text-base sm:text-sm;
   }
+}
 
-  /* Clean Badges */
-  .badge-green  { @apply bg-emerald-500/10 text-emerald-400 text-[9px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest border border-emerald-500/10; }
-  .badge-red    { @apply bg-rose-500/10 text-rose-400 text-[9px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest border border-rose-500/10; }
-  .badge-yellow { @apply bg-amber-500/10 text-amber-500 text-[9px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest border border-amber-500/10; }
-  .badge-blue   { @apply bg-electric-500/10 text-electric-400 text-[9px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest border border-electric-500/10; }
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .glass-card {
+    @apply backdrop-blur-none bg-obsidian-900; /* Faster rendering on mobile */
+    backdrop-filter: none;
+  }
+  .shadow-2xl, .shadow-premium {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4); /* Lighter shadows */
+  }
 }
 
 /* Custom Scrollbar */
