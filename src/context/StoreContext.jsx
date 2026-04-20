@@ -48,7 +48,8 @@ export function StoreProvider({ children }) {
     const sub1 = [
       listenCol(COLS.PRODUCTS, data => {
         dispatch({ type: 'SET', key: 'products', data })
-        dispatch({ type: 'LOADING', value: false }) // Initial bridge to UI
+        // Small delay to ensure main thread breathes before hiding loader
+        setTimeout(() => dispatch({ type: 'LOADING', value: false }), 100);
       }),
       listenCol(COLS.CATEGORIES, data => dispatch({ type: 'SET', key: 'categories', data }))
     ];

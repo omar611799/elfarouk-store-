@@ -16,7 +16,7 @@ export default defineConfig({
       injectRegister: 'auto',
 
       manifest: {
-        name: 'الفاروق ستور v2.2',
+        name: 'الفاروق ستور v2.5',
         short_name: 'منظومة الفاروق',
         start_url: '/',
         scope: '/',

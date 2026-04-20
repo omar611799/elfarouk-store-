@@ -11,8 +11,7 @@ const STATUS_MESSAGES = [
 ];
 
 export default function LoadingScreen({ onFinished }) {
-  const [statusIndex, setStatusIndex] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
+  const [showRepair, setShowRepair] = useState(false);
 
   useEffect(() => {
     // Detect mobile for performance optimization
@@ -25,8 +24,25 @@ export default function LoadingScreen({ onFinished }) {
     const interval = setInterval(() => {
       setStatusIndex((prev) => (prev + 1) % STATUS_MESSAGES.length);
     }, 2000);
-    return () => clearInterval(interval);
+
+    // Show repair button after 4 seconds if still loading
+    const timer = setTimeout(() => setShowRepair(true), 4000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timer);
+    }
   }, []);
+
+  const handleManualRepair = async () => {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (let r of regs) await r.unregister();
+    }
+    const names = await caches.keys();
+    for (let name of names) await caches.delete(name);
+    window.location.reload(true); // Forced reload
+  };
   
   return (
     <motion.div
@@ -38,6 +54,7 @@ export default function LoadingScreen({ onFinished }) {
     >
       {/* Background Layer */}
       <div className="absolute inset-0 w-full h-full">
+        {/* Force NO VIDEO on mobile for speed */}
         {!isMobile && (
           <video 
             autoPlay 
@@ -64,16 +81,6 @@ export default function LoadingScreen({ onFinished }) {
           transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
           className="absolute -top-1/4 -left-1/4 w-full h-full bg-electric-600/10 blur-[100px] rounded-full"
         />
-        {!isMobile && (
-          <motion.div 
-            animate={{ 
-              opacity: [0.1, 0.2, 0.1],
-              scale: [1, 1.2, 1],
-            }}
-            transition={{ duration: 12, repeat: Infinity, ease: "linear", delay: 2 }}
-            className="absolute -bottom-1/4 -right-1/4 w-full h-full bg-primary-600/10 blur-[150px] rounded-full"
-          />
-        )}
       </div>
 
       {/* Main Content */}
@@ -89,14 +96,6 @@ export default function LoadingScreen({ onFinished }) {
           >
             <h1 className="text-5xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-500 tracking-[0.2em] md:tracking-[0.4em] uppercase relative leading-none pb-2">
               ELFAROUK
-              {!isMobile && (
-                <motion.div
-                  initial={{ left: '-100%' }}
-                  animate={{ left: '100%' }}
-                  transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
-                  className="absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-25deg] pointer-events-none"
-                />
-              )}
             </h1>
             <div className="absolute -inset-10 bg-electric-500/5 blur-[50px] -z-10 rounded-full" />
           </motion.div>
@@ -107,8 +106,8 @@ export default function LoadingScreen({ onFinished }) {
             transition={{ delay: 0.5 }}
             className="flex flex-col items-center gap-6"
           >
-            <p className="text-electric-400 font-black tracking-[0.4em] text-[9px] md:text-xs uppercase opacity-60">
-              Auto Spare Parts • Elite Management
+            <p className="text-electric-400 font-black tracking-[0.4em] text-[10px] md:text-xs uppercase opacity-60">
+              Elite Parts Management System
             </p>
 
             {/* Progress Bar */}
@@ -117,24 +116,34 @@ export default function LoadingScreen({ onFinished }) {
                 initial={{ width: "0%" }}
                 animate={{ width: "100%" }}
                 onAnimationComplete={() => onFinished?.()}
-                transition={{ duration: 2.5, ease: "easeInOut" }}
+                transition={{ duration: 3, ease: "easeInOut" }}
                 className="absolute inset-y-0 left-0 bg-gradient-to-r from-electric-600 to-cyan-500 shadow-[0_0_15px_rgba(37,99,235,0.5)]"
               />
             </div>
 
-            {/* Status Text */}
-            <div className="h-6 flex items-center justify-center overflow-hidden">
+            {/* Status Text / Repair Button */}
+            <div className="h-12 flex flex-col items-center justify-center gap-4">
               <AnimatePresence mode="wait">
-                <motion.p
-                  key={statusIndex}
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -10, opacity: 0 }}
-                  transition={{ duration: 0.4 }}
-                  className="text-slate-500 font-arabic text-xs font-bold tracking-widest uppercase"
-                >
-                  {STATUS_MESSAGES[statusIndex]}
-                </motion.p>
+                {!showRepair ? (
+                  <motion.p
+                    key={statusIndex}
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -10, opacity: 0 }}
+                    className="text-slate-500 font-arabic text-[10px] font-bold tracking-widest uppercase"
+                  >
+                    {STATUS_MESSAGES[statusIndex]}
+                  </motion.p>
+                ) : (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    onClick={handleManualRepair}
+                    className="bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-2 rounded-full text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95"
+                  >
+                    تحديث النظام وإصلاح الملفات
+                  </motion.button>
+                )}
               </AnimatePresence>
             </div>
           </motion.div>
@@ -143,7 +152,7 @@ export default function LoadingScreen({ onFinished }) {
 
       {/* Footer */}
       <div className="absolute bottom-10 text-[8px] text-slate-700 font-black tracking-[0.3em] uppercase opacity-40">
-        System Core v2.2 • Sequential Load
+        System Core v2.5 • Force Cache Reset Available
       </div>
     </motion.div>
   )
