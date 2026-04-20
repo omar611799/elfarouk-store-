@@ -8,40 +8,56 @@ export default defineConfig({
     port: 5174
   },
   base: '/',
+  build: {
+    chunkSizeWarningLimit: 3000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react':    ['react', 'react-dom', 'react-router-dom'],
+          'vendor-firebase': ['firebase/app', 'firebase/firestore', 'firebase/auth'],
+          'vendor-charts':   ['recharts'],
+          'vendor-motion':   ['framer-motion'],
+          'vendor-ui':       ['lucide-react', 'react-hot-toast'],
+        }
+      }
+    }
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-
       injectRegister: 'auto',
-
       manifest: {
-        name: 'الفاروق ستور v2.5',
-        short_name: 'منظومة الفاروق',
+        name: 'AutoPartsPro — الفاروق ستور',
+        short_name: 'AutoPartsPro',
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        background_color: '#020617',
-        theme_color: '#3b82f6',
+        background_color: '#f8fafc',
+        theme_color: '#f97316',
         icons: [
-          {
-            src: '/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: '/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' }
         ]
       },
-
       workbox: {
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        navigateFallback: '/index.html'
+        navigateFallback: '/index.html',
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MB limit
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: { cacheName: 'google-fonts', expiration: { maxAgeSeconds: 60 * 60 * 24 * 365 } }
+          },
+          {
+            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
+            handler: 'NetworkFirst',
+            options: { cacheName: 'firestore-cache', expiration: { maxAgeSeconds: 60 * 5 } }
+          }
+        ]
       }
     })
   ]
