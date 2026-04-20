@@ -91,13 +91,13 @@ export default function Products() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 sm:space-y-8 pb-32">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 px-1">
         <div>
-            <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight font-display flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-electric-500/10 border border-white/10 flex items-center justify-center shadow-neon">
-                    <Package size={20} className="text-electric-400" />
+            <h1 className="text-xl sm:text-3xl font-black text-slate-800 tracking-tight font-display flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 border border-orange-200 flex items-center justify-center">
+                    <Package size={20} className="text-orange-600" />
                 </div>
                 المخزن وقطع الغيار
             </h1>
-            <p className="text-slate-500 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] mt-2 ml-1">إجمالي القطع: {products.length}</p>
+            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-2 ml-1">إجمالي القطع: {products.length}</p>
         </div>
 
         <div className="flex items-center gap-2">

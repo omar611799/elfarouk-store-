@@ -74,13 +74,13 @@ export default function Invoices() {
     <div className="space-y-6 sm:space-y-8 pb-32">
       <div className="flex items-center justify-between px-1">
         <div>
-            <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight font-display flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-electric-500/10 border border-white/10 flex items-center justify-center shadow-neon">
-                    <FileText size={20} className="text-electric-400" />
+            <h1 className="text-xl sm:text-3xl font-black text-slate-800 tracking-tight font-display flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 border border-orange-200 flex items-center justify-center">
+                    <FileText size={20} className="text-orange-600" />
                 </div>
                 الفواتير والمرتجعات
             </h1>
-            <p className="text-slate-500 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] mt-2 ml-1">إجمالي الفواتير: {invoices.length}</p>
+            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-2 ml-1">إجمالي العمليات: {invoices.length}</p>
         </div>
       </div>
 
