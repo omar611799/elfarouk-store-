@@ -203,10 +203,10 @@ function BottomNavLink({ to, icon: Icon, label, active }) {
   return (
     <NavLink 
       to={to} 
-      className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-300 ${active ? 'text-primary-600 bg-primary-50 scale-110 shadow-sm' : 'text-slate-400 opacity-70'}`}
+      className={`flex flex-col items-center gap-1.5 px-4 py-2 rounded-2xl transition-all duration-300 ${active ? 'text-primary-600 bg-primary-50 scale-110 shadow-sm' : 'text-slate-500 opacity-80'}`}
     >
-      <Icon size={20} className={active ? 'animate-pulse' : ''} />
-      <span className="text-[10px] font-black">{label}</span>
+      <Icon size={22} className={active ? 'animate-pulse' : ''} />
+      <span className="text-xs font-black">{label}</span>
     </NavLink>
   )
 }

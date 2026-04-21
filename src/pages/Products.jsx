@@ -158,13 +158,13 @@ export default function Products() {
                     {/* Main Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <p className="font-black text-slate-800 text-sm truncate">{p.name}</p>
-                        {isLow && <AlertTriangle size={13} className="text-rose-500 shrink-0" />}
+                        <p className="font-black text-slate-900 text-base truncate">{p.name}</p>
+                        {isLow && <AlertTriangle size={14} className="text-rose-500 shrink-0" />}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{p.sku || '–'}</span>
-                        {p.category && <span className="text-[9px] font-black text-primary-500 bg-primary-50 px-2 py-0.5 rounded-md">{p.category}</span>}
-                        {p.supplier && <span className="text-[9px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{p.supplier}</span>}
+                        <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{p.sku || '–'}</span>
+                        {p.category && <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-2.5 py-1 rounded-md">{p.category}</span>}
+                        {p.supplier && <span className="text-[10px] font-black text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">{p.supplier}</span>}
                       </div>
                     </div>
 
@@ -182,8 +182,8 @@ export default function Products() {
 
                     {/* Mobile: stock + price */}
                     <div className="sm:hidden text-left shrink-0">
-                      <p className="text-sm font-black text-slate-800">{Number(p.price).toLocaleString()} ج</p>
-                      <p className={`text-[10px] font-bold ${isLow ? 'text-rose-500' : 'text-slate-400'}`}>{p.quantity} متبقي</p>
+                      <p className="text-base font-black text-slate-900">{Number(p.price).toLocaleString()} ج</p>
+                      <p className={`text-xs font-bold ${isLow ? 'text-rose-600' : 'text-slate-500'}`}>{p.quantity} متبقي</p>
                     </div>
 
                     {/* Actions */}
