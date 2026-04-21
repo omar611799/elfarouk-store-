@@ -48,7 +48,7 @@ export default function Layout() {
       `}>
         {/* Sidebar Header */}
         <div className="p-8 flex items-center gap-4 border-b border-slate-800/50">
-          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-xl shadow-orange-500/20 transform rotate-3 shrink-0">
+          <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-xl shadow-primary-500/20 transform rotate-3 shrink-0">
             <Store size={26} className="text-white" />
           </div>
           <div className="min-w-0">
@@ -74,7 +74,7 @@ export default function Layout() {
               className={({ isActive }) =>
                 `group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 relative overflow-hidden
                 ${isActive 
-                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' 
+                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' 
                   : 'hover:bg-white/[0.03] hover:text-white text-slate-400'}`
               }
             >
@@ -110,12 +110,12 @@ export default function Layout() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-black text-white truncate text-right">{currentUser?.name}</p>
-                  <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider text-right leading-none mt-1">{currentUser?.role === 'admin' ? 'مدير النظام' : 'كاشير'}</p>
+                  <p className="text-[10px] text-primary-500 font-bold uppercase tracking-wider text-right leading-none mt-1">{currentUser?.role === 'admin' ? 'مدير النظام' : 'كاشير'}</p>
                 </div>
              </div>
              <button 
               onClick={logout}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all text-xs font-black"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary-500/10 text-primary-500 hover:bg-primary-500 hover:text-white transition-all text-xs font-black"
              >
                 <LogOut size={16} /> تسجيل الخروج
              </button>
@@ -132,8 +132,8 @@ export default function Layout() {
             <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-3 hover:bg-slate-100 rounded-2xl transition-colors">
               <Menu size={24} className="text-slate-600" />
             </button>
-            <div className="hidden lg:flex items-center gap-3 bg-slate-50/50 px-5 py-3 rounded-2xl border border-slate-200/60 w-[400px] group transition-all focus-within:border-orange-500/50 focus-within:bg-white focus-within:shadow-lg focus-within:shadow-orange-500/5 theme-transition">
-              <Search size={18} className="text-slate-400 group-focus-within:text-orange-500 transition-colors" />
+            <div className="hidden lg:flex items-center gap-3 bg-slate-50/50 px-5 py-3 rounded-2xl border border-slate-200/60 w-[400px] group transition-all focus-within:border-primary-500/50 focus-within:bg-white focus-within:shadow-lg focus-within:shadow-primary-500/5 theme-transition">
+              <Search size={18} className="text-slate-400 group-focus-within:text-primary-500 transition-colors" />
               <input type="text" placeholder="بحث عن منتج، عميل أو رقم فاتورة..." className="bg-transparent border-none outline-none text-sm flex-1 text-slate-800 placeholder-slate-400 text-right font-semibold" />
               <span className="px-2 py-1 bg-slate-200/50 text-[10px] font-black text-slate-400 rounded-md">SKU</span>
             </div>
@@ -142,9 +142,9 @@ export default function Layout() {
 
           <div className="flex items-center gap-4 sm:gap-8 flex-row-reverse">
             <div className="hidden sm:flex items-center gap-6 flex-row-reverse">
-               <button className="relative w-12 h-12 flex items-center justify-center text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded-2xl transition-all group">
+               <button className="relative w-12 h-12 flex items-center justify-center text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-2xl transition-all group">
                   <Bell size={22} />
-                  <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-orange-500 border-2 border-white rounded-full group-hover:animate-ping" />
+                  <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-primary-500 border-2 border-white rounded-full group-hover:animate-ping" />
                </button>
                <button className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-2xl transition-all">
                   <Settings size={22} />
@@ -154,7 +154,7 @@ export default function Layout() {
             <div className="flex items-center gap-4 flex-row-reverse cursor-pointer hover:bg-slate-50 p-2 pr-4 rounded-2xl transition-colors">
                <div className="text-left hidden sm:block">
                   <p className="text-sm font-black text-slate-900 text-left leading-tight">{currentUser?.name}</p>
-                  <p className="text-[11px] text-orange-500 font-black text-left uppercase tracking-tight mt-0.5">مدير المنظومة</p>
+                  <p className="text-[11px] text-primary-500 font-black text-left uppercase tracking-tight mt-0.5">مدير المنظومة</p>
                </div>
                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 border-2 border-white flex items-center justify-center text-slate-500 overflow-hidden shrink-0 shadow-md">
                   <UserIcon size={24} />

@@ -34,7 +34,7 @@ function CartContent({
     <div className="flex flex-col h-full bg-obsidian-950/20">
       <div className="p-4 sm:p-8 border-b border-white/5 flex items-center justify-between sticky top-0 bg-obsidian-900/80 backdrop-blur-xl z-20">
         <h2 className="text-lg sm:text-xl font-black text-white font-display flex items-center gap-3">
-          <ShoppingCart size={20} className="text-electric-400" />
+          <ShoppingCart size={20} className="text-primary-400" />
           سلة البيع
         </h2>
         <div className="flex gap-4 items-center">
@@ -79,7 +79,7 @@ function CartContent({
                 <div className="flex items-center gap-3 sm:gap-4 pointer-events-none">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-black truncate font-display leading-tight">{item.name}</p>
-                    <p className="text-[10px] text-electric-400 font-black mt-1 sm:mt-2 tracking-wide font-display">
+                    <p className="text-[10px] text-primary-400 font-black mt-1 sm:mt-2 tracking-wide font-display">
                       {Number(item.price).toLocaleString('en-US')} ج.م
                     </p>
                   </div>
@@ -121,7 +121,7 @@ function CartContent({
               placeholder="اسم العميل..."
               className="input !py-4 pr-12 text-sm"
             />
-            <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-electric-400 transition-colors" />
+            <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary-400 transition-colors" />
 
             {suggestedCustomers.length > 0 && (
               <div className="absolute bottom-full left-0 right-0 mb-3 bg-obsidian-900 border border-white/10 rounded-2xl sm:rounded-3xl shadow-premium z-50 overflow-hidden divide-y divide-white/5 max-h-48 overflow-y-auto">
@@ -132,8 +132,8 @@ function CartContent({
                     className="w-full text-right px-4 sm:px-6 py-3.5 hover:bg-electric-500/10 transition-all flex justify-between items-center group"
                   >
                     <div className="flex items-center gap-2">
-                      <ChevronLeft size={14} className="text-slate-700 group-hover:text-electric-400 group-hover:-translate-x-1 transition-all" />
-                      <span className="text-electric-400 font-black text-[9px] uppercase tracking-widest">{sc.phone}</span>
+                      <ChevronLeft size={14} className="text-slate-700 group-hover:text-primary-400 group-hover:-translate-x-1 transition-all" />
+                      <span className="text-primary-400 font-black text-[9px] uppercase tracking-widest">{sc.phone}</span>
                     </div>
                     <span className="text-white text-xs sm:text-sm font-black font-display">{sc.name}</span>
                   </button>
@@ -294,7 +294,7 @@ export default function POS() {
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-2xl mx-auto py-10 px-4">
       <div className="card text-center relative overflow-hidden flex flex-col items-center py-10 sm:py-16">
         <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-emerald-500/50 via-emerald-400 to-emerald-500/50" />
-        <div className="w-16 h-16 sm:w-24 sm:h-24 bg-emerald-500/10 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mb-6 sm:mb-8 border border-emerald-500/20 shadow-neon">
+        <div className="w-16 h-16 sm:w-24 sm:h-24 bg-emerald-500/10 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mb-6 sm:mb-8 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
           <Send size={32} className="text-emerald-400" />
         </div>
         <h2 className="text-2xl sm:text-4xl font-black text-white mb-2 sm:mb-3 font-display tracking-tight">تم البيع بنجاح!</h2>
@@ -326,8 +326,8 @@ export default function POS() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between sm:hidden">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-electric-500/10 border border-white/10 flex items-center justify-center shadow-neon">
-                  <Sparkles size={18} className="text-electric-400" />
+                <div className="w-9 h-9 rounded-xl bg-primary-500/10 border border-white/10 flex items-center justify-center shadow-lg shadow-primary-500/5">
+                  <Sparkles size={18} className="text-primary-400" />
                 </div>
                 <h1 className="text-lg font-black text-white tracking-tight font-display">نقطة البيع</h1>
               </div>
@@ -335,7 +335,7 @@ export default function POS() {
 
             <div className="flex items-center gap-2">
               <div className="relative group flex-1">
-                <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-electric-400 transition-colors" />
+                <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary-400 transition-colors" />
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
@@ -346,7 +346,7 @@ export default function POS() {
                   {showScanner ? (
                     <button onClick={() => setShowScanner(false)} className="p-2 rounded-xl bg-rose-500/10 text-rose-400 active:scale-95 transition-all"><X size={18} /></button>
                   ) : (
-                    <button onClick={() => setShowScanner(true)} className="p-2 rounded-xl bg-electric-500/10 text-electric-400 active:scale-95 transition-all"><Camera size={18} /></button>
+                    <button onClick={() => setShowScanner(true)} className="p-2 rounded-xl bg-primary-500/10 text-primary-400 active:scale-95 transition-all"><Camera size={18} /></button>
                   )}
                   <button onClick={startVoiceSearch} className={`p-2 rounded-xl transition-all ${isListening ? 'bg-rose-500/20 text-rose-400 animate-pulse' : 'bg-white/5 text-slate-500'}`}>
                     <Mic size={18} />
@@ -400,7 +400,7 @@ export default function POS() {
                 </span>
               </div>
               <div className="ml-1">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-electric-600 text-white flex items-center justify-center shadow-[0_8px_20px_rgba(37,99,235,0.4)] group-active:scale-90 transition-transform">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-primary-600 text-white flex items-center justify-center shadow-[0_8px_20px_rgba(249,115,22,0.3)] group-active:scale-90 transition-transform">
                   <Plus size={20} className="sm:w-8 sm:h-8" />
                 </div>
               </div>
@@ -436,7 +436,7 @@ export default function POS() {
                 <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg">
                   <ShoppingCart size={22} className="text-white" />
                 </div>
-                <span className="absolute -top-2 -right-2 bg-electric-600 text-white text-[10px] font-black w-6 h-6 rounded-xl border-4 border-white flex items-center justify-center">{cart.length}</span>
+                <span className="absolute -top-2 -right-2 bg-primary-600 text-white text-[10px] font-black w-6 h-6 rounded-xl border-4 border-white flex items-center justify-center">{cart.length}</span>
               </div>
               <div>
                 <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1 opacity-70">إجمالي الطلب</p>

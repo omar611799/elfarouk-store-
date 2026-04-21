@@ -56,8 +56,8 @@ export default function StockHistory() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-white tracking-tight font-display flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-electric-500/10 border border-white/10 flex items-center justify-center shadow-neon">
-                <History size={22} className="text-electric-400" />
+            <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-white/10 flex items-center justify-center shadow-lg shadow-primary-500/5">
+                <History size={22} className="text-primary-400" />
             </div>
             سجل تتبع المخزن
           </h1>
@@ -68,7 +68,7 @@ export default function StockHistory() {
       {/* Filters Overlay */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1 group">
-            <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-electric-400 transition-colors" />
+            <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary-400 transition-colors" />
             <input 
                 value={search} 
                 onChange={e => setSearch(e.target.value)} 
@@ -147,7 +147,7 @@ export default function StockHistory() {
 
                   <div className="flex flex-col lg:items-end justify-center gap-1">
                     <div className="flex items-center gap-2 text-[10px] text-slate-200 font-black font-display leading-none">
-                        <Calendar size={12} className="text-electric-400/50" />
+                        <Calendar size={12} className="text-primary-400/50" />
                         <span>{date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black leading-none mt-1">

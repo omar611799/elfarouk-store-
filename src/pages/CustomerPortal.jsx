@@ -41,11 +41,11 @@ export default function CustomerPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-obsidian-950 text-right font-sans pb-20 overflow-x-hidden selection:bg-electric-500 selection:text-white" dir="rtl">
+    <div className="min-h-screen bg-obsidian-950 text-right font-sans pb-20 overflow-x-hidden selection:bg-primary-500 selection:text-white" dir="rtl">
       {/* Premium Header */}
       <div className="relative bg-obsidian-900 pt-16 pb-36 px-6 overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-electric-500/10 blur-[150px] -mr-64 -mt-64 rounded-full" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-500/10 blur-[150px] -mr-64 -mt-64 rounded-full" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-cyan-500/5 blur-[120px] -ml-40 -mb-40 rounded-full" />
         
         <div className="max-w-4xl mx-auto relative z-10 flex flex-col md:flex-row items-center gap-10">
@@ -55,15 +55,15 @@ export default function CustomerPortal() {
                 </div>
             </motion.div>
             <div className="flex-1 text-center md:text-right">
-                <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-electric-400 font-black tracking-widest text-[10px] mb-3 uppercase leading-none">بوابة عمـلاء الفاروق ستور</motion.p>
+                <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-primary-400 font-black tracking-widest text-[10px] mb-3 uppercase leading-none">بوابة عمـلاء الفاروق ستور</motion.p>
                 <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl md:text-6xl font-black text-white mb-6 font-display tracking-tight">مرحباً، أستاذ {customer?.name || 'العميل المميز'}</motion.h1>
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex flex-wrap justify-center md:justify-start gap-4">
                     <span className="flex items-center gap-2.5 bg-white/5 backdrop-blur-md px-4 py-2 rounded-2xl text-[10px] font-black text-slate-300 border border-white/10 uppercase tracking-widest leading-none">
-                        <Phone size={14} className="text-electric-400" /> {phone}
+                        <Phone size={14} className="text-primary-400" /> {phone}
                     </span>
                     {customer?.carModel && (
                         <span className="flex items-center gap-2.5 bg-white/5 backdrop-blur-md px-4 py-2 rounded-2xl text-[10px] font-black text-slate-300 border border-white/10 uppercase tracking-widest leading-none">
-                            <Car size={14} className="text-electric-400" /> {customer.carModel}
+                            <Car size={14} className="text-primary-400" /> {customer.carModel}
                         </span>
                     )}
                 </motion.div>
@@ -92,11 +92,11 @@ export default function CustomerPortal() {
 
         {/* Timeline */}
         <div className="card p-6 sm:p-12 border-white/5 shadow-premium overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-electric-500/[0.03] blur-[100px] pointer-events-none" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/[0.03] blur-[100px] pointer-events-none" />
             
             <h2 className="text-2xl sm:text-4xl font-black text-white mb-12 flex items-center gap-4 font-display tracking-tight">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 bg-electric-500/10 rounded-2xl flex items-center justify-center border border-white/5 shadow-neon">
-                    <History size={24} className="text-electric-400" />
+                <div className="w-10 h-10 sm:w-14 sm:h-14 bg-primary-500/10 rounded-2xl flex items-center justify-center border border-white/5 shadow-neon">
+                    <History size={24} className="text-primary-400" />
                 </div>
                 سجل المشتريات والصيانة
             </h2>
@@ -112,7 +112,7 @@ export default function CustomerPortal() {
                         const date = inv.createdAt?.toDate?.() || new Date(inv.createdAt)
                         return (
                             <motion.div key={idx} initial={{ x: 20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} viewport={{ once: true }} className="relative pr-8 sm:pr-12 border-r-2 border-white/5 pb-4">
-                                <div className="absolute right-[-7px] top-0 w-3.5 h-3.5 rounded-full bg-electric-500 shadow-neon flex items-center justify-center" />
+                                <div className="absolute right-[-7px] top-0 w-3.5 h-3.5 rounded-full bg-primary-500 shadow-neon flex items-center justify-center" />
                                 
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pr-6">
                                     <div>
@@ -128,10 +128,10 @@ export default function CustomerPortal() {
 
                                 <div className="grid grid-cols-1 gap-3 sm:gap-4 pr-0">
                                     {(inv.items || []).map((item, i) => (
-                                        <div key={i} className="group bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.03] hover:border-electric-500/20 rounded-[1.5rem] p-4 sm:p-6 flex items-center justify-between transition-all duration-300">
+                                        <div key={i} className="group bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.03] hover:border-primary-500/20 rounded-[1.5rem] p-4 sm:p-6 flex items-center justify-between transition-all duration-300">
                                             <div className="flex items-center gap-4 sm:gap-6">
                                                 <div className="w-10 h-10 sm:w-14 sm:h-14 bg-obsidian-950 border border-white/5 rounded-xl sm:rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-xl">
-                                                    <Wrench size={18} className="text-slate-500 group-hover:text-electric-400 transition-colors" />
+                                                    <Wrench size={18} className="text-slate-500 group-hover:text-primary-400 transition-colors" />
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-sm sm:text-lg font-black text-white font-display truncate leading-tight mb-1">{item.name}</p>
@@ -164,15 +164,15 @@ export default function CustomerPortal() {
         </div>
 
         {/* Footer Contact */}
-        <div className="card !p-0 border-electric-500/10 overflow-hidden relative group">
-             <div className="absolute inset-0 bg-gradient-to-r from-electric-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+        <div className="card !p-0 border-primary-500/10 overflow-hidden relative group">
+             <div className="absolute inset-0 bg-gradient-to-r from-primary-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
              <div className="p-8 sm:p-12 text-center relative z-10 flex flex-col items-center">
-                <div className="w-16 h-16 bg-electric-500/10 rounded-3xl flex items-center justify-center mb-6 border border-white/5 group-hover:scale-110 transition-transform shadow-neon">
-                    <MapPin size={28} className="text-electric-400" />
+                <div className="w-16 h-16 bg-primary-500/10 rounded-3xl flex items-center justify-center mb-6 border border-white/5 group-hover:scale-110 transition-transform shadow-neon">
+                    <MapPin size={28} className="text-primary-400" />
                 </div>
                 <h3 className="text-2xl font-black text-white mb-3 font-display tracking-tight">نفتخر بخدمتكم دائماً</h3>
                 <p className="text-[10px] text-slate-500 max-w-xs font-black uppercase tracking-widest mb-8 leading-relaxed opacity-60">الفاروق ستور - قطع غيار السيارات بجودة عالمية وأسعار تنافسية.</p>
-                <a href="tel:01000000000" className="inline-flex items-center gap-3 bg-electric-600 hover:bg-electric-500 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-neon transition-all active:scale-95">
+                <a href="tel:01000000000" className="inline-flex items-center gap-3 bg-primary-600 hover:bg-primary-500 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-neon transition-all active:scale-95">
                     <Phone size={18} /> اتصـل بنا الآن
                 </a>
              </div>

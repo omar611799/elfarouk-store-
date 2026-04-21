@@ -229,7 +229,7 @@ export default function Invoices() {
                               <MessageCircle size={14} /> واتساب
                             </button>
                             <button onClick={() => window.open(`/receipt/${inv.id}`, '_blank')}
-                              className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all border border-blue-200">
+                              className="flex-1 bg-primary-50 hover:bg-primary-100 text-primary-600 text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all border border-primary-200">
                               <Eye size={14} /> إيصال
                             </button>
                             <button onClick={() => { setReturnMode(inv.id); setReturnQtys({}) }}

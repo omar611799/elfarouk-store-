@@ -56,8 +56,8 @@ export default function Customers() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 px-1">
         <div>
             <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight font-display flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-electric-500/10 border border-white/10 flex items-center justify-center shadow-neon">
-                    <Users size={20} className="text-electric-400" />
+                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-white/10 flex items-center justify-center shadow-lg shadow-primary-500/5">
+                    <Users size={20} className="text-primary-400" />
                 </div>
                 قاعدة بيانات العملاء
             </h1>
@@ -70,24 +70,24 @@ export default function Customers() {
       </div>
 
       <div className="relative group px-1">
-        <Search size={16} className="absolute right-4 sm:right-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-electric-400 transition-colors" />
+        <Search size={16} className="absolute right-4 sm:right-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary-400 transition-colors" />
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="ابحث بالاسم، رقم الهاتف..." className="input pr-10 sm:pr-12 text-sm" />
       </div>
 
       <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 gap-2.5 sm:gap-4 px-1">
         {filtered.map(c => (
-          <motion.div variants={itemVariant} layout key={c.id} className="card !py-3 !px-4 sm:!py-6 sm:!px-8 hover:border-electric-500/30 group flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
+          <motion.div variants={itemVariant} layout key={c.id} className="card !py-3 !px-4 sm:!py-6 sm:!px-8 hover:border-primary-500/30 group flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
             <div className="flex items-center gap-4 w-full sm:w-auto">
               <div className="w-12 h-12 sm:w-14 sm:h-14 bg-obsidian-950 border border-white/5 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-all duration-500 shadow-xl">
-                <Users size={20} className="text-electric-400 opacity-50 group-hover:opacity-100 transition-opacity" />
+                <Users size={20} className="text-primary-400 opacity-50 group-hover:opacity-100 transition-opacity" />
               </div>
               
               <div className="flex-1 min-w-0 text-right">
-                <p className="font-black text-white text-sm sm:text-lg tracking-tight group-hover:text-electric-400 transition-colors font-display truncate leading-tight">{c.name}</p>
+                <p className="font-black text-white text-sm sm:text-lg tracking-tight group-hover:text-primary-400 transition-colors font-display truncate leading-tight">{c.name}</p>
                 <div className="flex items-center gap-3 mt-1">
                     {c.phone && <span className="text-[7px] sm:text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none flex items-center gap-1"><Phone size={8} className="text-emerald-500" /> {c.phone}</span>}
-                    {c.carModel && <span className="text-[7px] sm:text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none flex items-center gap-1"><Car size={8} className="text-electric-400" /> {c.carModel}</span>}
+                    {c.carModel && <span className="text-[7px] sm:text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none flex items-center gap-1"><Car size={8} className="text-primary-400" /> {c.carModel}</span>}
                 </div>
               </div>
 
@@ -170,8 +170,8 @@ export default function Customers() {
               <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mt-3 mb-1 sm:hidden" onClick={() => setHistoryCustomer(null)} />
               <div className="p-6 sm:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
                 <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-electric-500/10 rounded-xl sm:rounded-2xl flex items-center justify-center border border-white/5 shadow-neon">
-                        <Wrench size={20} className="text-electric-400" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-500/10 rounded-xl sm:rounded-2xl flex items-center justify-center border border-white/5 shadow-lg shadow-primary-500/5">
+                        <Wrench size={20} className="text-primary-400" />
                     </div>
                     <div>
                         <h2 className="font-black text-white text-lg sm:text-xl font-display">سجل صيانة العميل</h2>
@@ -189,7 +189,7 @@ export default function Customers() {
                 ) : (
                     customerHistory.map((inv, idx) => (
                         <div key={inv.id} className="relative pr-6 sm:pr-8 border-r-2 border-white/5 pb-2">
-                             <div className="absolute right-[-5px] top-0 w-2 h-2 bg-electric-500 rounded-full shadow-neon" />
+                             <div className="absolute right-[-5px] top-0 w-2 h-2 bg-primary-500 rounded-full shadow-lg shadow-primary-500/5" />
                              
                              <div className="flex justify-between items-center mb-3 sm:mb-4 pr-3 sm:pr-4">
                                 <div className="flex items-center gap-2 sm:gap-3">
@@ -200,7 +200,7 @@ export default function Customers() {
                                         {(inv.createdAt?.toDate?.() || new Date(inv.createdAt)).toLocaleDateString('en-GB')}
                                     </span>
                                 </div>
-                                <div className="badge-blue !bg-white/5 !border-white/5 !text-[7px] sm:!text-[8px] tracking-tighter">رقم {inv.number}</div>
+                                <div className="badge-primary !bg-white/5 !border-white/5 !text-[7px] sm:!text-[8px] tracking-tighter">رقم {inv.number}</div>
                              </div>
 
                              <div className="glass-card !p-3 sm:!p-5 !rounded-2xl sm:!rounded-3xl border-white/[0.03] space-y-3 sm:space-y-4">
@@ -211,7 +211,7 @@ export default function Customers() {
                                             {item.returnedQty > 0 && <span className="badge-red !py-0.5 !px-2 mt-1 !text-[7px] w-fit">مرتجع: {item.returnedQty}</span>}
                                         </div>
                                         <div className="text-left flex flex-col items-end shrink-0">
-                                            <p className="text-electric-400 font-black font-display text-xs sm:text-sm">{item.price?.toLocaleString('en-US')} ج.م</p>
+                                            <p className="text-primary-400 font-black font-display text-xs sm:text-sm">{item.price?.toLocaleString('en-US')} ج.م</p>
                                             <p className="text-[8px] lg:text-[9px] text-slate-600 font-black uppercase mt-0.5">الكمية: {item.qty}</p>
                                         </div>
                                     </div>

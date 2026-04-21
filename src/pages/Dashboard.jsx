@@ -103,13 +103,13 @@ export default function Dashboard() {
       {/* ── Row 1: Stats Bar ─────────────────────────────────────── */}
       <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard label="إجمالي المنتجات" value={totalProducts.toLocaleString()} icon={Package}
-          trend="+12%" trendUp color="blue" sparkline={[20,35,28,50,40,60,55]} />
+          trend="+12%" trendUp color="primary" sparkline={[20,35,28,50,40,60,55]} />
         <StatCard label="نواقص المخزون" value={lowStock.length} icon={AlertTriangle}
           trend="ينتظر" trendUp={false} color="amber" sparkline={[50,40,60,30,45,20,15]} />
         <StatCard label="إجمالي المبيعات" value={`${Math.round(totalSales).toLocaleString()} ج.م`} icon={TrendingUp}
           trend="+8.5%" trendUp color="emerald" sparkline={[10,30,20,50,40,70,90]} />
         <StatCard label="الطلبات النشطة" value={activeOrders} icon={ShoppingCart}
-          trend={`+${activeOrders}`} trendUp color="orange" sparkline={[5,12,8,14,10,18,16]} />
+          trend={`+${activeOrders}`} trendUp color="primary" sparkline={[5,12,8,14,10,18,16]} />
       </motion.div>
 
       {/* ── Row 2: Chart + Right Panel ──────────────────────────── */}
@@ -121,7 +121,7 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-7 pt-6 pb-5 border-b border-slate-100">
             <div>
               <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                <Activity size={20} className="text-orange-500" />
+                <Activity size={20} className="text-primary-500" />
                 المبيعات على مدار الوقت
               </h2>
               <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
@@ -131,7 +131,7 @@ export default function Dashboard() {
             <div className="flex bg-slate-100 p-1 rounded-xl">
               {['7d', '30d'].map(p => (
                 <button key={p} onClick={() => setPeriod(p)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${period === p ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25' : 'text-slate-500 hover:text-slate-800'}`}>
+                  className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${period === p ? 'bg-primary-500 text-white shadow-md shadow-primary-500/25' : 'text-slate-500 hover:text-slate-800'}`}>
                   {p === '7d' ? 'آخر 7 أيام' : 'آخر 30 يوم'}
                 </button>
               ))}
@@ -171,7 +171,7 @@ export default function Dashboard() {
           <div className="card !p-5 space-y-3">
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-black text-slate-800 text-sm">حالة المخزون</h3>
-              <button className="p-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors">
+              <button className="p-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors">
                 <Download size={13} />
               </button>
             </div>
@@ -248,7 +248,7 @@ export default function Dashboard() {
         <motion.div variants={item} className="card !p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-black text-slate-800 flex items-center gap-2">
-              <Activity size={16} className="text-blue-500" />
+              <Activity size={16} className="text-primary-500" />
               نشاط العملاء
             </h3>
             <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">{recentInvoices.length} عملية</span>
@@ -258,8 +258,8 @@ export default function Dashboard() {
               ? <EmptyState />
               : recentInvoices.map(inv => (
                 <div key={inv.id} className="flex items-center gap-3 group">
-                  <div className="w-9 h-9 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
-                    <ShoppingCart size={15} className="text-blue-500" />
+                  <div className="w-9 h-9 rounded-2xl bg-primary-50 flex items-center justify-center shrink-0 group-hover:bg-primary-100 transition-colors">
+                    <ShoppingCart size={15} className="text-white group-hover:text-primary-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-black text-slate-800 truncate">{inv.customerData?.name || 'عميل نقدي'}</p>
@@ -295,10 +295,10 @@ export default function Dashboard() {
         <motion.div variants={item} className="card !p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-black text-slate-800 flex items-center gap-2">
-              <Bell size={16} className="text-violet-500" />
+              <Bell size={16} className="text-slate-500" />
               تنبيهات المنظومة
             </h3>
-            <RefreshCw size={14} className="text-slate-300 cursor-pointer hover:text-orange-500 transition-colors" />
+            <RefreshCw size={14} className="text-slate-300 cursor-pointer hover:text-primary-500 transition-colors" />
           </div>
           <div className="space-y-5 relative">
             <div className="absolute right-[14px] top-3 bottom-3 w-px bg-slate-100 z-0" />
@@ -307,11 +307,11 @@ export default function Dashboard() {
               title="فاتورة مكتملة" sub={`INV-#${invoices[0]?.number || '0001'} — ${(invoices[0]?.total || 0).toLocaleString()} ج.م`}
               time="منذ 10 دقائق" />
             <ActivityFeedItem
-              icon={Package} color="blue"
+              icon={Package} color="primary"
               title="تحديث مخزون" sub={`${products[0]?.name || 'منتج'} — ${products[0]?.quantity || 0} قطعة`}
               time="منذ 40 دقيقة" />
             <ActivityFeedItem
-              icon={Users} color="orange"
+              icon={Users} color="primary"
               title="عميل جديد" sub={`${customers[0]?.name || 'عميل'} — ${customers[0]?.phone || '05X XXX XXXX'}`}
               time="منذ ساعتين" />
             {lowStock.length > 0 && (
@@ -358,11 +358,11 @@ export default function Dashboard() {
                 <AreaChart data={salesHistory.slice(-14)}>
                   <defs>
                     <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <Area type="monotone" dataKey="value" stroke="#0ea5e9" strokeWidth={2.5}
+                  <Area type="monotone" dataKey="value" stroke="#f97316" strokeWidth={2.5}
                     fill="url(#sparkGrad)" dot={false} />
                   <Tooltip formatter={v => [`${v.toLocaleString()} ج.م`]} contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.08)' }} />
                 </AreaChart>
@@ -408,7 +408,7 @@ export default function Dashboard() {
             {/* Brand */}
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+                <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20">
                   <ShoppingCart size={18} className="text-white" />
                 </div>
                 <h2 className="text-lg font-black text-slate-800">AutoPartsPro</h2>
@@ -472,12 +472,12 @@ export default function Dashboard() {
 
 function StatCard({ label, value, icon: Icon, trend, trendUp, color, sparkline }) {
   const palette = {
-    blue:    { bg: 'bg-blue-50',    text: 'text-blue-600',    stroke: '#3b82f6' },
+    primary: { bg: 'bg-primary-50', text: 'text-primary-600', stroke: '#f97316' },
     amber:   { bg: 'bg-amber-50',   text: 'text-amber-600',   stroke: '#f59e0b' },
     emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', stroke: '#10b981' },
-    orange:  { bg: 'bg-orange-50',  text: 'text-orange-600',  stroke: '#f97316' },
+    slate:   { bg: 'bg-slate-50',   text: 'text-slate-600',   stroke: '#64748b' },
   }
-  const p = palette[color] || palette.blue
+  const p = palette[color] || palette.primary
   const data = sparkline.map(v => ({ v }))
 
   return (
@@ -566,9 +566,9 @@ function BestSellerRow({ product, rank }) {
 function ActivityFeedItem({ icon: Icon, color, title, sub, time }) {
   const palette = {
     emerald: 'bg-emerald-100 text-emerald-600',
-    blue:    'bg-blue-100 text-blue-600',
-    orange:  'bg-orange-100 text-orange-600',
+    primary: 'bg-primary-100 text-primary-600',
     rose:    'bg-rose-100 text-rose-600',
+    slate:   'bg-slate-100 text-slate-600',
   }
   return (
     <div className="flex gap-3 relative z-10">

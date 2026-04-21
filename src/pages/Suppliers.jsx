@@ -65,8 +65,8 @@ export default function Suppliers() {
       <div className="space-y-2">
         {suppliers.map(s => (
           <div key={s.id} className="card flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Truck size={18} className="text-purple-400" />
+            <div className="w-10 h-10 bg-primary-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Truck size={18} className="text-primary-400" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-white text-sm">{s.name}</p>

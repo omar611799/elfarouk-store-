@@ -80,7 +80,7 @@ export default function Expenses() {
 
       <div className="space-y-3 sm:space-y-4 px-1">
         <h2 className="font-black text-white text-base sm:text-lg flex items-center gap-2 px-1 uppercase tracking-tight font-display">
-          <Calendar size={16} className="text-electric-400" />
+          <Calendar size={16} className="text-primary-400" />
           سجل المصروفات
         </h2>
 

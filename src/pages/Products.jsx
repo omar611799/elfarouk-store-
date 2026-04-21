@@ -79,13 +79,13 @@ export default function Products() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-            <span className="w-10 h-10 bg-blue-100 rounded-2xl flex items-center justify-center">
-              <Package size={20} className="text-blue-600" />
+            <span className="w-10 h-10 bg-primary-100 rounded-2xl flex items-center justify-center">
+              <Package size={20} className="text-primary-600" />
             </span>
             المخزن وقطع الغيار
           </h1>
           <p className="text-slate-400 text-xs font-bold mt-1">
-            إجمالي القطع: <span className="text-blue-600 font-black">{products.length}</span>
+            إجمالي القطع: <span className="text-primary-600 font-black">{products.length}</span>
             {lowStockCount > 0 && <span className="mr-3 text-rose-500 font-black">{lowStockCount} منخفضة</span>}
           </p>
         </div>
@@ -103,16 +103,16 @@ export default function Products() {
 
       {/* ── Summary Mini Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <MiniStat label="كل المنتجات" value={products.length} color="blue" />
+        <MiniStat label="كل المنتجات" value={products.length} color="primary" />
         <MiniStat label="منخفض المخزون" value={lowStockCount} color="rose" alert />
-        <MiniStat label="الفئات" value={categories.length} color="violet" />
+        <MiniStat label="الفئات" value={categories.length} color="slate" />
         <MiniStat label="الموردين" value={suppliers.length} color="emerald" />
       </div>
 
       {/* ── Filters ── */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 group">
-          <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors" />
+          <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="ابحث بالاسم أو الكود SKU..." className="input pr-11 !rounded-2xl" />
         </div>
@@ -163,8 +163,8 @@ export default function Products() {
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{p.sku || '–'}</span>
-                        {p.category && <span className="text-[9px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md">{p.category}</span>}
-                        {p.supplier && <span className="text-[9px] font-black text-violet-500 bg-violet-50 px-2 py-0.5 rounded-md">{p.supplier}</span>}
+                        {p.category && <span className="text-[9px] font-black text-primary-500 bg-primary-50 px-2 py-0.5 rounded-md">{p.category}</span>}
+                        {p.supplier && <span className="text-[9px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{p.supplier}</span>}
                       </div>
                     </div>
 
@@ -189,11 +189,11 @@ export default function Products() {
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button onClick={() => setQrModal(p)}
-                        className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
+                        className="p-2.5 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-xl transition-all">
                         <QrCode size={15} />
                       </button>
                       <button onClick={() => openEdit(p)}
-                        className="p-2.5 text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-all">
+                        className="p-2.5 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-xl transition-all">
                         <Edit2 size={15} />
                       </button>
                       <button onClick={() => { if (window.confirm('حذف هذا المنتج؟')) deleteProduct(p.id) }}
@@ -342,10 +342,10 @@ export default function Products() {
 
 function MiniStat({ label, value, color, alert }) {
   const palette = {
-    blue:   'bg-blue-50 text-blue-700',
-    rose:   'bg-rose-50 text-rose-700',
-    violet: 'bg-violet-50 text-violet-700',
-    emerald:'bg-emerald-50 text-emerald-700',
+    primary: 'bg-primary-50 text-primary-700',
+    rose:    'bg-rose-50 text-rose-700',
+    slate:   'bg-slate-100 text-slate-700',
+    emerald: 'bg-emerald-50 text-emerald-700',
   }
   return (
     <div className={`rounded-2xl p-4 flex flex-col gap-1 ${palette[color]}`}>

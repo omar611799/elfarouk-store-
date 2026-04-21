@@ -34,8 +34,8 @@ export default function Login() {
       
       {/* Dynamic Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-5%] left-[-5%] w-[70%] h-[70%] bg-electric-600/10 blur-[100px] rounded-full animate-pulse-glow" />
-        <div className="absolute bottom-[-5%] right-[-5%] w-[60%] h-[60%] bg-cyan-600/5 blur-[80px] rounded-full animate-pulse-glow" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-[-5%] left-[-5%] w-[70%] h-[70%] bg-primary-600/10 blur-[100px] rounded-full animate-pulse-glow" />
+        <div className="absolute bottom-[-5%] right-[-5%] w-[60%] h-[60%] bg-amber-600/5 blur-[80px] rounded-full animate-pulse-glow" style={{ animationDelay: '2s' }} />
         
         {/* Animated Grid Overlay */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03]" />
@@ -50,14 +50,14 @@ export default function Login() {
         <div className="text-center mb-8 sm:mb-10">
           <motion.div 
             whileHover={{ rotate: 10, scale: 1.1 }}
-            className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-electric-600 to-cyan-500 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-[0_0_30px_rgba(37,99,235,0.4)]"
+            className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-primary-600 to-orange-400 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-[0_0_30px_rgba(249,115,22,0.4)]"
           >
             <Cpu size={32} className="text-white sm:hidden" />
             <Cpu size={36} className="text-white hidden sm:block" />
           </motion.div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none mb-3">الفاروق ستور</h1>
           <div className="flex items-center justify-center gap-2 opacity-60">
-            <ShieldCheck size={14} className="text-electric-400" />
+            <ShieldCheck size={14} className="text-primary-400" />
             <p className="text-slate-400 text-xs font-black uppercase tracking-[0.2em]">نظام التشفير المتطور</p>
           </div>
         </div>
@@ -72,8 +72,8 @@ export default function Login() {
                 initial={false}
                 animate={{ 
                   scale: pin.length > idx ? 1.1 : 1,
-                  backgroundColor: pin.length > idx ? 'rgba(59, 130, 246, 0.5)' : 'rgba(255, 255, 255, 0.05)',
-                  borderColor: pin.length > idx ? 'rgba(59, 130, 246, 0.8)' : 'rgba(255, 255, 255, 0.1)',
+                  backgroundColor: pin.length > idx ? 'rgba(249, 115, 22, 0.5)' : 'rgba(255, 255, 255, 0.05)',
+                  borderColor: pin.length > idx ? 'rgba(249, 115, 22, 0.8)' : 'rgba(255, 255, 255, 0.1)',
                 }}
                 className="w-10 h-14 sm:w-12 sm:h-16 rounded-xl sm:rounded-2xl border-2 flex items-center justify-center text-xl sm:text-2xl font-black text-white shadow-inner transition-all overflow-hidden relative"
               >
@@ -93,7 +93,7 @@ export default function Login() {
                    <motion.div 
                      animate={{ opacity: [0, 1, 0] }}
                      transition={{ repeat: Infinity, duration: 1 }}
-                     className="absolute bottom-3 w-3 sm:w-4 h-0.5 bg-electric-400" 
+                     className="absolute bottom-3 w-3 sm:w-4 h-0.5 bg-primary-400" 
                    />
                 )}
               </motion.div>
@@ -109,7 +109,7 @@ export default function Login() {
                 type="button"
                 key={num}
                 onClick={() => triggerKey(num.toString())}
-                className="bg-white/5 border border-white/5 rounded-xl sm:rounded-2xl py-4 sm:py-5 text-xl sm:text-2xl font-black transition-all text-white font-display backdrop-blur-md hover:border-white/20 active:bg-electric-500/20 shadow-sm"
+                className="bg-white/5 border border-white/5 rounded-xl sm:rounded-2xl py-4 sm:py-5 text-xl sm:text-2xl font-black transition-all text-white font-display backdrop-blur-md hover:border-white/20 active:bg-primary-500/20 shadow-sm"
               >
                 {num}
               </motion.button>
@@ -139,7 +139,7 @@ export default function Login() {
               type="button"
               onClick={handleLogin}
               disabled={loading || pin.length < 4}
-              className="bg-electric-600 hover:bg-electric-500 border border-electric-400/20 rounded-xl sm:rounded-2xl py-4 sm:py-5 transition-all text-white flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.5)] disabled:opacity-50 disabled:shadow-none"
+              className="bg-primary-600 hover:bg-primary-500 border border-primary-400/20 rounded-xl sm:rounded-2xl py-4 sm:py-5 transition-all text-white flex items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.5)] disabled:opacity-50 disabled:shadow-none"
               aria-label="Login"
             >
               <KeyRound size={24} />
@@ -157,9 +157,9 @@ export default function Login() {
                   exit={{ opacity: 0 }}
                   className="flex items-center justify-center gap-3 py-2"
                 >
-                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-2 h-2 bg-electric-500 rounded-full" />
-                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-electric-500 rounded-full" />
-                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 bg-electric-500 rounded-full" />
+                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-2 h-2 bg-primary-500 rounded-full" />
+                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-primary-500 rounded-full" />
+                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 bg-primary-500 rounded-full" />
                 </motion.div>
               ) : (
                 <motion.p 
@@ -167,7 +167,7 @@ export default function Login() {
                   animate={{ opacity: 1 }}
                   className="text-slate-500 text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2"
                 >
-                  <Sparkles size={12} className="text-electric-400 animate-pulse" /> نظام الفاروق لإدارة المحلات
+                  <Sparkles size={12} className="text-primary-400 animate-pulse" /> نظام الفاروق لإدارة المحلات
                 </motion.p>
               )}
             </AnimatePresence>

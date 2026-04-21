@@ -88,7 +88,7 @@ export default function QuotePrint() {
         
         {/* Helper button that hides on print, just to return back easily */}
         <div className="mt-10 flex justify-center print:hidden">
-            <button onClick={() => navigate(-1)} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold shadow-lg">
+            <button onClick={() => navigate(-1)} className="px-6 py-2 bg-primary-600 text-white rounded-lg font-bold shadow-lg">
                 🔙 رجوع للبرنامج
             </button>
         </div>

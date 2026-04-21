@@ -46,18 +46,18 @@ export default function Quotes() {
         {filtered.map(quote => {
           const isSelected = selected?.id === quote.id;
           return (
-          <div key={quote.id} className="card cursor-pointer hover:border-amber-700/50 transition-all overflow-hidden"
+          <div key={quote.id} className="card cursor-pointer hover:border-primary-700/50 transition-all overflow-hidden"
             onClick={() => setSelected(isSelected ? null : quote)}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                <FileText size={18} className="text-amber-400" />
+              <div className="w-10 h-10 bg-primary-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                <FileText size={18} className="text-primary-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-white text-sm">{quote.customerData?.name || 'عميل مجهول'}</p>
                 <p className="text-xs text-slate-400">{quote.number}</p>
               </div>
               <div className="text-left flex-shrink-0">
-                <p className="font-bold text-amber-400 text-sm">{Number(quote.total || 0).toLocaleString('en-US')} ج.م</p>
+                <p className="font-bold text-primary-400 text-sm">{Number(quote.total || 0).toLocaleString('en-US')} ج.م</p>
                 <span className="text-[10px] text-slate-400">{new Date(quote.createdAt?.toDate?.() || Date.now()).toLocaleDateString()}</span>
               </div>
             </div>
@@ -84,7 +84,7 @@ export default function Quotes() {
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); convertToInvoice(quote) }}
-                    className="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold"
+                    className="flex-1 bg-primary-600 hover:bg-primary-500 text-white text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold"
                   >
                     <ArrowRight size={16} /> استرجاع لنقطة البيع (شراء)
                   </button>

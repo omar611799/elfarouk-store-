@@ -27,8 +27,8 @@ export default function Categories() {
       <div className="space-y-2">
         {categories.map(c => (
           <div key={c.id} className="card flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-500/10 rounded-xl flex items-center justify-center">
-              <Tag size={16} className="text-blue-400" />
+            <div className="w-9 h-9 bg-primary-500/10 rounded-xl flex items-center justify-center">
+              <Tag size={16} className="text-primary-400" />
             </div>
             <span className="flex-1 text-white font-medium text-sm">{c.name}</span>
             <button onClick={() => deleteCategory(c.id)} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">

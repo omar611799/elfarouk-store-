@@ -81,7 +81,7 @@ export default function LoadingScreen({ onFinished }) {
             scale: [1, 1.1, 1],
           }}
           transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-1/4 -left-1/4 w-full h-full bg-electric-600/10 blur-[100px] rounded-full"
+          className="absolute -top-1/4 -left-1/4 w-full h-full bg-primary-600/10 blur-[100px] rounded-full"
         />
       </div>
 
@@ -99,7 +99,7 @@ export default function LoadingScreen({ onFinished }) {
             <h1 className="text-5xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-500 tracking-[0.2em] md:tracking-[0.4em] uppercase relative leading-none pb-2">
               ELFAROUK
             </h1>
-            <div className="absolute -inset-10 bg-electric-500/5 blur-[50px] -z-10 rounded-full" />
+            <div className="absolute -inset-10 bg-primary-500/5 blur-[50px] -z-10 rounded-full" />
           </motion.div>
 
           <motion.div
@@ -108,7 +108,7 @@ export default function LoadingScreen({ onFinished }) {
             transition={{ delay: 0.5 }}
             className="flex flex-col items-center gap-6"
           >
-            <p className="text-electric-400 font-black tracking-[0.4em] text-[10px] md:text-xs uppercase opacity-60">
+            <p className="text-primary-400 font-black tracking-[0.4em] text-[10px] md:text-xs uppercase opacity-60">
               Elite Parts Management System
             </p>
 
@@ -119,7 +119,7 @@ export default function LoadingScreen({ onFinished }) {
                 animate={{ width: "100%" }}
                 onAnimationComplete={() => onFinished?.()}
                 transition={{ duration: 3, ease: "easeInOut" }}
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-electric-600 to-cyan-500 shadow-[0_0_15px_rgba(37,99,235,0.5)]"
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary-600 to-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.5)]"
               />
             </div>
 
