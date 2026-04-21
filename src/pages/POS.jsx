@@ -393,11 +393,20 @@ export default function POS() {
           <div className="flex-1 space-y-6">
             <div className="flex items-center justify-between sm:justify-start gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-primary-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/20">
-                  <Sparkles size={22} className="text-white" />
+                <div className="w-12 h-12 bg-[#f97316] rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/40">
+                  <Sparkles size={24} className="text-white" />
                 </div>
-                <h1 className="text-xl font-black text-slate-950 tracking-tight font-display">نقطة البيع</h1>
+                <div className="flex flex-col">
+                  <h1 className="text-xl font-black text-slate-950 tracking-tight font-display">نقطة البيع</h1>
+                  <span className="text-[10px] font-black text-[#f97316] uppercase tracking-tighter bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">تحديث v4.0 - عالي الوضوح</span>
+                </div>
               </div>
+              <button 
+                onClick={() => window.location.reload(true)} 
+                className="flex items-center gap-2 bg-white border-2 border-primary-600 text-primary-700 px-4 py-2 rounded-xl text-xs font-black shadow-sm active:bg-primary-50 transition-all sm:hidden"
+              >
+                تحديث البرنامج 🔄
+              </button>
             </div>
             
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
@@ -456,14 +465,14 @@ export default function POS() {
               <div className="flex-1 min-w-0 text-right">
                 <h3 className="text-slate-950 font-black text-base sm:text-xl truncate font-display leading-snug">{p.name}</h3>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs sm:text-xs text-slate-600 font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 uppercase tracking-tighter">{p.category || 'عام'}</span>
-                  <span className="text-xs sm:text-xs text-emerald-600 font-black uppercase">متاح: {p.quantity}</span>
+                  <span className="text-xs sm:text-xs text-white font-black bg-slate-900 px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm">{p.category || 'عام'}</span>
+                  <span className="text-xs sm:text-xs text-[#059669] font-black uppercase bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">الكمية: {p.quantity}</span>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-1 px-4 border-r border-slate-200 h-16 justify-center shrink-0">
-                <span className="text-xl sm:text-2xl font-black text-slate-950 font-display tracking-tight whitespace-nowrap">
+              <div className="flex flex-col items-end gap-1 px-4 border-r-2 border-slate-200 h-20 justify-center shrink-0">
+                <span className="text-2xl sm:text-3xl font-black text-[#f97316] font-display tracking-tight whitespace-nowrap drop-shadow-sm">
                   {Number(p.price).toLocaleString('en-US')}
-                  <span className="text-xs font-normal text-slate-500 mr-1">ج.م</span>
+                  <span className="text-xs font-bold text-slate-600 mr-1">ج.م</span>
                 </span>
               </div>
               <div className="shrink-0">
