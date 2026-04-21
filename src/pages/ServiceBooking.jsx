@@ -6,6 +6,7 @@ import { db } from '../firebase/config'
 import { COLS } from '../firebase/collections'
 import { useStore } from '../context/StoreContext'
 import { auth } from '../firebase/config'
+import { BadgeCheck, CalendarDays, ClipboardCheck, CreditCard, MessageCircle, ShieldCheck, Wrench } from 'lucide-react'
 
 const PAYMENT_LINK = 'https://ipn.eg/01115329887'
 const PAYMENT_NUMBER = '01115329887'
@@ -150,57 +151,83 @@ export default function ServiceBooking() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6" dir="rtl">
+    <div className="min-h-screen bg-slate-950 px-4 py-8 sm:px-6" dir="rtl">
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="card p-6">
-          <h1 className="text-2xl font-black">حجز صيانة</h1>
-          <p className="text-emerald-300 text-sm mt-2">أهلا بك - حسابك مفعل وجاهز للحجز.</p>
-          <p className="text-slate-400 text-sm mt-2">احجز مكان صيانة (3 أماكن فقط يوميًا) وادفع عربون 50 جنيه لتأكيد الحجز.</p>
-          <p className="text-slate-400 text-sm mt-1">لينك الحجز المباشر: <a href={BOOKING_PAGE_URL} target="_blank" rel="noreferrer" className="text-primary-400">{BOOKING_PAGE_URL}</a></p>
-          <p className="text-slate-300 mt-2">رقم الشكاوى: <a href={`tel:${COMPLAINTS_PHONE}`} className="text-primary-400">{COMPLAINTS_PHONE}</a></p>
-          <button type="button" onClick={handleCustomerLogout} className="btn-ghost mt-3">تبديل حساب العميل</button>
+        <div className="card border-primary-200 bg-gradient-to-b from-white to-slate-50 p-6">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-600">ELFAROUK SERVICE</p>
+              <h1 className="mt-2 text-2xl font-black text-slate-900">حجز صيانة محترف</h1>
+            </div>
+            <div className="rounded-2xl bg-primary-50 p-3 text-primary-700">
+              <Wrench size={20} />
+            </div>
+          </div>
+
+          <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+            <p className="flex items-center gap-2"><BadgeCheck size={14} className="text-emerald-600" /> الحساب مفعل وجاهز</p>
+            <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-primary-600" /> حجز آمن ومؤكد</p>
+            <p className="flex items-center gap-2"><CalendarDays size={14} className="text-primary-600" /> 3 أماكن فقط يوميًا</p>
+            <p className="flex items-center gap-2"><CreditCard size={14} className="text-primary-600" /> عربون ثابت 50 جنيه</p>
+          </div>
+
+          <p className="mt-3 text-sm text-slate-500">لينك الحجز المباشر: <a href={BOOKING_PAGE_URL} target="_blank" rel="noreferrer" className="font-semibold text-primary-600">{BOOKING_PAGE_URL}</a></p>
+          <p className="mt-1 text-sm text-slate-500">رقم الشكاوى: <a href={`tel:${COMPLAINTS_PHONE}`} className="font-semibold text-primary-600">{COMPLAINTS_PHONE}</a></p>
+          <button type="button" onClick={handleCustomerLogout} className="btn-ghost mt-4">تبديل حساب العميل</button>
           {installEvent && (
-            <button type="button" onClick={handleInstallApp} className="btn-primary mt-4">
+            <button type="button" onClick={handleInstallApp} className="btn-primary mt-3">
               تثبيت تطبيق الحجز على الموبايل
             </button>
           )}
         </div>
 
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          <input className="input" placeholder="الاسم" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <input className="input" placeholder="رقم الهاتف" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
-          <input className="input" placeholder="موديل العربية" value={form.carModel} onChange={(e) => setForm({ ...form, carModel: e.target.value })} />
-          <input className="input" type="date" value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })} required />
+          <h2 className="text-lg font-black text-slate-900">بيانات الحجز</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input className="input" placeholder="الاسم" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <input className="input" placeholder="رقم الهاتف" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input className="input" placeholder="موديل العربية" value={form.carModel} onChange={(e) => setForm({ ...form, carModel: e.target.value })} />
+            <input className="input" type="date" value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })} required />
+          </div>
           <select className="input" value={form.slot} onChange={(e) => setForm({ ...form, slot: e.target.value })} required>
             {availableSlots.map(slot => <option key={slot} value={slot}>{slot}</option>)}
           </select>
-          <textarea className="input min-h-24" placeholder="مشكلة السيارة / ملاحظات" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-          <button type="submit" className="btn-primary w-full" disabled={loading || availableSlots.length === 0}>
+          <textarea className="input min-h-24" placeholder="وصف المشكلة / الملاحظات" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          <button type="submit" className="btn-primary w-full py-3" disabled={loading || availableSlots.length === 0}>
             {loading ? 'جارٍ الحجز...' : 'تأكيد الحجز'}
           </button>
         </form>
 
         {bookingId && (
           <div className="card p-6 space-y-4">
-            <p className="text-emerald-400 font-bold">تم استلام طلبك. كود الحجز: {bookingId.slice(-6).toUpperCase()}</p>
-            <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 space-y-2">
-              <p className="font-bold text-amber-300">بيانات الدفع (InstaPay / المحافظ)</p>
-              <p className="text-sm text-slate-200">الرقم: <span className="font-black">{PAYMENT_NUMBER}</span></p>
-              <p className="text-sm text-slate-200">المبلغ المطلوب: <span className="font-black">50 جنيه</span></p>
-              <p className="text-xs text-slate-400">بعد التحويل، ابعت رسالة في الشات فيها "تم الدفع" وآخر 4 أرقام من رقمك وصورة التحويل.</p>
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">
+              <p className="font-bold">تم استلام طلبك بنجاح</p>
+              <p className="mt-1 text-sm">كود الحجز: <span className="font-black">{bookingId.slice(-6).toUpperCase()}</span></p>
             </div>
+
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-2 text-amber-800">
+              <p className="font-bold flex items-center gap-2"><ClipboardCheck size={15} /> تعليمات الدفع</p>
+              <p className="text-sm">الرقم: <span className="font-black">{PAYMENT_NUMBER}</span></p>
+              <p className="text-sm">المبلغ المطلوب: <span className="font-black">50 جنيه</span></p>
+              <p className="text-xs">بعد التحويل أرسل "تم الدفع" مع آخر 4 أرقام من رقمك أو رقم العملية.</p>
+            </div>
+
             <div className="grid sm:grid-cols-2 gap-2">
-              <a href={INSTAPAY_LINK} target="_blank" rel="noreferrer" className="btn-primary inline-flex justify-center">رابط InstaPay</a>
-              <a href={WALLET_LINK} target="_blank" rel="noreferrer" className="btn-ghost inline-flex justify-center">رابط تحويل المحفظة</a>
+              <a href={INSTAPAY_LINK} target="_blank" rel="noreferrer" className="btn-primary inline-flex justify-center py-3">الدفع عبر InstaPay</a>
+              <a href={WALLET_LINK} target="_blank" rel="noreferrer" className="btn-ghost inline-flex justify-center py-3">الدفع عبر المحفظة</a>
               <button type="button" onClick={copyPaymentNumber} className="btn-ghost inline-flex justify-center sm:col-span-2">نسخ رقم الدفع</button>
             </div>
+
             <div className="border border-primary-500/20 rounded-xl p-4 space-y-2">
-              <p className="font-bold text-primary-300">تأكيد التحويل</p>
+              <p className="font-bold text-primary-700">تأكيد التحويل</p>
               <input className="input" placeholder="أكتب ملاحظة الدفع أو رقم العملية" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} />
               <button type="button" onClick={handlePaymentSubmitted} className="btn-primary">تم التحويل - أرسل إشعار للإدارة</button>
             </div>
+
             <div className="border border-white/10 rounded-xl p-4">
-              <h3 className="font-bold mb-2">الإشعارات</h3>
+              <h3 className="mb-2 flex items-center gap-2 font-bold text-slate-900"><BadgeCheck size={15} /> الإشعارات</h3>
               {myNotifications.length === 0 && <p className="text-xs text-slate-500">لا يوجد إشعارات جديدة</p>}
               <div className="space-y-2">
                 {myNotifications.slice(0, 5).map(n => (
@@ -211,8 +238,9 @@ export default function ServiceBooking() {
                 ))}
               </div>
             </div>
+
             <div className="border border-white/10 rounded-xl p-4">
-              <h2 className="font-bold mb-3">شات مع الإدارة</h2>
+              <h2 className="mb-3 flex items-center gap-2 font-bold text-slate-900"><MessageCircle size={15} /> شات مع الإدارة</h2>
               <p className="text-xs text-slate-400 mb-3">افتح صفحة الحجز بنفس رقم الهاتف لمتابعة الردود.</p>
               <div className="space-y-2 max-h-56 overflow-auto mb-3">
                 {bookingMessages.map(m => (
@@ -227,7 +255,7 @@ export default function ServiceBooking() {
                 <button type="button" className="btn-primary" onClick={handleSendMessage}>إرسال</button>
               </div>
             </div>
-            <Link to="/customer/login" className="text-primary-400 text-sm">العودة لحساب العميل</Link>
+            <Link to="/customer/login" className="text-sm font-bold text-primary-600">العودة لحساب العميل</Link>
           </div>
         )}
       </div>
