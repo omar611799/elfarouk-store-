@@ -5,12 +5,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
     function userRole() {
-      return signedIn() && userDoc().exists() ? userDoc().data.role : null;
+      return signedIn() && exists(userPath()) ? get(userPath()).data.role : null;
     }
 
     function isAdmin() {
@@ -19,10 +19,6 @@ service cloud.firestore {
 
     function isCustomer() {
       return signedIn() && userRole() == 'customer';
-    }
-
-    function isOwnerByUid(uid) {
-      return signedIn() && request.auth.uid == uid;
     }
 
     // Admin-only business collections.
