@@ -1,10 +1,10 @@
 {
-  "name": "الفاروق ستور",
-  "short_name": "الفاروق",
+  "name": "ELFAROUK Service",
+  "short_name": "ELFAROUK",
   "start_url": "/?v=1",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#f97316",
+  "background_color": "#0f2238",
+  "theme_color": "#153d65",
   "icons": [
     {
       "src": "/icon-192.png",
