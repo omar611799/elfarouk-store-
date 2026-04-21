@@ -164,7 +164,7 @@ export default function Layout() {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-5 sm:p-7 custom-scrollbar bg-[#f4f6fa]">
+        <main className="flex-1 overflow-y-auto p-5 pb-32 sm:p-7 sm:pb-7 custom-scrollbar bg-[#f4f6fa]">
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 8 }}
@@ -177,6 +177,14 @@ export default function Layout() {
         </main>
       </div>
 
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 inset-x-0 bg-white/80 backdrop-blur-2xl border-t border-slate-200 z-[60] flex items-center justify-around px-2 py-2 lg:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <BottomNavLink to="/" icon={LayoutDashboard} label="الرئيسية" active={location.pathname === '/'} />
+        <BottomNavLink to="/pos" icon={ShoppingCart} label="بيع" active={location.pathname === '/pos'} />
+        <BottomNavLink to="/products" icon={Package} label="المخزن" active={location.pathname === '/products'} />
+        <BottomNavLink to="/invoices" icon={FileText} label="الفواتير" active={location.pathname === '/invoices'} />
+      </nav>
+
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -188,5 +196,17 @@ export default function Layout() {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+function BottomNavLink({ to, icon: Icon, label, active }) {
+  return (
+    <NavLink 
+      to={to} 
+      className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-300 ${active ? 'text-primary-600 bg-primary-50 scale-110 shadow-sm' : 'text-slate-400 opacity-70'}`}
+    >
+      <Icon size={20} className={active ? 'animate-pulse' : ''} />
+      <span className="text-[10px] font-black">{label}</span>
+    </NavLink>
   )
 }

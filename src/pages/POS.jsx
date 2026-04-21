@@ -83,13 +83,13 @@ const CartContent = memo(({
                       {Number(item.price).toLocaleString('en-US')} ج.م
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 sm:gap-3 bg-obsidian-950 border border-white/5 rounded-xl sm:rounded-2xl p-1 sm:p-2 shrink-0 pointer-events-auto">
-                    <button onClick={() => cartQty(item.id, item.qty - 1)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors">
-                      <Minus size={12} className="text-slate-400" />
+                  <div className="flex items-center gap-2 sm:gap-3 bg-obsidian-950 border border-white/5 rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shrink-0 pointer-events-auto">
+                    <button onClick={() => cartQty(item.id, item.qty - 1)} className="w-10 h-10 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors bg-white/5">
+                      <Minus size={16} className="text-slate-400" />
                     </button>
-                    <span className="text-white text-xs sm:text-sm font-black w-4 text-center">{item.qty}</span>
-                    <button onClick={() => cartQty(item.id, item.qty + 1)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors">
-                      <Plus size={12} className="text-slate-400" />
+                    <span className="text-white text-base sm:text-sm font-black w-6 text-center">{item.qty}</span>
+                    <button onClick={() => cartQty(item.id, item.qty + 1)} className="w-10 h-10 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors bg-white/5">
+                      <Plus size={16} className="text-slate-400" />
                     </button>
                   </div>
                   <button onClick={() => cartRemove(item.id)} className="w-9 h-9 sm:w-10 sm:h-10 text-rose-500 hover:bg-rose-500/10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all px-2 pointer-events-auto hidden sm:flex">
@@ -165,7 +165,7 @@ const CartContent = memo(({
           {/* Payment Section */}
           <div className="pt-2 border-t border-white/5 mt-4">
             <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-3 px-1 text-center">طريقة الدفع (اختياري)</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
               <div className="relative">
                 <input
                   id="pay-cash"
@@ -173,9 +173,9 @@ const CartContent = memo(({
                   value={payments.cash}
                   onChange={e => setPayments(p => ({ ...p, cash: e.target.value }))}
                   placeholder="كاش"
-                  className="input !py-3 !pr-8 text-[10px] sm:text-xs font-bold bg-emerald-500/5 focus:border-emerald-500/50"
+                  className="input !py-4 sm:!py-3 !pr-10 sm:!pr-8 text-sm sm:text-xs font-bold bg-emerald-500/5 focus:border-emerald-500/50"
                 />
-                <Wallet size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-500/50" />
+                <Wallet size={16} className="absolute right-3.5 sm:right-2.5 top-1/2 -translate-y-1/2 text-emerald-500/50" />
               </div>
               <div className="relative">
                 <input
@@ -184,9 +184,9 @@ const CartContent = memo(({
                   value={payments.visa}
                   onChange={e => setPayments(p => ({ ...p, visa: e.target.value }))}
                   placeholder="فيزا"
-                  className="input !py-3 !pr-8 text-[10px] sm:text-xs font-bold bg-blue-500/5 focus:border-blue-500/50"
+                  className="input !py-4 sm:!py-3 !pr-10 sm:!pr-8 text-sm sm:text-xs font-bold bg-blue-500/5 focus:border-blue-500/50"
                 />
-                <CreditCard size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-blue-500/50" />
+                <CreditCard size={16} className="absolute right-3.5 sm:right-2.5 top-1/2 -translate-y-1/2 text-blue-500/50" />
               </div>
               <div className="relative">
                 <input
@@ -195,9 +195,9 @@ const CartContent = memo(({
                   value={payments.instapay}
                   onChange={e => setPayments(p => ({ ...p, instapay: e.target.value }))}
                   placeholder="إنستاباي"
-                  className="input !py-3 !pr-8 text-[10px] sm:text-xs font-bold bg-purple-500/5 focus:border-purple-500/50"
+                  className="input !py-4 sm:!py-3 !pr-10 sm:!pr-8 text-sm sm:text-xs font-bold bg-purple-500/5 focus:border-purple-500/50"
                 />
-                <Landmark size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-purple-500/50" />
+                <Landmark size={16} className="absolute right-3.5 sm:right-2.5 top-1/2 -translate-y-1/2 text-purple-500/50" />
               </div>
             </div>
             

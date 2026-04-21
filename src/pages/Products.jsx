@@ -187,18 +187,18 @@ export default function Products() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-3 sm:gap-1.5 shrink-0">
                       <button onClick={() => setQrModal(p)}
-                        className="p-2.5 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-xl transition-all">
-                        <QrCode size={15} />
+                        className="p-3 sm:p-2.5 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-xl transition-all">
+                        <QrCode size={18} className="sm:w-[15px] sm:h-[15px]" />
                       </button>
                       <button onClick={() => openEdit(p)}
-                        className="p-2.5 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-xl transition-all">
-                        <Edit2 size={15} />
+                        className="p-3 sm:p-2.5 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-xl transition-all">
+                        <Edit2 size={18} className="sm:w-[15px] sm:h-[15px]" />
                       </button>
                       <button onClick={() => { if (window.confirm('حذف هذا المنتج؟')) deleteProduct(p.id) }}
-                        className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
-                        <Trash2 size={15} />
+                        className="p-3 sm:p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                        <Trash2 size={18} className="sm:w-[15px] sm:h-[15px]" />
                       </button>
                     </div>
                   </div>
