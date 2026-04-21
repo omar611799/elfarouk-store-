@@ -30,6 +30,8 @@ export const COLS = {
   PURCHASES: 'purchases',
   SERVICE_BOOKINGS: 'serviceBookings',
   SERVICE_MESSAGES: 'serviceMessages',
+  CUSTOMER_ACCOUNTS: 'customerAccounts',
+  NOTIFICATIONS: 'notifications',
 }
 
 // ── Real-time listeners (onSnapshot) ──
@@ -643,4 +645,25 @@ export async function paySupplierDebt(supplierId, amount, note = '') {
 export const addServiceBooking = (d) => addDoc_(COLS.SERVICE_BOOKINGS, d)
 export const updateServiceBooking = (id, d) => updateDoc_(COLS.SERVICE_BOOKINGS, id, d)
 export const addServiceMessage = (d) => addDoc_(COLS.SERVICE_MESSAGES, d)
+
+export async function findCustomerAccountByPhone(phone) {
+  const q = query(collection(db, COLS.CUSTOMER_ACCOUNTS), where('phone', '==', phone))
+  const snap = await getDocs(q)
+  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }
+}
+
+export async function registerCustomerAccount({ name, phone, pin }) {
+  const existing = await findCustomerAccountByPhone(phone)
+  if (existing) throw new Error('هذا الرقم مسجل بالفعل')
+  return addDoc_(COLS.CUSTOMER_ACCOUNTS, { name, phone, pin, status: 'active' })
+}
+
+export async function loginCustomerAccount({ phone, pin }) {
+  const account = await findCustomerAccountByPhone(phone)
+  if (!account || account.pin !== pin) throw new Error('بيانات الدخول غير صحيحة')
+  return account
+}
+
+export const addNotification = (d) => addDoc_(COLS.NOTIFICATIONS, d)
+export const markNotificationAsRead = (id) => updateDoc_(COLS.NOTIFICATIONS, id, { read: true })
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { collection, getDocs, query, where } from 'firebase/firestore'
+import toast from 'react-hot-toast'
 import { db } from '../firebase/config'
 import { COLS } from '../firebase/collections'
 import { useStore } from '../context/StoreContext'
@@ -8,16 +9,18 @@ import { useStore } from '../context/StoreContext'
 const PAYMENT_LINK = 'https://ipn.eg/01115329887'
 const PAYMENT_NUMBER = '01115329887'
 const COMPLAINTS_PHONE = '01127930685'
+const WALLET_LINK = `tel:${PAYMENT_NUMBER}`
 const LIVE_SITE_URL = 'https://elfarouk-store.vercel.app'
 const BOOKING_PAGE_URL = `${LIVE_SITE_URL}/service-booking`
 const SERVICE_SLOTS = ['المكان 1', 'المكان 2', 'المكان 3']
 const CUSTOMER_SESSION_KEY = 'elfarouk_customer_session'
 
 export default function ServiceBooking() {
-  const { serviceBookings, serviceMessages, addServiceBooking, addServiceMessage } = useStore()
+  const { serviceBookings, serviceMessages, notifications, addServiceBooking, addServiceMessage, markNotificationAsRead } = useStore()
   const [form, setForm] = useState({ name: '', phone: '', carModel: '', notes: '', slot: SERVICE_SLOTS[0], day: '' })
   const [bookingId, setBookingId] = useState('')
   const [chatText, setChatText] = useState('')
+  const [paymentNote, setPaymentNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [installEvent, setInstallEvent] = useState(null)
   const [customerSession, setCustomerSession] = useState(null)
@@ -69,6 +72,11 @@ export default function ServiceBooking() {
       })
   }, [serviceMessages, bookingId])
 
+  const myNotifications = useMemo(() => {
+    if (!bookingId) return []
+    return notifications.filter(n => n.audience === 'customer' && n.bookingId === bookingId)
+  }, [notifications, bookingId])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -83,6 +91,7 @@ export default function ServiceBooking() {
 
       const id = await addServiceBooking({
         ...form,
+        customerAccountId: customerSession.id,
         slotPrice: 50,
         paymentLink: PAYMENT_LINK,
         paymentStatus: 'pending',
@@ -103,6 +112,22 @@ export default function ServiceBooking() {
     if (!bookingId || !chatText.trim()) return
     await addServiceMessage({ bookingId, sender: 'customer', text: chatText.trim() })
     setChatText('')
+  }
+
+  const handlePaymentSubmitted = async () => {
+    if (!bookingId) return
+    await addServiceMessage({
+      bookingId,
+      sender: 'customer',
+      text: `تم إرسال تحويل عربون 50 جنيه. ${paymentNote ? `ملاحظات: ${paymentNote}` : ''}`,
+    })
+    setPaymentNote('')
+    toast.success('تم إرسال إشعار الدفع للإدارة')
+  }
+
+  const copyPaymentNumber = async () => {
+    await navigator.clipboard.writeText(PAYMENT_NUMBER)
+    toast.success('تم نسخ رقم الدفع')
   }
 
   const handleInstallApp = async () => {
@@ -135,6 +160,7 @@ export default function ServiceBooking() {
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="card p-6">
           <h1 className="text-2xl font-black">حجز صيانة</h1>
+          <p className="text-emerald-300 text-sm mt-2">أهلا {customerSession?.name} - حسابك مفعل وجاهز للحجز.</p>
           <p className="text-slate-400 text-sm mt-2">احجز مكان صيانة (3 أماكن فقط يوميًا) وادفع عربون 50 جنيه لتأكيد الحجز.</p>
           <p className="text-slate-400 text-sm mt-1">لينك الحجز المباشر: <a href={BOOKING_PAGE_URL} target="_blank" rel="noreferrer" className="text-primary-400">{BOOKING_PAGE_URL}</a></p>
           <p className="text-slate-300 mt-2">رقم الشكاوى: <a href={`tel:${COMPLAINTS_PHONE}`} className="text-primary-400">{COMPLAINTS_PHONE}</a></p>
@@ -169,8 +195,28 @@ export default function ServiceBooking() {
               <p className="text-sm text-slate-200">المبلغ المطلوب: <span className="font-black">50 جنيه</span></p>
               <p className="text-xs text-slate-400">بعد التحويل، ابعت رسالة في الشات فيها "تم الدفع" وآخر 4 أرقام من رقمك وصورة التحويل.</p>
             </div>
-            <a href={PAYMENT_LINK} target="_blank" rel="noreferrer" className="btn-primary inline-flex">فتح رابط الدفع السريع</a>
-            <a href={`tel:${PAYMENT_NUMBER}`} className="btn-ghost inline-flex">اتصال برقم الدفع</a>
+            <div className="grid sm:grid-cols-2 gap-2">
+              <a href={PAYMENT_LINK} target="_blank" rel="noreferrer" className="btn-primary inline-flex justify-center">الدفع عبر InstaPay</a>
+              <a href={WALLET_LINK} className="btn-ghost inline-flex justify-center">تحويل عبر المحفظة</a>
+              <button type="button" onClick={copyPaymentNumber} className="btn-ghost inline-flex justify-center sm:col-span-2">نسخ رقم الدفع</button>
+            </div>
+            <div className="border border-primary-500/20 rounded-xl p-4 space-y-2">
+              <p className="font-bold text-primary-300">تأكيد التحويل</p>
+              <input className="input" placeholder="أكتب ملاحظة الدفع أو رقم العملية" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} />
+              <button type="button" onClick={handlePaymentSubmitted} className="btn-primary">تم التحويل - أرسل إشعار للإدارة</button>
+            </div>
+            <div className="border border-white/10 rounded-xl p-4">
+              <h3 className="font-bold mb-2">الإشعارات</h3>
+              {myNotifications.length === 0 && <p className="text-xs text-slate-500">لا يوجد إشعارات جديدة</p>}
+              <div className="space-y-2">
+                {myNotifications.slice(0, 5).map(n => (
+                  <button key={n.id} type="button" className={`w-full text-right rounded-lg p-2 ${n.read ? 'bg-slate-900/60' : 'bg-primary-500/10 border border-primary-500/30'}`} onClick={() => !n.read && markNotificationAsRead(n.id)}>
+                    <p className="text-sm font-semibold">{n.title}</p>
+                    <p className="text-xs text-slate-400">{n.body}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="border border-white/10 rounded-xl p-4">
               <h2 className="font-bold mb-3">شات مع الإدارة</h2>
               <p className="text-xs text-slate-400 mb-3">افتح صفحة الحجز بنفس رقم الهاتف لمتابعة الردود.</p>

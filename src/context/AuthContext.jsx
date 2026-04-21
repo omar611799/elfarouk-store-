@@ -5,6 +5,9 @@ import { COLS } from '../firebase/collections'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
+const ADMIN_EMAIL = 'omarabdelhamead611@gmail.com'
+const ADMIN_PASSWORD = 'omar333hhh!!!'
+const ADMIN_SESSION_KEY = 'elfarouk_admin_session'
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
@@ -22,6 +25,18 @@ export function AuthProvider({ children }) {
           const defaultAdmin = { pin: '0000', name: 'المدير العام', role: 'admin' }
           await addDoc(usersRef, defaultAdmin)
           toast.success('تمت تهيئة حساب المدير. الرمز الافتراضي: 0000', { duration: 6000 })
+        }
+
+        const savedAdminSession = localStorage.getItem(ADMIN_SESSION_KEY)
+        if (savedAdminSession === '1') {
+          setCurrentUser({
+            id: 'admin-auth',
+            name: 'المدير العام',
+            role: 'admin',
+            email: ADMIN_EMAIL,
+          })
+          setLoading(false)
+          return
         }
 
         const savedPin = localStorage.getItem('elfarouk_session_pin')
@@ -66,9 +81,35 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const attemptAdminLogin = async (email, password) => {
+    setLoading(true)
+    try {
+      const validEmail = String(email || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()
+      const validPassword = String(password || '') === ADMIN_PASSWORD
+      if (!validEmail || !validPassword) {
+        toast.error('بيانات دخول الأدمن غير صحيحة')
+        return false
+      }
+
+      setCurrentUser({
+        id: 'admin-auth',
+        name: 'المدير العام',
+        role: 'admin',
+        email: ADMIN_EMAIL,
+      })
+      localStorage.setItem(ADMIN_SESSION_KEY, '1')
+      localStorage.removeItem('elfarouk_session_pin')
+      toast.success('تم تسجيل دخول الأدمن بنجاح')
+      return true
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const logout = () => {
     setCurrentUser(null)
     localStorage.removeItem('elfarouk_session_pin')
+    localStorage.removeItem(ADMIN_SESSION_KEY)
     toast('تم تسجيل الخروج', { icon: '👋' })
   }
 
@@ -76,6 +117,7 @@ export function AuthProvider({ children }) {
     currentUser,
     loading,
     attemptLogin,
+    attemptAdminLogin,
     logout
   }
 

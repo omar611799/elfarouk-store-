@@ -8,7 +8,9 @@ import {
   payInvoiceDebt, deleteInvoiceAndReturnStock, returnInvoiceItems,
   addQuote, deleteQuote, importProductsBatch,
   addExpense, deleteExpense, recordPurchase, paySupplierDebt,
-  addServiceBooking, updateServiceBooking, addServiceMessage
+  addServiceBooking, updateServiceBooking, addServiceMessage,
+  registerCustomerAccount, loginCustomerAccount, findCustomerAccountByPhone,
+  addNotification, markNotificationAsRead
 } from '../firebase/collections'
 
 const StoreContext = createContext(null)
@@ -16,7 +18,7 @@ const StoreContext = createContext(null)
 const init = {
   products: [], categories: [], suppliers: [],
   customers: [], invoices: [], transactions: [], expenses: [], quotes: [], purchases: [],
-  serviceBookings: [], serviceMessages: [],
+  serviceBookings: [], serviceMessages: [], notifications: [],
   loading: true,
   cart: [],
 }
@@ -72,6 +74,7 @@ export function StoreProvider({ children }) {
       unsubs.push(listenColLimited(COLS.PURCHASES, data => dispatch({ type: 'SET', key: 'purchases', data }), 50));
       unsubs.push(listenColLimited(COLS.SERVICE_BOOKINGS, data => dispatch({ type: 'SET', key: 'serviceBookings', data }), 100));
       unsubs.push(listenColLimited(COLS.SERVICE_MESSAGES, data => dispatch({ type: 'SET', key: 'serviceMessages', data }), 300));
+      unsubs.push(listenColLimited(COLS.NOTIFICATIONS, data => dispatch({ type: 'SET', key: 'notifications', data }), 300));
     }, 2500);
     
     return () => {
@@ -241,6 +244,14 @@ export function StoreProvider({ children }) {
   const handleAddServiceBooking = async (data) => {
     try {
       const id = await addServiceBooking(data)
+      await addNotification({
+        type: 'booking_created',
+        audience: 'admin',
+        bookingId: id,
+        title: 'حجز صيانة جديد',
+        body: `${data.name} - ${data.phone} | ${data.day} | ${data.slot}`,
+        read: false,
+      })
       toast.success('تم تسجيل الحجز بنجاح')
       return id
     } catch (e) { toast.error(e.message); throw e }
@@ -249,6 +260,16 @@ export function StoreProvider({ children }) {
   const handleUpdateServiceBooking = async (id, data) => {
     try {
       await updateServiceBooking(id, data)
+      if (data.status || data.paymentStatus) {
+        await addNotification({
+          type: 'booking_updated',
+          audience: 'customer',
+          bookingId: id,
+          title: 'تم تحديث حالة الحجز',
+          body: `الحالة: ${data.status || '-'} | الدفع: ${data.paymentStatus || '-'}`,
+          read: false,
+        })
+      }
       toast.success('تم تحديث حالة الحجز')
     } catch (e) { toast.error(e.message); throw e }
   }
@@ -256,8 +277,28 @@ export function StoreProvider({ children }) {
   const handleAddServiceMessage = async (data) => {
     try {
       await addServiceMessage(data)
+      await addNotification({
+        type: 'new_message',
+        audience: data.sender === 'admin' ? 'customer' : 'admin',
+        bookingId: data.bookingId,
+        title: data.sender === 'admin' ? 'رسالة جديدة من الإدارة' : 'رسالة جديدة من العميل',
+        body: data.text?.slice(0, 120) || '',
+        read: false,
+      })
     } catch (e) { toast.error(e.message); throw e }
   }
+
+  const handleRegisterCustomerAccount = async (data) => {
+    try {
+      const id = await registerCustomerAccount(data)
+      toast.success('تم إنشاء الحساب بنجاح')
+      return id
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
+  const handleLoginCustomerAccount = async (data) => loginCustomerAccount(data)
+  const handleFindCustomerAccountByPhone = async (phone) => findCustomerAccountByPhone(phone)
+  const handleMarkNotificationAsRead = async (id) => markNotificationAsRead(id)
 
   // ── Cart ──
   const cartAdd = (item) => dispatch({ type: 'CART_ADD', item })
@@ -296,6 +337,10 @@ export function StoreProvider({ children }) {
       addServiceBooking: handleAddServiceBooking,
       updateServiceBooking: handleUpdateServiceBooking,
       addServiceMessage: handleAddServiceMessage,
+      registerCustomerAccount: handleRegisterCustomerAccount,
+      loginCustomerAccount: handleLoginCustomerAccount,
+      findCustomerAccountByPhone: handleFindCustomerAccountByPhone,
+      markNotificationAsRead: handleMarkNotificationAsRead,
       cartAdd, cartQty, cartRemove, cartClear,
     }}>
       {children}

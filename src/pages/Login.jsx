@@ -1,33 +1,21 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ShieldCheck, KeyRound, Sparkles, Delete } from 'lucide-react'
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { ShieldCheck, LogIn } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 
 export default function Login() {
-  const { attemptLogin, loading } = useAuth()
-  const [pin, setPin] = useState('')
+  const { attemptAdminLogin, loading } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   const handleLogin = async (e) => {
-    if (e) e.preventDefault()
-    if (!pin) return toast.error('يرجى إدخال رمز الدخول')
-    if (pin.length < 4) return toast.error('رمز الدخول قصير جداً')
-    await attemptLogin(pin)
+    e.preventDefault()
+    if (!email.trim()) return toast.error('أدخل البريد الإلكتروني')
+    if (!password) return toast.error('أدخل كلمة المرور')
+    await attemptAdminLogin(email.trim(), password)
   }
-
-  const triggerKey = (num) => {
-    if (pin.length < 6) setPin(p => p + num)
-  }
-  const backspace = () => setPin(p => p.slice(0, -1))
-
-  // Auto-submit when PIN length reaches 4 (or 6 if applicable)
-  useEffect(() => {
-    if (pin.length === 4) {
-       const timer = setTimeout(() => handleLogin(), 300)
-       return () => clearTimeout(timer)
-    }
-  }, [pin])
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#f5f8fc] px-4 py-6 font-display sm:px-6" dir="rtl">
@@ -86,122 +74,49 @@ export default function Login() {
                 <img src="/brand-logo.png" alt="ELFAROUK Service" className="h-20 w-auto object-contain sm:h-24" />
               </div>
               <h1 className="text-2xl font-black leading-none tracking-tight text-slate-950 sm:text-3xl">ELFAROUK Service</h1>
-              <p className="mt-3 text-sm font-semibold text-slate-500">دخول آمن وسريع إلى نظام الإدارة</p>
+              <p className="mt-3 text-sm font-semibold text-slate-500">دخول الأدمن بالبريد الإلكتروني وكلمة المرور</p>
               <div className="mt-3 flex items-center justify-center gap-2">
                 <Link to="/customer-login" className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-[11px] font-black text-primary-700">
                   دخول العميل للحجز
                 </Link>
               </div>
               <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary-100 bg-primary-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-primary-700">
-                <ShieldCheck size={14} /> PIN Access
+                <ShieldCheck size={14} /> Admin Secure Access
               </div>
             </div>
 
-            <div className="space-y-8 sm:space-y-10">
-              <div className="flex justify-center gap-2.5 sm:gap-3">
-                {[0, 1, 2, 3].map((idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={false}
-                    animate={{
-                      scale: pin.length > idx ? 1.04 : 1,
-                      backgroundColor: pin.length > idx ? 'rgba(34, 92, 151, 0.1)' : 'rgba(255, 255, 255, 0.7)',
-                      borderColor: pin.length > idx ? 'rgba(34, 92, 151, 0.8)' : 'rgba(203, 213, 225, 0.85)',
-                    }}
-                    className="relative flex h-14 w-11 items-center justify-center overflow-hidden rounded-2xl border-2 text-xl font-black text-primary-700 shadow-sm sm:h-16 sm:w-12 sm:text-2xl"
-                  >
-                    <AnimatePresence>
-                      {pin[idx] && (
-                        <motion.span
-                          initial={{ y: 16, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          exit={{ y: -16, opacity: 0 }}
-                          className="relative z-10"
-                        >
-                          •
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                    {pin.length === idx && (
-                      <motion.div
-                        animate={{ opacity: [0, 1, 0] }}
-                        transition={{ repeat: Infinity, duration: 1 }}
-                        className="absolute bottom-3 h-0.5 w-4 bg-primary-500"
-                      />
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 sm:gap-4" dir="ltr">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                  <motion.button
-                    whileHover={{ scale: 1.03, backgroundColor: 'rgba(238,245,251,0.9)' }}
-                    whileTap={{ scale: 0.96 }}
-                    type="button"
-                    key={num}
-                    onClick={() => triggerKey(num.toString())}
-                    className="rounded-2xl border border-primary-100 bg-white py-4 text-xl font-black text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all hover:border-primary-300 sm:py-5 sm:text-2xl"
-                  >
-                    {num}
-                  </motion.button>
-                ))}
-                <motion.button
-                  whileHover={{ scale: 1.03, backgroundColor: 'rgba(244,63,94,0.08)' }}
-                  whileTap={{ scale: 0.96 }}
-                  type="button"
-                  onClick={backspace}
-                  className="flex items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 py-4 text-rose-600 transition-all hover:border-rose-200 sm:py-5"
-                  aria-label="Backspace"
-                >
-                  <Delete size={24} />
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.03, backgroundColor: 'rgba(238,245,251,0.9)' }}
-                  whileTap={{ scale: 0.96 }}
-                  type="button"
-                  onClick={() => triggerKey('0')}
-                  className="rounded-2xl border border-primary-100 bg-white py-4 text-xl font-black text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all hover:border-primary-300 sm:py-5 sm:text-2xl"
-                >
-                  0
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.96 }}
-                  type="button"
-                  onClick={handleLogin}
-                  disabled={loading || pin.length < 4}
-                  className="flex items-center justify-center rounded-2xl border border-primary-500/20 bg-[linear-gradient(135deg,#153d65_0%,#225c97_100%)] py-4 text-white shadow-[0_18px_40px_rgba(34,92,151,0.22)] transition-all disabled:opacity-45 disabled:shadow-none sm:py-5"
-                  aria-label="Login"
-                >
-                  <KeyRound size={24} />
-                </motion.button>
-              </div>
-            </div>
-
-            <div className="mt-8 text-center sm:mt-10">
-              <AnimatePresence mode="wait">
-                {loading ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-center justify-center gap-3 py-2"
-                  >
-                    <motion.div animate={{ scale: [1, 1.25, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="h-2 w-2 rounded-full bg-primary-500" />
-                    <motion.div animate={{ scale: [1, 1.25, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="h-2 w-2 rounded-full bg-primary-500" />
-                    <motion.div animate={{ scale: [1, 1.25, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="h-2 w-2 rounded-full bg-primary-500" />
-                  </motion.div>
-                ) : (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-slate-500"
-                  >
-                    <Sparkles size={12} className="text-primary-500" /> جاهز للعمل على الديسكتوب والموبايل
-                  </motion.p>
-                )}
-              </AnimatePresence>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <input
+                type="email"
+                className="input"
+                placeholder="البريد الإلكتروني"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <input
+                type="password"
+                className="input"
+                placeholder="كلمة المرور"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary-500/20 bg-[linear-gradient(135deg,#153d65_0%,#225c97_100%)] py-4 text-white shadow-[0_18px_40px_rgba(34,92,151,0.22)] transition-all disabled:opacity-45 disabled:shadow-none"
+              >
+                <LogIn size={18} /> {loading ? 'جاري تسجيل الدخول...' : 'دخول الأدمن'}
+              </motion.button>
+            </form>
+            <div className="mt-6 text-center">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
+                بيانات الأدمن المعتمدة
+              </p>
+              <p className="mt-1 text-xs text-slate-500">omarabdelhamead611@gmail.com</p>
             </div>
           </motion.div>
         </div>
