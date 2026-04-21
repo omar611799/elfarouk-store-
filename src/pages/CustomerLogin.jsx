@@ -37,7 +37,7 @@ export default function CustomerLogin() {
         phone: account.phone,
       }))
       toast.success('تم دخول حساب العميل')
-      navigate('/service-booking')
+      navigate('/customer/booking')
     } finally {
       setLoading(false)
     }
@@ -62,7 +62,7 @@ export default function CustomerLogin() {
             {loading ? 'جاري التنفيذ...' : mode === 'login' ? 'دخول لحجز الصيانة' : 'إنشاء حساب والبدء'}
           </button>
         </form>
-        <Link to="/admin-login" className="text-primary-400 text-sm">دخول الأدمن</Link>
+        <Link to="/admin-login" className="text-primary-400 text-sm">دخول الأدمن فقط</Link>
       </div>
     </div>
   )

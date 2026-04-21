@@ -52,13 +52,15 @@ function AppRouter() {
       />
       <Routes>
         <Route path="/admin-login" element={currentUser ? <Navigate to="/" /> : <Login />} />
-        <Route path="/customer-login" element={<CustomerLogin />} />
+        <Route path="/customer-login" element={<Navigate to="/customer/login" replace />} />
+        <Route path="/service-booking" element={<Navigate to="/customer/booking" replace />} />
+        <Route path="/customer/login" element={<CustomerLogin />} />
+        <Route path="/customer/booking" element={<ServiceBooking />} />
         <Route path="/receipt/:id" element={<Receipt />} />
         <Route path="/print-quote/:id" element={<QuotePrint />} />
         <Route path="/portal/:phone" element={<CustomerPortal />} />
-        <Route path="/service-booking" element={<ServiceBooking />} />
 
-        {!currentUser && <Route path="*" element={<Navigate to="/admin-login" />} />}
+        {!currentUser && <Route path="*" element={<Navigate to="/admin-login" replace />} />}
         {currentUser && (
         <Route path="/" element={<Layout />}>
           {/* Admin and Cashier have POS, Products, Customers */}

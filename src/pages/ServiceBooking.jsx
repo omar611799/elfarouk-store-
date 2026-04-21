@@ -9,9 +9,10 @@ import { useStore } from '../context/StoreContext'
 const PAYMENT_LINK = 'https://ipn.eg/01115329887'
 const PAYMENT_NUMBER = '01115329887'
 const COMPLAINTS_PHONE = '01127930685'
-const WALLET_LINK = `tel:${PAYMENT_NUMBER}`
+const INSTAPAY_LINK = PAYMENT_LINK
+const WALLET_LINK = `https://wa.me/2${PAYMENT_NUMBER}?text=${encodeURIComponent('مساء الخير، عايز أحوّل عربون الصيانة 50 جنيه على المحفظة')}`
 const LIVE_SITE_URL = 'https://elfarouk-store.vercel.app'
-const BOOKING_PAGE_URL = `${LIVE_SITE_URL}/service-booking`
+const BOOKING_PAGE_URL = `${LIVE_SITE_URL}/customer/booking`
 const SERVICE_SLOTS = ['المكان 1', 'المكان 2', 'المكان 3']
 const CUSTOMER_SESSION_KEY = 'elfarouk_customer_session'
 
@@ -138,7 +139,7 @@ export default function ServiceBooking() {
 
   const handleCustomerLogout = () => {
     localStorage.removeItem(CUSTOMER_SESSION_KEY)
-    window.location.href = '/customer-login'
+    window.location.href = '/customer/login'
   }
 
   if (!sessionChecked) {
@@ -152,7 +153,7 @@ export default function ServiceBooking() {
   }
 
   if (!customerSession) {
-    return <Navigate to="/customer-login" replace />
+    return <Navigate to="/customer/login" replace />
   }
 
   return (
@@ -196,8 +197,8 @@ export default function ServiceBooking() {
               <p className="text-xs text-slate-400">بعد التحويل، ابعت رسالة في الشات فيها "تم الدفع" وآخر 4 أرقام من رقمك وصورة التحويل.</p>
             </div>
             <div className="grid sm:grid-cols-2 gap-2">
-              <a href={PAYMENT_LINK} target="_blank" rel="noreferrer" className="btn-primary inline-flex justify-center">الدفع عبر InstaPay</a>
-              <a href={WALLET_LINK} className="btn-ghost inline-flex justify-center">تحويل عبر المحفظة</a>
+              <a href={INSTAPAY_LINK} target="_blank" rel="noreferrer" className="btn-primary inline-flex justify-center">رابط InstaPay</a>
+              <a href={WALLET_LINK} target="_blank" rel="noreferrer" className="btn-ghost inline-flex justify-center">رابط تحويل المحفظة</a>
               <button type="button" onClick={copyPaymentNumber} className="btn-ghost inline-flex justify-center sm:col-span-2">نسخ رقم الدفع</button>
             </div>
             <div className="border border-primary-500/20 rounded-xl p-4 space-y-2">
@@ -233,7 +234,7 @@ export default function ServiceBooking() {
                 <button type="button" className="btn-primary" onClick={handleSendMessage}>إرسال</button>
               </div>
             </div>
-            <Link to="/" className="text-primary-400 text-sm">العودة للمتجر</Link>
+            <Link to="/customer/login" className="text-primary-400 text-sm">العودة لحساب العميل</Link>
           </div>
         )}
       </div>
