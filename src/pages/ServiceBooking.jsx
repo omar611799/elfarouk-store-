@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { db } from '../firebase/config'
 import { COLS } from '../firebase/collections'
 import { useStore } from '../context/StoreContext'
+import { auth } from '../firebase/config'
 
 const PAYMENT_LINK = 'https://ipn.eg/01115329887'
 const PAYMENT_NUMBER = '01115329887'
@@ -14,7 +15,6 @@ const WALLET_LINK = `https://wa.me/2${PAYMENT_NUMBER}?text=${encodeURIComponent(
 const LIVE_SITE_URL = 'https://elfarouk-store.vercel.app'
 const BOOKING_PAGE_URL = `${LIVE_SITE_URL}/customer/booking`
 const SERVICE_SLOTS = ['المكان 1', 'المكان 2', 'المكان 3']
-const CUSTOMER_SESSION_KEY = 'elfarouk_customer_session'
 
 export default function ServiceBooking() {
   const { serviceBookings, serviceMessages, notifications, addServiceBooking, addServiceMessage, markNotificationAsRead } = useStore()
@@ -24,7 +24,6 @@ export default function ServiceBooking() {
   const [paymentNote, setPaymentNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [installEvent, setInstallEvent] = useState(null)
-  const [customerSession, setCustomerSession] = useState(null)
   const [sessionChecked, setSessionChecked] = useState(false)
 
   useEffect(() => {
@@ -37,20 +36,7 @@ export default function ServiceBooking() {
   }, [])
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CUSTOMER_SESSION_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (parsed?.phone) {
-          setCustomerSession(parsed)
-          setForm(prev => ({ ...prev, name: parsed.name || '', phone: parsed.phone || '' }))
-        }
-      }
-    } catch {
-      localStorage.removeItem(CUSTOMER_SESSION_KEY)
-    } finally {
-      setSessionChecked(true)
-    }
+    setSessionChecked(true)
   }, [])
 
   const reservedSlotsToday = useMemo(() => {
@@ -82,7 +68,12 @@ export default function ServiceBooking() {
     e.preventDefault()
     setLoading(true)
     try {
-      const existing = await getDocs(query(collection(db, COLS.SERVICE_BOOKINGS), where('phone', '==', form.phone)))
+      const existing = await getDocs(
+        query(
+          collection(db, COLS.SERVICE_BOOKINGS),
+          where('customerAuthUid', '==', auth.currentUser.uid)
+        )
+      )
       if (!existing.empty) {
         setBookingId(existing.docs[0].id)
         return
@@ -92,7 +83,7 @@ export default function ServiceBooking() {
 
       const id = await addServiceBooking({
         ...form,
-        customerAccountId: customerSession.id,
+        customerAuthUid: auth.currentUser.uid,
         slotPrice: 50,
         paymentLink: PAYMENT_LINK,
         paymentStatus: 'pending',
@@ -101,6 +92,7 @@ export default function ServiceBooking() {
       await addServiceMessage({
         bookingId: id,
         sender: 'system',
+        customerAuthUid: auth.currentUser.uid,
         text: `تم فتح الشات. للدفع: InstaPay/محافظ على رقم ${PAYMENT_NUMBER} بمبلغ 50 جنيه، ثم أرسل لقطة التحويل هنا. رابط الحجز الرسمي: ${BOOKING_PAGE_URL}`,
       })
       setBookingId(id)
@@ -111,7 +103,7 @@ export default function ServiceBooking() {
 
   const handleSendMessage = async () => {
     if (!bookingId || !chatText.trim()) return
-    await addServiceMessage({ bookingId, sender: 'customer', text: chatText.trim() })
+    await addServiceMessage({ bookingId, sender: 'customer', customerAuthUid: auth.currentUser.uid, text: chatText.trim() })
     setChatText('')
   }
 
@@ -120,6 +112,7 @@ export default function ServiceBooking() {
     await addServiceMessage({
       bookingId,
       sender: 'customer',
+      customerAuthUid: auth.currentUser.uid,
       text: `تم إرسال تحويل عربون 50 جنيه. ${paymentNote ? `ملاحظات: ${paymentNote}` : ''}`,
     })
     setPaymentNote('')
@@ -138,7 +131,7 @@ export default function ServiceBooking() {
   }
 
   const handleCustomerLogout = () => {
-    localStorage.removeItem(CUSTOMER_SESSION_KEY)
+    auth.signOut()
     window.location.href = '/customer/login'
   }
 
@@ -152,7 +145,7 @@ export default function ServiceBooking() {
     )
   }
 
-  if (!customerSession) {
+  if (!auth.currentUser) {
     return <Navigate to="/customer/login" replace />
   }
 
@@ -161,7 +154,7 @@ export default function ServiceBooking() {
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="card p-6">
           <h1 className="text-2xl font-black">حجز صيانة</h1>
-          <p className="text-emerald-300 text-sm mt-2">أهلا {customerSession?.name} - حسابك مفعل وجاهز للحجز.</p>
+          <p className="text-emerald-300 text-sm mt-2">أهلا بك - حسابك مفعل وجاهز للحجز.</p>
           <p className="text-slate-400 text-sm mt-2">احجز مكان صيانة (3 أماكن فقط يوميًا) وادفع عربون 50 جنيه لتأكيد الحجز.</p>
           <p className="text-slate-400 text-sm mt-1">لينك الحجز المباشر: <a href={BOOKING_PAGE_URL} target="_blank" rel="noreferrer" className="text-primary-400">{BOOKING_PAGE_URL}</a></p>
           <p className="text-slate-300 mt-2">رقم الشكاوى: <a href={`tel:${COMPLAINTS_PHONE}`} className="text-primary-400">{COMPLAINTS_PHONE}</a></p>

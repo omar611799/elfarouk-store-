@@ -61,7 +61,7 @@ function AppRouter() {
         <Route path="/portal/:phone" element={<CustomerPortal />} />
 
         {!currentUser && <Route path="*" element={<Navigate to="/admin-login" replace />} />}
-        {currentUser && (
+        {currentUser?.role === 'admin' && (
         <Route path="/" element={<Layout />}>
           {/* Admin and Cashier have POS, Products, Customers */}
           <Route path="pos"          element={<POS />} />
@@ -92,6 +92,10 @@ function AppRouter() {
 
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
+        )}
+
+        {currentUser && currentUser.role !== 'admin' && (
+          <Route path="*" element={<Navigate to="/customer/booking" replace />} />
         )}
       </Routes>
     </BrowserRouter>

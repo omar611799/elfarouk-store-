@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useReducer, useCallback } from 'react'
+import { createContext, useContext, useEffect, useReducer } from 'react'
 import toast from 'react-hot-toast'
 import {
   listenCol, listenColLimited, COLS, addProduct, updateProduct, deleteProduct,
@@ -9,9 +9,10 @@ import {
   addQuote, deleteQuote, importProductsBatch,
   addExpense, deleteExpense, recordPurchase, paySupplierDebt,
   addServiceBooking, updateServiceBooking, addServiceMessage,
-  registerCustomerAccount, loginCustomerAccount, findCustomerAccountByPhone,
   addNotification, markNotificationAsRead
 } from '../firebase/collections'
+import { useAuth } from './AuthContext'
+import { auth } from '../firebase/config'
 
 const StoreContext = createContext(null)
 
@@ -43,38 +44,48 @@ function reducer(state, action) {
 
 export function StoreProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, init)
+  const { currentUser } = useAuth()
 
   // ── Real-time listeners (Staggered for performance) ──
   useEffect(() => {
     const unsubs = [];
 
-    // Stage 1: Critical Data (Immediate)
-    const sub1 = [
-      listenCol(COLS.PRODUCTS, data => {
-        dispatch({ type: 'SET', key: 'products', data })
-        // Small delay to ensure main thread breathes before hiding loader
-        setTimeout(() => dispatch({ type: 'LOADING', value: false }), 100);
-      }),
-      listenCol(COLS.CATEGORIES, data => dispatch({ type: 'SET', key: 'categories', data }))
-    ];
-    unsubs.push(...sub1);
+    // Customers should not subscribe to store business data.
+    if (currentUser?.role === 'admin') {
+      const sub1 = [
+        listenCol(COLS.PRODUCTS, data => {
+          dispatch({ type: 'SET', key: 'products', data })
+          setTimeout(() => dispatch({ type: 'LOADING', value: false }), 100);
+        }),
+        listenCol(COLS.CATEGORIES, data => dispatch({ type: 'SET', key: 'categories', data }))
+      ];
+      unsubs.push(...sub1);
+    } else {
+      dispatch({ type: 'LOADING', value: false })
+    }
 
-    // Stage 2: CRM & Partners (Delay 1s)
     const stage2Timer = setTimeout(() => {
+      if (currentUser?.role !== 'admin') return
       unsubs.push(listenCol(COLS.SUPPLIERS, data => dispatch({ type: 'SET', key: 'suppliers', data })));
       unsubs.push(listenCol(COLS.CUSTOMERS, data => dispatch({ type: 'SET', key: 'customers', data })));
     }, 1000);
 
-    // Stage 3: Heavy History (Delay 2.5s)
     const stage3Timer = setTimeout(() => {
-      unsubs.push(listenColLimited(COLS.INVOICES, data => dispatch({ type: 'SET', key: 'invoices', data }), 100));
-      unsubs.push(listenColLimited(COLS.QUOTATIONS, data => dispatch({ type: 'SET', key: 'quotes', data }), 50));
-      unsubs.push(listenColLimited(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data }), 100));
-      unsubs.push(listenColLimited(COLS.EXPENSES, data => dispatch({ type: 'SET', key: 'expenses', data }), 100));
-      unsubs.push(listenColLimited(COLS.PURCHASES, data => dispatch({ type: 'SET', key: 'purchases', data }), 50));
-      unsubs.push(listenColLimited(COLS.SERVICE_BOOKINGS, data => dispatch({ type: 'SET', key: 'serviceBookings', data }), 100));
-      unsubs.push(listenColLimited(COLS.SERVICE_MESSAGES, data => dispatch({ type: 'SET', key: 'serviceMessages', data }), 300));
-      unsubs.push(listenColLimited(COLS.NOTIFICATIONS, data => dispatch({ type: 'SET', key: 'notifications', data }), 300));
+      if (currentUser?.role === 'admin') {
+        unsubs.push(listenColLimited(COLS.INVOICES, data => dispatch({ type: 'SET', key: 'invoices', data }), 100));
+        unsubs.push(listenColLimited(COLS.QUOTATIONS, data => dispatch({ type: 'SET', key: 'quotes', data }), 50));
+        unsubs.push(listenColLimited(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data }), 100));
+        unsubs.push(listenColLimited(COLS.EXPENSES, data => dispatch({ type: 'SET', key: 'expenses', data }), 100));
+        unsubs.push(listenColLimited(COLS.PURCHASES, data => dispatch({ type: 'SET', key: 'purchases', data }), 50));
+        unsubs.push(listenColLimited(COLS.SERVICE_BOOKINGS, data => dispatch({ type: 'SET', key: 'serviceBookings', data }), 100));
+        unsubs.push(listenColLimited(COLS.SERVICE_MESSAGES, data => dispatch({ type: 'SET', key: 'serviceMessages', data }), 300));
+        unsubs.push(listenColLimited(COLS.NOTIFICATIONS, data => dispatch({ type: 'SET', key: 'notifications', data }), 300));
+      } else if (currentUser?.role === 'customer' && auth.currentUser?.uid) {
+        // For customers: minimal collections (they will still be filtered at UI; rules enforce privacy)
+        unsubs.push(listenColLimited(COLS.SERVICE_BOOKINGS, data => dispatch({ type: 'SET', key: 'serviceBookings', data }), 100));
+        unsubs.push(listenColLimited(COLS.SERVICE_MESSAGES, data => dispatch({ type: 'SET', key: 'serviceMessages', data }), 300));
+        unsubs.push(listenColLimited(COLS.NOTIFICATIONS, data => dispatch({ type: 'SET', key: 'notifications', data }), 300));
+      }
     }, 2500);
     
     return () => {
@@ -82,7 +93,7 @@ export function StoreProvider({ children }) {
       clearTimeout(stage2Timer);
       clearTimeout(stage3Timer);
     }
-  }, [])
+  }, [currentUser?.role])
 
   // ── Products ──
   const handleAddProduct = async (data) => {
@@ -288,16 +299,6 @@ export function StoreProvider({ children }) {
     } catch (e) { toast.error(e.message); throw e }
   }
 
-  const handleRegisterCustomerAccount = async (data) => {
-    try {
-      const id = await registerCustomerAccount(data)
-      toast.success('تم إنشاء الحساب بنجاح')
-      return id
-    } catch (e) { toast.error(e.message); throw e }
-  }
-
-  const handleLoginCustomerAccount = async (data) => loginCustomerAccount(data)
-  const handleFindCustomerAccountByPhone = async (phone) => findCustomerAccountByPhone(phone)
   const handleMarkNotificationAsRead = async (id) => markNotificationAsRead(id)
 
   // ── Cart ──
@@ -337,9 +338,6 @@ export function StoreProvider({ children }) {
       addServiceBooking: handleAddServiceBooking,
       updateServiceBooking: handleUpdateServiceBooking,
       addServiceMessage: handleAddServiceMessage,
-      registerCustomerAccount: handleRegisterCustomerAccount,
-      loginCustomerAccount: handleLoginCustomerAccount,
-      findCustomerAccountByPhone: handleFindCustomerAccountByPhone,
       markNotificationAsRead: handleMarkNotificationAsRead,
       cartAdd, cartQty, cartRemove, cartClear,
     }}>

@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { useStore } from '../context/StoreContext'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { auth, db } from '../firebase/config'
 
-const STORAGE_KEY = 'elfarouk_customer_session'
+function phoneToEmail(phone) {
+  const clean = String(phone || '').replace(/\D/g, '')
+  return `${clean}@customer.elfarouk.local`
+}
 
 export default function CustomerLogin() {
   const navigate = useNavigate()
-  const { registerCustomerAccount, loginCustomerAccount } = useStore()
   const [mode, setMode] = useState('login')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -23,21 +27,21 @@ export default function CustomerLogin() {
 
     setLoading(true)
     try {
-      let account
       if (mode === 'register') {
-        const id = await registerCustomerAccount({ name: name.trim(), phone: cleanPhone, pin })
-        account = { id, name: name.trim(), phone: cleanPhone }
+        const cred = await createUserWithEmailAndPassword(auth, phoneToEmail(cleanPhone), pin)
+        const uid = cred.user.uid
+        await setDoc(doc(db, 'users', uid), { role: 'customer', name: name.trim(), phone: cleanPhone, createdAt: serverTimestamp() }, { merge: true })
+        await setDoc(doc(db, 'customerAccounts', uid), { uid, name: name.trim(), phone: cleanPhone, status: 'active', createdAt: serverTimestamp() }, { merge: true })
       } else {
-        account = await loginCustomerAccount({ phone: cleanPhone, pin })
+        const cred = await signInWithEmailAndPassword(auth, phoneToEmail(cleanPhone), pin)
+        const uid = cred.user.uid
+        await setDoc(doc(db, 'users', uid), { role: 'customer', phone: cleanPhone, updatedAt: serverTimestamp() }, { merge: true })
       }
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        id: account.id,
-        name: account.name,
-        phone: account.phone,
-      }))
       toast.success('تم دخول حساب العميل')
       navigate('/customer/booking')
+    } catch (e) {
+      console.error(e)
+      toast.error('تعذر تسجيل/دخول العميل. تأكد من الرقم والـ PIN')
     } finally {
       setLoading(false)
     }
