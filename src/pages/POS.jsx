@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, memo, useCallback } from 'react'
 import { useStore } from '../context/StoreContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ShoppingCart, Search, Plus, Minus, Trash2, X, Users, 
-  ChevronLeft, Send, MessageCircle, Camera, Mic, Sparkles
+  ChevronLeft, Send, MessageCircle, Camera, Mic, Sparkles,
+  Wallet, CreditCard, Landmark
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Html5Qrcode } from 'html5-qrcode'
@@ -21,15 +22,14 @@ const itemVariant = {
   show: { opacity: 1, y: 0 }
 }
 
-// ✅ IMPORTANT: CartContent MUST be defined OUTSIDE of POS component.
-// Defining it inside causes React to re-create the component on every
-// state change, which unmounts and remounts the inputs and loses focus
-// after every single character typed.
-function CartContent({
+// ✅ IMPORTANT: CartContent MUST be wrapped in memo and defined OUTSIDE of POS component.
+// This prevents focus loss after every character typed.
+const CartContent = memo(({
   cart, cartTotal, cartClear, cartQty, cartRemove,
   customer, setCustomer, suggestedCustomers,
+  payments, setPayments,
   saving, handleSale, setIsCartOpen
-}) {
+}) => {
   return (
     <div className="flex flex-col h-full bg-obsidian-950/20">
       <div className="p-4 sm:p-8 border-b border-white/5 flex items-center justify-between sticky top-0 bg-obsidian-900/80 backdrop-blur-xl z-20">
@@ -116,10 +116,12 @@ function CartContent({
         <div className="space-y-3 sm:space-y-4">
           <div className="relative group">
             <input
+              id="customer-name-input"
               value={customer.name}
               onChange={e => setCustomer(p => ({ ...p, name: e.target.value }))}
               placeholder="اسم العميل..."
               className="input !py-4 pr-12 text-sm"
+              autoComplete="off"
             />
             <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary-400 transition-colors" />
 
@@ -128,6 +130,7 @@ function CartContent({
                 {suggestedCustomers.map(sc => (
                   <button
                     key={sc.id}
+                    type="button"
                     onClick={() => setCustomer({ name: sc.name, phone: sc.phone || '', carModel: sc.carModel || '', licensePlate: sc.licensePlate || '', nationalId: sc.nationalId || '' })}
                     className="w-full text-right px-4 sm:px-6 py-3.5 hover:bg-electric-500/10 transition-all flex justify-between items-center group"
                   >
@@ -144,17 +147,78 @@ function CartContent({
 
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <input
+              id="customer-car-input"
               value={customer.carModel}
               onChange={e => setCustomer(p => ({ ...p, carModel: e.target.value }))}
               placeholder="نوع العربية"
               className="input !py-4 text-sm font-bold"
             />
             <input
+              id="customer-phone-input"
               value={customer.phone}
               onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))}
               placeholder="رقم الموبايل"
               className="input !py-4 text-sm font-bold"
             />
+          </div>
+
+          {/* Payment Section */}
+          <div className="pt-2 border-t border-white/5 mt-4">
+            <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-3 px-1 text-center">طريقة الدفع (اختياري)</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="relative">
+                <input
+                  id="pay-cash"
+                  type="number"
+                  value={payments.cash}
+                  onChange={e => setPayments(p => ({ ...p, cash: e.target.value }))}
+                  placeholder="كاش"
+                  className="input !py-3 !pr-8 text-[10px] sm:text-xs font-bold bg-emerald-500/5 focus:border-emerald-500/50"
+                />
+                <Wallet size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-500/50" />
+              </div>
+              <div className="relative">
+                <input
+                  id="pay-visa"
+                  type="number"
+                  value={payments.visa}
+                  onChange={e => setPayments(p => ({ ...p, visa: e.target.value }))}
+                  placeholder="فيزا"
+                  className="input !py-3 !pr-8 text-[10px] sm:text-xs font-bold bg-blue-500/5 focus:border-blue-500/50"
+                />
+                <CreditCard size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-blue-500/50" />
+              </div>
+              <div className="relative">
+                <input
+                  id="pay-instapay"
+                  type="number"
+                  value={payments.instapay}
+                  onChange={e => setPayments(p => ({ ...p, instapay: e.target.value }))}
+                  placeholder="إنستاباي"
+                  className="input !py-3 !pr-8 text-[10px] sm:text-xs font-bold bg-purple-500/5 focus:border-purple-500/50"
+                />
+                <Landmark size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-purple-500/50" />
+              </div>
+            </div>
+            
+            {/* Payment Summary */}
+            {(Number(payments.cash || 0) + Number(payments.visa || 0) + Number(payments.instapay || 0)) > 0 && (
+              <div className="mt-3 flex justify-between items-center px-2 py-2 bg-white/5 rounded-xl border border-white/5">
+                <span className="text-[9px] text-slate-500 font-bold uppercase">إجمالي المدفوع:</span>
+                <span className="text-xs font-black text-emerald-400">
+                  {(Number(payments.cash || 0) + Number(payments.visa || 0) + Number(payments.instapay || 0)).toLocaleString('en-US')} ج.م
+                </span>
+              </div>
+            )}
+            
+            {cartTotal > (Number(payments.cash || 0) + Number(payments.visa || 0) + Number(payments.instapay || 0)) && (
+               <div className="mt-1 flex justify-between items-center px-2 py-1">
+                <span className="text-[9px] text-rose-500/70 font-bold uppercase">متبقي (مديونية):</span>
+                <span className="text-[10px] font-black text-rose-400">
+                  {(cartTotal - (Number(payments.cash || 0) + Number(payments.visa || 0) + Number(payments.instapay || 0))).toLocaleString('en-US')} ج.م
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2 sm:pt-4">
@@ -172,7 +236,8 @@ function CartContent({
       </div>
     </div>
   )
-}
+})
+CartContent.displayName = 'CartContent'
 
 export default function POS() {
   const {
@@ -283,12 +348,17 @@ export default function POS() {
     if (window.navigator?.vibrate) window.navigator.vibrate(15)
   }
 
-  // Props bundle passed to CartContent
-  const cartProps = {
+  const cartProps = useMemo(() => ({
     cart, cartTotal, cartClear, cartQty, cartRemove,
     customer, setCustomer, suggestedCustomers,
+    payments, setPayments,
     saving, handleSale, setIsCartOpen
-  }
+  }), [
+    cart, cartTotal, cartClear, cartQty, cartRemove,
+    customer, setCustomer, suggestedCustomers,
+    payments, setPayments,
+    saving, handleSale, setIsCartOpen
+  ])
 
   if (doneInvoice) return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-2xl mx-auto py-10 px-4">
