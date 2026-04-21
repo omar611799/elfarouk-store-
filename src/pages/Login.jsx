@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@email.com'
+
 export default function Login() {
   const { attemptAdminLogin, loading } = useAuth()
   const [email, setEmail] = useState('')
@@ -116,7 +118,7 @@ export default function Login() {
               <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
                 بيانات الأدمن المعتمدة
               </p>
-              <p className="mt-1 text-xs text-slate-500">omarabdelhamead611@gmail.com</p>
+              <p className="mt-1 text-xs text-slate-500">{ADMIN_EMAIL}</p>
             </div>
           </motion.div>
         </div>

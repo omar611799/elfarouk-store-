@@ -13,6 +13,7 @@ import {
   where,
   getDocs,
   limit,
+  deleteField,
 } from 'firebase/firestore'
 import { db } from './config'
 
@@ -652,15 +653,37 @@ export async function findCustomerAccountByPhone(phone) {
   return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }
 }
 
+async function hashSecret(value) {
+  const data = new TextEncoder().encode(String(value))
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 export async function registerCustomerAccount({ name, phone, pin }) {
   const existing = await findCustomerAccountByPhone(phone)
   if (existing) throw new Error('هذا الرقم مسجل بالفعل')
-  return addDoc_(COLS.CUSTOMER_ACCOUNTS, { name, phone, pin, status: 'active' })
+  const pinHash = await hashSecret(pin)
+  return addDoc_(COLS.CUSTOMER_ACCOUNTS, { name, phone, pinHash, status: 'active' })
 }
 
 export async function loginCustomerAccount({ phone, pin }) {
   const account = await findCustomerAccountByPhone(phone)
-  if (!account || account.pin !== pin) throw new Error('بيانات الدخول غير صحيحة')
+  if (!account) throw new Error('بيانات الدخول غير صحيحة')
+
+  const pinHash = await hashSecret(pin)
+  const hashMatched = account.pinHash && account.pinHash === pinHash
+  const legacyMatched = account.pin && account.pin === pin
+  if (!hashMatched && !legacyMatched) throw new Error('بيانات الدخول غير صحيحة')
+
+  // Silent migration for old plaintext PIN records.
+  if (legacyMatched && !hashMatched) {
+    await updateDoc(doc(db, COLS.CUSTOMER_ACCOUNTS, account.id), {
+      pinHash,
+      pin: deleteField(),
+      updatedAt: serverTimestamp(),
+    })
+  }
+
   return account
 }
 

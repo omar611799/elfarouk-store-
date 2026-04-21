@@ -5,8 +5,8 @@ import { COLS } from '../firebase/collections'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
-const ADMIN_EMAIL = 'omarabdelhamead611@gmail.com'
-const ADMIN_PASSWORD = 'omar333hhh!!!'
+const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase()
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || ''
 const ADMIN_SESSION_KEY = 'elfarouk_admin_session'
 
 export function AuthProvider({ children }) {
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
         }
 
         const savedAdminSession = localStorage.getItem(ADMIN_SESSION_KEY)
-        if (savedAdminSession === '1') {
+        if (savedAdminSession === '1' && ADMIN_EMAIL && ADMIN_PASSWORD) {
           setCurrentUser({
             id: 'admin-auth',
             name: 'المدير العام',
@@ -84,6 +84,11 @@ export function AuthProvider({ children }) {
   const attemptAdminLogin = async (email, password) => {
     setLoading(true)
     try {
+      if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+        toast.error('حساب الأدمن غير مهيأ للإنتاج. راجع إعدادات البيئة')
+        return false
+      }
+
       const validEmail = String(email || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()
       const validPassword = String(password || '') === ADMIN_PASSWORD
       if (!validEmail || !validPassword) {
