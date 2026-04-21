@@ -21,6 +21,7 @@ export default function ServiceBooking() {
   const [loading, setLoading] = useState(false)
   const [installEvent, setInstallEvent] = useState(null)
   const [customerSession, setCustomerSession] = useState(null)
+  const [sessionChecked, setSessionChecked] = useState(false)
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event) => {
@@ -34,14 +35,17 @@ export default function ServiceBooking() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(CUSTOMER_SESSION_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw)
-      if (parsed?.phone) {
-        setCustomerSession(parsed)
-        setForm(prev => ({ ...prev, name: parsed.name || '', phone: parsed.phone || '' }))
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed?.phone) {
+          setCustomerSession(parsed)
+          setForm(prev => ({ ...prev, name: parsed.name || '', phone: parsed.phone || '' }))
+        }
       }
     } catch {
       localStorage.removeItem(CUSTOMER_SESSION_KEY)
+    } finally {
+      setSessionChecked(true)
     }
   }, [])
 
@@ -110,6 +114,16 @@ export default function ServiceBooking() {
   const handleCustomerLogout = () => {
     localStorage.removeItem(CUSTOMER_SESSION_KEY)
     window.location.href = '/customer-login'
+  }
+
+  if (!sessionChecked) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white p-6" dir="rtl">
+        <div className="max-w-md mx-auto mt-10 card p-6">
+          <p className="text-sm text-slate-400">جارٍ التحقق من حساب العميل...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!customerSession) {
