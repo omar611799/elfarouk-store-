@@ -32,6 +32,7 @@ export default function Layout() {
   const location = useLocation()
 
   const activePage = nav.find(n => n.to === location.pathname) || nav[0]
+  const isPosRoute = location.pathname.startsWith('/pos')
   const allowedNav = nav.filter(item => !item.adminOnly || currentUser?.role === 'admin')
   const roleLabel = currentUser?.role === 'admin' ? 'مدير النظام' : 'كاشير'
   const mobileNavTargets = currentUser?.role === 'admin'
@@ -140,7 +141,7 @@ export default function Layout() {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-right">
-        <header className="sticky top-0 z-30 flex h-20 shrink-0 items-center justify-between border-b border-primary-100/80 bg-white/[0.85] px-4 backdrop-blur-xl sm:h-24 sm:px-7">
+        <header className={`sticky top-0 z-30 h-20 shrink-0 items-center justify-between border-b border-primary-100/80 bg-white/[0.85] px-4 backdrop-blur-xl sm:h-24 sm:px-7 ${isPosRoute ? 'hidden lg:flex' : 'flex'}`}>
           <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -194,29 +195,31 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="custom-scrollbar flex-1 overflow-y-auto bg-transparent p-4 pb-32 sm:p-6 sm:pb-8 lg:p-7">
+        <main className={`custom-scrollbar flex-1 overflow-y-auto bg-transparent ${isPosRoute ? 'p-0' : 'p-4 pb-32 sm:p-6 sm:pb-8 lg:p-7'}`}>
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-            className="mx-auto max-w-[1400px]"
+            className={isPosRoute ? 'min-h-full' : 'mx-auto max-w-[1400px]'}
           >
             <Outlet />
           </motion.div>
         </main>
       </div>
 
-      <nav
-        className="fixed inset-x-0 bottom-0 z-[60] border-t border-primary-100/80 bg-white/[0.92] px-2 py-2 shadow-[0_-14px_40px_rgba(15,34,56,0.08)] backdrop-blur-2xl lg:hidden"
-        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
-      >
-        <div className={`mx-auto grid w-full max-w-lg gap-1.5 ${mobileNav.length >= 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-          {mobileNav.map(({ to, icon, label }) => (
-            <BottomNavLink key={to} to={to} icon={icon} label={label === 'نقطة البيع' ? 'بيع' : label} active={location.pathname === to} />
-          ))}
-        </div>
-      </nav>
+      {!isPosRoute && (
+        <nav
+          className="fixed inset-x-0 bottom-0 z-[60] border-t border-primary-100/80 bg-white/[0.92] px-2 py-2 shadow-[0_-14px_40px_rgba(15,34,56,0.08)] backdrop-blur-2xl lg:hidden"
+          style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+        >
+          <div className={`mx-auto grid w-full max-w-lg gap-1.5 ${mobileNav.length >= 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+            {mobileNav.map(({ to, icon, label }) => (
+              <BottomNavLink key={to} to={to} icon={icon} label={label === 'نقطة البيع' ? 'بيع' : label} active={location.pathname === to} />
+            ))}
+          </div>
+        </nav>
+      )}
 
       <AnimatePresence>
         {isSidebarOpen && (

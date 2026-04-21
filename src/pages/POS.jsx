@@ -386,12 +386,12 @@ export default function POS() {
     </motion.div>
   )
   return (
-    <div className="flex flex-col xl:flex-row bg-[#f1f5f9] h-screen overflow-hidden font-display" dir="rtl">
+    <div className="flex min-h-full flex-col overflow-hidden bg-[#f1f5f9] font-display xl:h-full xl:flex-row" dir="rtl">
       {/* Search & Grid Area */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col min-w-0 p-4 sm:p-8 custom-scrollbar overflow-y-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="custom-scrollbar flex-1 min-w-0 overflow-y-auto p-3 sm:p-5 xl:p-8">
+        <div className="mb-5 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <div className="flex-1 space-y-6">
-            <div className="flex items-center justify-between sm:justify-start gap-4">
+            <div className="flex items-center justify-between gap-4 sm:justify-start">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-primary-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/30">
                   <Sparkles size={24} className="text-white" />
@@ -408,29 +408,30 @@ export default function POS() {
                 تحديث البرنامج 🔄
               </button>
             </div>
-            
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-              <div className="relative group flex-1">
-                <Search size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors" />
-                <input
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="ابحث عن أصناف..."
-                  className="input pr-12 pl-24 !w-full text-base font-bold !bg-white !border-slate-300"
-                />
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 flex gap-1.5">
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 rounded-[1.6rem] border border-primary-100 bg-white p-2 shadow-[0_14px_35px_rgba(15,23,42,0.05)]">
+                <div className="relative flex-1">
+                  <Search size={19} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors" />
+                  <input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="ابحث عن أصناف..."
+                    className="h-12 w-full rounded-[1.1rem] bg-slate-50 pr-11 pl-3 text-sm font-bold text-slate-800 outline-none placeholder:text-slate-400 sm:h-14 sm:text-base"
+                  />
+                </div>
+                <div className="flex shrink-0 gap-2">
                   {showScanner ? (
-                    <button onClick={() => setShowScanner(false)} className="p-2.5 rounded-xl bg-rose-100 text-rose-600 active:scale-95 transition-all"><X size={20} /></button>
+                    <button onClick={() => setShowScanner(false)} className="flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-rose-100 text-rose-600 transition-all active:scale-95 sm:h-14 sm:w-14"><X size={20} /></button>
                   ) : (
-                    <button onClick={() => setShowScanner(true)} className="p-2.5 rounded-xl bg-primary-100 text-primary-600 active:scale-95 transition-all"><Camera size={20} /></button>
+                    <button onClick={() => setShowScanner(true)} className="flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-primary-100 text-primary-600 transition-all active:scale-95 sm:h-14 sm:w-14"><Camera size={20} /></button>
                   )}
-                  <button onClick={startVoiceSearch} className={`p-2.5 rounded-xl transition-all ${isListening ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
+                  <button onClick={startVoiceSearch} className={`flex h-12 w-12 items-center justify-center rounded-[1.1rem] transition-all sm:h-14 sm:w-14 ${isListening ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
                     <Mic size={20} />
                   </button>
                 </div>
               </div>
 
-              {/* Category Pills (Mobile/Small Screens) */}
               <div className="flex overflow-x-auto gap-2 pb-1 no-scrollbar sm:hidden">
                 <button onClick={() => setCat('')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap ${!catFilter ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'bg-white text-slate-600 border border-slate-200'}`}>الكل</button>
                 {categoriesList.map(c => (
@@ -458,26 +459,33 @@ export default function POS() {
         </AnimatePresence>
 
         {/* Products Grid */}
-        <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-6">
+        <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 gap-4 md:grid-cols-2 sm:gap-5 xl:grid-cols-2 2xl:grid-cols-3">
           {filtered.map(p => (
             <motion.button variants={itemVariant} onClick={() => handleCartAdd(p)} key={p.id}
-              className="bg-white border border-slate-200 rounded-3xl p-4 flex flex-row items-center gap-4 hover:border-primary-400 hover:shadow-xl hover:shadow-primary-500/5 transition-all group active:scale-95 h-28 sm:h-auto">
-              <div className="flex-1 min-w-0 text-right">
-                <h3 className="text-slate-950 font-black text-base sm:text-xl truncate font-display leading-snug">{p.name}</h3>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs sm:text-xs text-white font-black bg-slate-900 px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm">{p.category || 'عام'}</span>
-                  <span className="text-xs sm:text-xs text-[#059669] font-black uppercase bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">الكمية: {p.quantity}</span>
+              className="group overflow-hidden rounded-[1.9rem] border border-slate-200 bg-white p-4 text-right transition-all active:scale-95 hover:border-primary-300 hover:shadow-[0_18px_40px_rgba(34,92,151,0.08)] sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate text-lg font-black leading-snug text-slate-950 sm:text-xl">{p.name}</h3>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-black uppercase tracking-tight text-white shadow-sm">{p.category || 'عام'}</span>
+                    <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-600">متاح {p.quantity}</span>
+                  </div>
+                </div>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.1rem] bg-primary-600 text-white shadow-lg shadow-primary-500/20 transition-transform group-hover:scale-105 sm:hidden">
+                  <Plus size={22} />
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-1 px-4 border-r-2 border-slate-200 h-20 justify-center shrink-0">
-                <span className="text-2xl sm:text-3xl font-black text-primary-600 font-display tracking-tight whitespace-nowrap drop-shadow-sm">
-                  {Number(p.price).toLocaleString('en-US')}
-                  <span className="text-xs font-bold text-slate-600 mr-1">ج.م</span>
-                </span>
-              </div>
-              <div className="shrink-0">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-primary-600 text-white flex items-center justify-center shadow-lg shadow-primary-500/20 group-hover:scale-110 transition-transform">
-                  <Plus size={24} className="sm:w-8 sm:h-8" />
+
+              <div className="mt-4 flex items-end justify-between border-t border-slate-100 pt-4">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">السعر</p>
+                  <p className="mt-1 whitespace-nowrap text-3xl font-black tracking-tight text-primary-600 sm:text-[2.1rem]">
+                    {Number(p.price).toLocaleString('en-US')}
+                    <span className="mr-1 text-xs font-bold text-slate-500 sm:text-sm">ج.م</span>
+                  </p>
+                </div>
+                <div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-primary-600 text-white shadow-lg shadow-primary-500/20 transition-transform group-hover:scale-105 sm:flex">
+                  <Plus size={26} />
                 </div>
               </div>
             </motion.button>
@@ -504,7 +512,8 @@ export default function POS() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-24 inset-x-4 h-18 bg-white text-slate-900 rounded-[2rem] flex items-center justify-between px-6 z-[45] xl:hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/20 active:scale-[0.98] transition-all"
+            className="fixed inset-x-3 bottom-3 z-[45] flex items-center justify-between rounded-[2rem] border border-white/20 bg-white px-5 py-4 text-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.18)] transition-all active:scale-[0.98] xl:hidden"
+            style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
             onClick={() => setIsCartOpen(true)}
           >
             <div className="flex items-center gap-4">
