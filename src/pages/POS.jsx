@@ -79,7 +79,7 @@ const CartContent = memo(({
                 <div className="flex items-center gap-3 sm:gap-4 pointer-events-none">
                   <div className="flex-1 min-w-0">
                     <p className="text-base text-white font-black truncate font-display leading-tight">{item.name}</p>
-                    <p className="text-xs text-primary-400 font-black mt-1.5 sm:mt-2 tracking-wide font-display">
+                    <p className="text-xs text-emerald-400 font-black mt-1.5 sm:mt-2 tracking-wide font-display drop-shadow-sm">
                       {Number(item.price).toLocaleString('en-US')} ج.م
                     </p>
                   </div>
@@ -459,14 +459,14 @@ export default function POS() {
               <div className="flex-1 min-w-0 pr-1">
                 <h3 className="text-white font-black text-base sm:text-xl truncate font-display leading-snug">{p.name}</h3>
                 <div className="flex items-center gap-2 mt-1.5 sm:mt-2">
-                  <span className="text-xs sm:text-xs text-slate-200 font-bold bg-white/10 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-tighter">{p.category || 'عام'}</span>
-                  <span className="text-xs sm:text-xs text-emerald-400 font-black">متاح: {p.quantity}</span>
+                  <span className="text-xs sm:text-xs text-white font-black bg-white/20 px-2.5 py-1 rounded-lg border border-white/20 uppercase tracking-tighter">{p.category || 'عام'}</span>
+                  <span className="text-xs sm:text-xs text-emerald-300 font-black drop-shadow-md">متاح: {p.quantity}</span>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-1 px-4 border-r border-white/10 h-14 justify-center">
-                <span className="text-xl sm:text-2xl font-black text-white font-display tracking-tight whitespace-nowrap">
+              <div className="flex flex-col items-end gap-1 px-4 border-r border-white/20 h-14 justify-center">
+                <span className="text-xl sm:text-2xl font-black text-white font-display tracking-tight whitespace-nowrap drop-shadow-lg">
                   {Number(p.price).toLocaleString('en-US')}
-                  <span className="text-xs sm:text-xs text-slate-400 font-normal mr-1">ج.م</span>
+                  <span className="text-xs sm:text-xs text-slate-300 font-bold mr-1">ج.م</span>
                 </span>
               </div>
               <div className="ml-1">
