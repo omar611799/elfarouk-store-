@@ -103,12 +103,12 @@ const CartContent = memo(({
         </AnimatePresence>
       </div>
 
-      <div className="p-6 sm:p-8 border-t border-white/5 bg-obsidian-950/40 backdrop-blur-3xl pb-safe">
+      <div className="p-6 sm:p-8 border-t border-slate-200 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.03)] pb-safe">
         <div className="space-y-4 mb-6 sm:mb-8">
           <div className="flex justify-between items-center px-1">
-            <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">إجمالي السلة</span>
-            <span className="text-2xl sm:text-4xl font-black text-white font-display tracking-tighter">
-              {cartTotal.toLocaleString('en-US')} <span className="text-xs sm:text-sm font-normal text-slate-500">ج.م</span>
+            <span className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">إجمالي السلة</span>
+            <span className="text-2xl sm:text-4xl font-black text-slate-950 font-display tracking-tighter">
+              {cartTotal.toLocaleString('en-US')} <span className="text-xs sm:text-sm font-normal text-slate-400">ج.م</span>
             </span>
           </div>
         </div>
@@ -126,19 +126,19 @@ const CartContent = memo(({
             <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary-400 transition-colors" />
 
             {suggestedCustomers.length > 0 && (
-              <div className="absolute bottom-full left-0 right-0 mb-3 bg-obsidian-900 border border-white/10 rounded-2xl sm:rounded-3xl shadow-premium z-50 overflow-hidden divide-y divide-white/5 max-h-48 overflow-y-auto">
+              <div className="absolute bottom-full left-0 right-0 mb-3 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-64 overflow-y-auto">
                 {suggestedCustomers.map(sc => (
                   <button
                     key={sc.id}
                     type="button"
                     onClick={() => setCustomer({ name: sc.name, phone: sc.phone || '', carModel: sc.carModel || '', licensePlate: sc.licensePlate || '', nationalId: sc.nationalId || '' })}
-                    className="w-full text-right px-4 sm:px-6 py-3.5 hover:bg-electric-500/10 transition-all flex justify-between items-center group"
+                    className="w-full text-right px-4 sm:px-6 py-4 hover:bg-primary-50 transition-all flex justify-between items-center group"
                   >
-                    <div className="flex items-center gap-2">
-                      <ChevronLeft size={14} className="text-slate-700 group-hover:text-primary-400 group-hover:-translate-x-1 transition-all" />
-                      <span className="text-primary-400 font-black text-[9px] uppercase tracking-widest">{sc.phone}</span>
+                    <div className="flex items-center gap-3">
+                      <ChevronLeft size={16} className="text-slate-300 group-hover:text-primary-600 group-hover:-translate-x-1 transition-all" />
+                      <span className="text-primary-600 font-black text-xs uppercase tracking-wider">{sc.phone}</span>
                     </div>
-                    <span className="text-white text-xs sm:text-sm font-black font-display">{sc.name}</span>
+                    <span className="text-slate-900 text-sm sm:text-base font-black font-display">{sc.name}</span>
                   </button>
                 ))}
               </div>
@@ -361,18 +361,18 @@ export default function POS() {
 
   if (doneInvoice) return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-2xl mx-auto py-10 px-4">
-      <div className="card text-center relative overflow-hidden flex flex-col items-center py-10 sm:py-16">
-        <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-emerald-500/50 via-emerald-400 to-emerald-500/50" />
-        <div className="w-16 h-16 sm:w-24 sm:h-24 bg-emerald-500/10 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mb-6 sm:mb-8 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
-          <Send size={32} className="text-emerald-400" />
+      <div className="card text-center bg-white border-slate-200 relative overflow-hidden flex flex-col items-center py-10 sm:py-16">
+        <div className="absolute top-0 inset-x-0 h-2 bg-emerald-500" />
+        <div className="w-16 h-16 sm:w-24 sm:h-24 bg-emerald-50 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mb-6 sm:mb-8 border border-emerald-100 shadow-sm">
+          <Send size={32} className="text-emerald-500" />
         </div>
-        <h2 className="text-2xl sm:text-4xl font-black text-white mb-2 sm:mb-3 font-display tracking-tight">تم البيع بنجاح!</h2>
-        <p className="text-slate-500 text-[9px] sm:text-sm font-bold uppercase tracking-widest mb-8 sm:mb-10">إيصال رقم: {doneInvoice.number}</p>
-        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] mx-auto mb-8 sm:mb-10 shadow-premium group transition-transform hover:scale-105 border-4 sm:border-8 border-white/5">
+        <h2 className="text-2xl sm:text-4xl font-black text-slate-950 mb-2 sm:mb-3 font-display tracking-tight">تم البيع بنجاح!</h2>
+        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-8 sm:mb-10">إيصال رقم: {doneInvoice.number}</p>
+        <div className="bg-slate-50 p-6 sm:p-8 rounded-2xl sm:rounded-[2rem] mx-auto mb-8 sm:mb-10 shadow-sm border border-slate-100">
           <QRCodeSVG value={`${window.location.origin}/receipt/${doneInvoice.id}`} size={180} />
         </div>
-        <p className="text-3xl sm:text-5xl font-black text-white tracking-tighter mb-4 font-display">
-          {doneInvoice.total.toLocaleString('en-US')} <span className="text-sm sm:text-2xl text-slate-500 font-normal">ج.م</span>
+        <p className="text-3xl sm:text-5xl font-black text-slate-950 tracking-tighter mb-4 font-display">
+          {doneInvoice.total.toLocaleString('en-US')} <span className="text-sm sm:text-2xl text-slate-400 font-normal">ج.م</span>
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full mt-4 sm:mt-6 px-6">
           <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={sendWhatsApp} className="btn-primary !bg-emerald-600 hover:!bg-emerald-500 !shadow-[0_10px_20px_rgba(16,185,129,0.2)]">
