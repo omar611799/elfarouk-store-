@@ -22,6 +22,9 @@ import Reminders from './pages/Reminders'
 import Purchases from './pages/Purchases'
 import CustomerPortal from './pages/CustomerPortal'
 import StockHistory from './pages/StockHistory'
+import ServiceBooking from './pages/ServiceBooking'
+import ServiceBookingsAdmin from './pages/ServiceBookingsAdmin'
+import CustomerLogin from './pages/CustomerLogin'
 import LoadingScreen from './components/LoadingScreen'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -33,7 +36,6 @@ function AppRouter() {
   const { currentUser, loading: authLoading } = useAuth()
   
   if (authLoading) return <LoadingScreen />
-  if (!currentUser) return <Login />
 
   return (
     <BrowserRouter>
@@ -49,9 +51,15 @@ function AppRouter() {
         }}
       />
       <Routes>
+        <Route path="/admin-login" element={currentUser ? <Navigate to="/" /> : <Login />} />
+        <Route path="/customer-login" element={<CustomerLogin />} />
         <Route path="/receipt/:id" element={<Receipt />} />
         <Route path="/print-quote/:id" element={<QuotePrint />} />
         <Route path="/portal/:phone" element={<CustomerPortal />} />
+        <Route path="/service-booking" element={<ServiceBooking />} />
+
+        {!currentUser && <Route path="*" element={<Navigate to="/admin-login" />} />}
+        {currentUser && (
         <Route path="/" element={<Layout />}>
           {/* Admin and Cashier have POS, Products, Customers */}
           <Route path="pos"          element={<POS />} />
@@ -73,6 +81,7 @@ function AppRouter() {
               <Route path="reports"      element={<Reports />} />
               <Route path="reminders"    element={<Reminders />} />
               <Route path="purchases"    element={<Purchases />} />
+              <Route path="service-bookings" element={<ServiceBookingsAdmin />} />
             </>
           ) : (
             // Cashier fallback index
@@ -81,6 +90,7 @@ function AppRouter() {
 
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
+        )}
       </Routes>
     </BrowserRouter>
   )

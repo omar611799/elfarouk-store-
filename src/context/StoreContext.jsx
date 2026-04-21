@@ -7,7 +7,8 @@ import {
   updateProductStock, addTransaction, completeSale,
   payInvoiceDebt, deleteInvoiceAndReturnStock, returnInvoiceItems,
   addQuote, deleteQuote, importProductsBatch,
-  addExpense, deleteExpense, recordPurchase, paySupplierDebt
+  addExpense, deleteExpense, recordPurchase, paySupplierDebt,
+  addServiceBooking, updateServiceBooking, addServiceMessage
 } from '../firebase/collections'
 
 const StoreContext = createContext(null)
@@ -15,6 +16,7 @@ const StoreContext = createContext(null)
 const init = {
   products: [], categories: [], suppliers: [],
   customers: [], invoices: [], transactions: [], expenses: [], quotes: [], purchases: [],
+  serviceBookings: [], serviceMessages: [],
   loading: true,
   cart: [],
 }
@@ -68,6 +70,8 @@ export function StoreProvider({ children }) {
       unsubs.push(listenColLimited(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data }), 100));
       unsubs.push(listenColLimited(COLS.EXPENSES, data => dispatch({ type: 'SET', key: 'expenses', data }), 100));
       unsubs.push(listenColLimited(COLS.PURCHASES, data => dispatch({ type: 'SET', key: 'purchases', data }), 50));
+      unsubs.push(listenColLimited(COLS.SERVICE_BOOKINGS, data => dispatch({ type: 'SET', key: 'serviceBookings', data }), 100));
+      unsubs.push(listenColLimited(COLS.SERVICE_MESSAGES, data => dispatch({ type: 'SET', key: 'serviceMessages', data }), 300));
     }, 2500);
     
     return () => {
@@ -233,6 +237,28 @@ export function StoreProvider({ children }) {
     } catch (e) { toast.error(e.message); throw e }
   }
 
+  // ── Service Bookings ──
+  const handleAddServiceBooking = async (data) => {
+    try {
+      const id = await addServiceBooking(data)
+      toast.success('تم تسجيل الحجز بنجاح')
+      return id
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
+  const handleUpdateServiceBooking = async (id, data) => {
+    try {
+      await updateServiceBooking(id, data)
+      toast.success('تم تحديث حالة الحجز')
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
+  const handleAddServiceMessage = async (data) => {
+    try {
+      await addServiceMessage(data)
+    } catch (e) { toast.error(e.message); throw e }
+  }
+
   // ── Cart ──
   const cartAdd = (item) => dispatch({ type: 'CART_ADD', item })
   const cartQty = (id, qty) => dispatch({ type: 'CART_QTY', id, qty })
@@ -267,6 +293,9 @@ export function StoreProvider({ children }) {
       deleteExpense: handleDeleteExpense,
       recordPurchase: handleRecordPurchase,
       paySupplierDebt: handlePaySupplierDebt,
+      addServiceBooking: handleAddServiceBooking,
+      updateServiceBooking: handleUpdateServiceBooking,
+      addServiceMessage: handleAddServiceMessage,
       cartAdd, cartQty, cartRemove, cartClear,
     }}>
       {children}

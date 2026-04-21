@@ -28,6 +28,8 @@ export const COLS = {
   USERS: 'users',
   STOCK_LOGS: 'stockLogs',
   PURCHASES: 'purchases',
+  SERVICE_BOOKINGS: 'serviceBookings',
+  SERVICE_MESSAGES: 'serviceMessages',
 }
 
 // ── Real-time listeners (onSnapshot) ──
@@ -636,4 +638,9 @@ export async function paySupplierDebt(supplierId, amount, note = '') {
 
   await batch.commit();
 }
+
+// ── Service Bookings & Chat ──
+export const addServiceBooking = (d) => addDoc_(COLS.SERVICE_BOOKINGS, d)
+export const updateServiceBooking = (id, d) => updateDoc_(COLS.SERVICE_BOOKINGS, id, d)
+export const addServiceMessage = (d) => addDoc_(COLS.SERVICE_MESSAGES, d)
 

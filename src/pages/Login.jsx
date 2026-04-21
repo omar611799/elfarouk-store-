@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ShieldCheck, KeyRound, Sparkles, Delete } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
+import { Link } from 'react-router-dom'
 
 export default function Login() {
   const { attemptLogin, loading } = useAuth()
@@ -86,6 +87,11 @@ export default function Login() {
               </div>
               <h1 className="text-2xl font-black leading-none tracking-tight text-slate-950 sm:text-3xl">ELFAROUK Service</h1>
               <p className="mt-3 text-sm font-semibold text-slate-500">دخول آمن وسريع إلى نظام الإدارة</p>
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <Link to="/customer-login" className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-[11px] font-black text-primary-700">
+                  دخول العميل للحجز
+                </Link>
+              </div>
               <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary-100 bg-primary-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-primary-700">
                 <ShieldCheck size={14} /> PIN Access
               </div>

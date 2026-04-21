@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, Tag, Truck, Users,
   ShoppingCart, FileText, ArrowLeftRight, Menu, X, BarChart3, BookOpen, ClipboardList, Bell, ShoppingBag,
-  Search, Settings, User as UserIcon, LogOut
+  Search, Settings, User as UserIcon, LogOut, Wrench
 } from 'lucide-react'
 import { useStore } from '../../context/StoreContext'
 import { useAuth } from '../../context/AuthContext'
@@ -23,6 +23,7 @@ const nav = [
   { to: '/reminders',   icon: Bell,            label: 'المنبهات',       adminOnly: true },
   { to: '/transactions',icon: ArrowLeftRight,  label: 'المعاملات',      adminOnly: true },
   { to: '/reports',     icon: BarChart3,       label: 'التقارير',       adminOnly: true },
+  { to: '/service-bookings', icon: Wrench,     label: 'حجوزات الصيانة',  adminOnly: true },
 ]
 
 export default function Layout() {

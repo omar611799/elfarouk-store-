@@ -28,13 +28,25 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
-        name: 'ELFAROUK Service',
-        short_name: 'ELFAROUK',
-        start_url: '/?v=2',
+        name: 'ELFAROUK Booking',
+        short_name: 'ELF Booking',
+        start_url: '/service-booking?v=3',
         scope: '/',
         display: 'standalone',
         background_color: '#0f2238',
         theme_color: '#153d65',
+        shortcuts: [
+          {
+            name: 'حجز صيانة',
+            short_name: 'حجز',
+            url: '/service-booking',
+          },
+          {
+            name: 'لوحة الإدارة',
+            short_name: 'الإدارة',
+            url: '/',
+          },
+        ],
         icons: [
           { src: '/elfarouk-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/elfarouk-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

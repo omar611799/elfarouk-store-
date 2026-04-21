@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useStore } from '../context/StoreContext'
-import { Car, History, Wrench, Calendar, FileText, CheckCircle2, AlertCircle, Phone, MapPin } from 'lucide-react'
+import { Car, History, Wrench, Calendar, FileText, CheckCircle2, AlertCircle, Phone, MapPin, CreditCard } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 

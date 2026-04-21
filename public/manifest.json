@@ -1,10 +1,22 @@
 {
-  "name": "ELFAROUK Service",
-  "short_name": "ELFAROUK",
-  "start_url": "/?v=2",
+  "name": "ELFAROUK Booking",
+  "short_name": "ELF Booking",
+  "start_url": "/service-booking?v=3",
   "display": "standalone",
   "background_color": "#0f2238",
   "theme_color": "#153d65",
+  "shortcuts": [
+    {
+      "name": "حجز صيانة",
+      "short_name": "حجز",
+      "url": "/service-booking"
+    },
+    {
+      "name": "لوحة الإدارة",
+      "short_name": "الإدارة",
+      "url": "/"
+    }
+  ],
   "icons": [
     {
       "src": "/elfarouk-icon-192.png",
