@@ -3,8 +3,8 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, Tag, Truck, Users,
-  ShoppingCart, FileText, ArrowLeftRight, Menu, X, Store, BarChart3, BookOpen, TrendingDown, ClipboardList, Bell, ShoppingBag,
-  Search, Settings, HelpCircle, User as UserIcon, LogOut, ShieldCheck
+  ShoppingCart, FileText, ArrowLeftRight, Menu, X, BarChart3, BookOpen, ClipboardList, Bell, ShoppingBag,
+  Search, Settings, User as UserIcon, LogOut
 } from 'lucide-react'
 import { useStore } from '../../context/StoreContext'
 import { useAuth } from '../../context/AuthContext'
@@ -30,58 +30,87 @@ export default function Layout() {
   const { cartCount, products } = useStore()
   const { currentUser, logout } = useAuth()
   const location = useLocation()
-  
-  const activePage = nav.find(n => n.to === location.pathname) || nav[0]
 
-  const allowedNav = nav.filter(item => 
-    !item.adminOnly || currentUser?.role === 'admin'
-  )
+  const activePage = nav.find(n => n.to === location.pathname) || nav[0]
+  const allowedNav = nav.filter(item => !item.adminOnly || currentUser?.role === 'admin')
+  const roleLabel = currentUser?.role === 'admin' ? 'مدير النظام' : 'كاشير'
+  const mobileNavTargets = currentUser?.role === 'admin'
+    ? ['/', '/pos', '/products', '/invoices']
+    : ['/pos', '/products', '/customers']
+  const mobileNav = allowedNav.filter(({ to }) => mobileNavTargets.includes(to))
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-display flex-row-reverse" dir="rtl">
-      
-      {/* --- Sidebar (Enterprise Style) --- */}
+    <div className="flex min-h-screen flex-row-reverse overflow-hidden bg-transparent font-display lg:h-screen" dir="rtl">
       <aside className={`
-        fixed inset-y-0 right-0 z-50 w-72 bg-[#0f172a] text-slate-300 transition-transform duration-300 transform
+        fixed inset-y-0 right-0 z-50 flex w-[20rem] max-w-[88vw] flex-col overflow-hidden
+        border-l border-white/10 bg-[linear-gradient(180deg,#08111c_0%,#10243b_45%,#0f1c2d_100%)]
+        text-slate-200 shadow-[0_25px_80px_rgba(8,17,28,0.28)] transition-transform duration-300
         ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
-        lg:relative lg:translate-x-0 flex flex-col shadow-xl
+        lg:relative lg:translate-x-0
       `}>
-        {/* Sidebar Header */}
-        <div className="p-8 flex items-center gap-4 border-b border-slate-800/50">
-          <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-xl shadow-primary-500/20 transform rotate-3 shrink-0">
-            <Store size={26} className="text-white" />
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top,rgba(143,180,216,0.28),transparent_58%)]" />
+          <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-primary-500/10 blur-3xl" />
+        </div>
+
+        <div className="relative flex items-start gap-4 border-b border-white/10 p-5 sm:p-7">
+          <div className="shrink-0 overflow-hidden rounded-[1.4rem] bg-white/95 p-2 shadow-[0_18px_44px_rgba(8,17,28,0.22)]">
+            <img
+              src="/brand-logo.png"
+              alt="ELFAROUK Service"
+              className="h-16 w-16 rounded-xl object-contain sm:h-20 sm:w-20"
+            />
           </div>
-          <div className="min-w-0">
-            <h2 className="text-xl font-black text-white leading-tight tracking-tight">AutoPartsPro</h2>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] text-slate-500 font-black tracking-[0.2em] uppercase">Enterprise v3.1</p>
-            </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary-200/90">ELFAROUK SERVICE</p>
+            <h2 className="mt-2 text-2xl font-black leading-none tracking-tight text-white">مركز التشغيل</h2>
+            <p className="mt-2 text-xs leading-relaxed text-slate-400">
+              إدارة المخزن والمبيعات بأسلوب أوضح ومتناسق مع هوية اللوجو.
+            </p>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden mr-auto p-2 hover:bg-slate-800 rounded-xl transition-colors">
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="mr-auto rounded-2xl border border-white/10 bg-white/5 p-2 text-slate-300 transition-colors hover:bg-white/10 lg:hidden"
+            aria-label="إغلاق القائمة"
+          >
             <X size={20} />
           </button>
         </div>
 
-        {/* Sidebar Nav */}
-        <nav className="flex-1 overflow-y-auto px-4 py-8 space-y-2 custom-scrollbar">
+        <div className="relative px-4 py-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-[1.35rem] border border-white/10 bg-white/5 p-3 text-center backdrop-blur-md">
+              <p className="text-xl font-black text-white">{products?.length || 0}</p>
+              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">منتجات</p>
+            </div>
+            <div className="rounded-[1.35rem] border border-primary-400/20 bg-primary-500/10 p-3 text-center backdrop-blur-md">
+              <p className="text-xl font-black text-white">{cartCount}</p>
+              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-primary-200">في السلة</p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="relative flex-1 space-y-2 overflow-y-auto px-4 pb-6 custom-scrollbar">
           {allowedNav.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
               end={to === '/'}
               onClick={() => setIsSidebarOpen(false)}
-              className={({ isActive }) =>
-                `group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 relative overflow-hidden
-                ${isActive 
-                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' 
-                  : 'hover:bg-white/[0.03] hover:text-white text-slate-400'}`
-              }
+              className={({ isActive }) => `
+                group relative flex items-center gap-4 overflow-hidden rounded-[1.35rem] px-4 py-3.5 text-sm font-bold
+                transition-all duration-300
+                ${isActive
+                  ? 'bg-[linear-gradient(135deg,#163d65_0%,#225c97_100%)] text-white shadow-[0_16px_35px_rgba(34,92,151,0.32)]'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'}
+              `}
             >
-              <Icon size={20} className="shrink-0 transition-transform group-hover:scale-110" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 transition-transform group-hover:scale-105">
+                <Icon size={18} />
+              </div>
               <span className="relative z-10">{label}</span>
               {to === '/pos' && cartCount > 0 && (
-                <span className="mr-auto bg-white/20 text-white text-[10px] px-2.5 py-1 rounded-full font-black backdrop-blur-sm">
+                <span className="mr-auto rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black text-white backdrop-blur-sm">
                   {cartCount}
                 </span>
               )}
@@ -89,108 +118,111 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* Sidebar Mini Stats */}
-        <div className="px-4 pb-3 grid grid-cols-2 gap-2">
-          <div className="bg-slate-800/50 rounded-2xl p-3 border border-white/5 text-center">
-            <p className="text-lg font-black text-white">{cartCount > 0 ? cartCount : products?.length || 0}</p>
-            <p className="text-[9px] text-slate-500 font-black uppercase tracking-wider">منتجات المخزن</p>
-          </div>
-          <div className="bg-slate-800/50 rounded-2xl p-3 border border-white/5 text-center">
-            <p className="text-lg font-black text-white">{cartCount}</p>
-            <p className="text-[9px] text-slate-500 font-black uppercase tracking-wider">سلة البيع</p>
-          </div>
-        </div>
-
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-800/50">
-          <div className="bg-slate-800/30 rounded-2xl p-4 border border-white/5">
-             <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-tr from-slate-700 to-slate-600 rounded-xl flex items-center justify-center text-white shrink-0">
+        <div className="relative border-t border-white/10 p-4">
+          <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-4 backdrop-blur-md">
+             <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#153d65_0%,#225c97_100%)] text-white shadow-[0_12px_30px_rgba(34,92,151,0.22)]">
                   <UserIcon size={18} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-black text-white truncate text-right">{currentUser?.name}</p>
-                  <p className="text-[10px] text-primary-500 font-bold uppercase tracking-wider text-right leading-none mt-1">{currentUser?.role === 'admin' ? 'مدير النظام' : 'كاشير'}</p>
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-primary-200 text-right leading-none">{roleLabel}</p>
                 </div>
              </div>
-             <button 
-              onClick={logout}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary-500/10 text-primary-500 hover:bg-primary-500 hover:text-white transition-all text-xs font-black"
+             <button
+               onClick={logout}
+               className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-3 text-xs font-black text-white transition-all hover:bg-primary-500"
              >
-                <LogOut size={16} /> تسجيل الخروج
+                <LogOut size={16} /> خروج من الحساب
              </button>
           </div>
         </div>
       </aside>
 
-      {/* --- Main Area --- */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-right">
-        
-        {/* Top Header */}
-        <header className="h-24 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-8 flex items-center justify-between z-40 shrink-0 sticky top-0">
-          <div className="flex items-center gap-6">
-            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-3 hover:bg-slate-100 rounded-2xl transition-colors">
+        <header className="sticky top-0 z-30 flex h-20 shrink-0 items-center justify-between border-b border-primary-100/80 bg-white/[0.85] px-4 backdrop-blur-xl sm:h-24 sm:px-7">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="rounded-2xl border border-primary-100 bg-white p-3 text-slate-600 shadow-[0_10px_28px_rgba(15,23,42,0.06)] transition-colors hover:bg-primary-50 lg:hidden"
+              aria-label="فتح القائمة"
+            >
               <Menu size={24} className="text-slate-600" />
             </button>
-            <div className="hidden lg:flex items-center gap-3 bg-slate-50/50 px-5 py-3 rounded-2xl border border-slate-200/60 w-[400px] group transition-all focus-within:border-primary-500/50 focus-within:bg-white focus-within:shadow-lg focus-within:shadow-primary-500/5 theme-transition">
-              <Search size={18} className="text-slate-400 group-focus-within:text-primary-500 transition-colors" />
-              <input type="text" placeholder="بحث عن منتج، عميل أو رقم فاتورة..." className="bg-transparent border-none outline-none text-sm flex-1 text-slate-800 placeholder-slate-400 text-right font-semibold" />
-              <span className="px-2 py-1 bg-slate-200/50 text-[10px] font-black text-slate-400 rounded-md">SKU</span>
+            <div className="flex items-center gap-3 lg:hidden">
+              <div className="overflow-hidden rounded-2xl bg-white p-1 shadow-[0_10px_28px_rgba(34,92,151,0.14)] ring-1 ring-primary-100">
+                <img src="/brand-logo.png" alt="ELFAROUK Service" className="h-10 w-10 object-contain sm:h-11 sm:w-11" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-primary-600">ELFAROUK</p>
+                <h1 className="truncate text-base font-black text-slate-900 sm:text-xl">{activePage?.label}</h1>
+              </div>
             </div>
-            <h1 className="lg:hidden text-xl font-black text-slate-800 font-display tracking-tight">{activePage?.label}</h1>
+            <div className="group hidden xl:flex items-center gap-3 rounded-[1.35rem] border border-primary-100 bg-slate-50/80 px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition-all focus-within:border-primary-300 focus-within:bg-white focus-within:shadow-[0_16px_35px_rgba(34,92,151,0.08)]">
+              <Search size={18} className="text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+              <input
+                type="text"
+                placeholder="بحث سريع عن منتج، عميل أو فاتورة..."
+                className="min-w-[16rem] flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+              />
+              <span className="rounded-lg bg-primary-50 px-2 py-1 text-[10px] font-black text-primary-600">SKU</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4 sm:gap-8 flex-row-reverse">
-            <div className="hidden sm:flex items-center gap-6 flex-row-reverse">
-               <button className="relative w-12 h-12 flex items-center justify-center text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-2xl transition-all group">
-                  <Bell size={22} />
-                  <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-primary-500 border-2 border-white rounded-full group-hover:animate-ping" />
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="hidden sm:flex items-center gap-2">
+               <button className="group relative flex h-11 w-11 items-center justify-center rounded-2xl border border-primary-100 bg-white text-slate-500 transition-all hover:bg-primary-50 hover:text-primary-600">
+                  <Bell size={20} />
+                  <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full border-2 border-white bg-primary-500 group-hover:animate-ping" />
                </button>
-               <button className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-2xl transition-all">
-                  <Settings size={22} />
+               <button className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary-100 bg-white text-slate-500 transition-all hover:bg-primary-50 hover:text-primary-600">
+                  <Settings size={20} />
                </button>
             </div>
-            <div className="h-10 w-[1px] bg-slate-200 hidden sm:block" />
-            <div className="flex items-center gap-4 flex-row-reverse cursor-pointer hover:bg-slate-50 p-2 pr-4 rounded-2xl transition-colors">
-               <div className="text-left hidden sm:block">
-                  <p className="text-sm font-black text-slate-900 text-left leading-tight">{currentUser?.name}</p>
-                  <p className="text-[11px] text-primary-500 font-black text-left uppercase tracking-tight mt-0.5">مدير المنظومة</p>
+            <div className="hidden items-center gap-3 rounded-[1.4rem] border border-primary-100 bg-primary-50/60 px-3 py-2 md:flex">
+               <div className="text-left">
+                  <p className="text-sm font-black leading-tight text-slate-900">{currentUser?.name}</p>
+                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.22em] text-primary-600">{roleLabel}</p>
                </div>
-               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 border-2 border-white flex items-center justify-center text-slate-500 overflow-hidden shrink-0 shadow-md">
-                  <UserIcon size={24} />
+               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#153d65_0%,#225c97_100%)] text-white shadow-[0_12px_28px_rgba(34,92,151,0.24)]">
+                  <UserIcon size={20} />
                </div>
+            </div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#153d65_0%,#225c97_100%)] text-white shadow-[0_12px_28px_rgba(34,92,151,0.24)] md:hidden">
+              <UserIcon size={20} />
             </div>
           </div>
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-5 pb-32 sm:p-7 sm:pb-7 custom-scrollbar bg-[#f4f6fa]">
+        <main className="custom-scrollbar flex-1 overflow-y-auto bg-transparent p-4 pb-32 sm:p-6 sm:pb-8 lg:p-7">
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-            className="max-w-7xl mx-auto"
+            className="mx-auto max-w-[1400px]"
           >
             <Outlet />
           </motion.div>
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 inset-x-0 bg-white/80 backdrop-blur-2xl border-t border-slate-200 z-[60] flex items-center justify-around px-2 py-2 lg:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-        <BottomNavLink to="/" icon={LayoutDashboard} label="الرئيسية" active={location.pathname === '/'} />
-        <BottomNavLink to="/pos" icon={ShoppingCart} label="بيع" active={location.pathname === '/pos'} />
-        <BottomNavLink to="/products" icon={Package} label="المخزن" active={location.pathname === '/products'} />
-        <BottomNavLink to="/invoices" icon={FileText} label="الفواتير" active={location.pathname === '/invoices'} />
+      <nav
+        className="fixed inset-x-0 bottom-0 z-[60] border-t border-primary-100/80 bg-white/[0.92] px-2 py-2 shadow-[0_-14px_40px_rgba(15,34,56,0.08)] backdrop-blur-2xl lg:hidden"
+        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className={`mx-auto grid w-full max-w-lg gap-1.5 ${mobileNav.length >= 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+          {mobileNav.map(({ to, icon, label }) => (
+            <BottomNavLink key={to} to={to} icon={icon} label={label === 'نقطة البيع' ? 'بيع' : label} active={location.pathname === to} />
+          ))}
+        </div>
       </nav>
 
-      {/* Mobile Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden"
+            className="fixed inset-0 z-40 bg-slate-950/55 backdrop-blur-sm lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
@@ -201,12 +233,18 @@ export default function Layout() {
 
 function BottomNavLink({ to, icon: Icon, label, active }) {
   return (
-    <NavLink 
-      to={to} 
-      className={`flex flex-col items-center gap-1.5 px-4 py-2 rounded-2xl transition-all duration-300 ${active ? 'text-primary-600 bg-primary-50 scale-110 shadow-sm' : 'text-slate-500 opacity-80'}`}
+    <NavLink
+      to={to}
+      className={`flex flex-col items-center gap-1.5 rounded-[1.4rem] px-2 py-2 text-center transition-all duration-300 ${
+        active
+          ? 'bg-primary-50 text-primary-700 shadow-[0_10px_24px_rgba(34,92,151,0.12)]'
+          : 'text-slate-500'
+      }`}
     >
-      <Icon size={22} className={active ? 'animate-pulse' : ''} />
-      <span className="text-xs font-black">{label}</span>
+      <span className={`flex h-10 w-10 items-center justify-center rounded-2xl transition-all ${active ? 'bg-primary-100 text-primary-700' : 'bg-slate-100 text-slate-500'}`}>
+        <Icon size={20} />
+      </span>
+      <span className="text-[11px] font-black leading-none">{label}</span>
     </NavLink>
   )
 }

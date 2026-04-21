@@ -45,7 +45,7 @@ export default function Receipt() {
           <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }} className="w-20 h-20 bg-primary-500/10 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-primary-500/20 shadow-lg shadow-primary-500/10">
             <Store size={32} className="text-primary-400" />
           </motion.div>
-          <h1 className="text-3xl font-black text-white tracking-tight font-display">الفاروق ستور</h1>
+          <h1 className="text-3xl font-black text-white tracking-tight font-display">ELFAROUK Service</h1>
           <p className="text-primary-400 text-[10px] font-black tracking-[0.3em] uppercase mt-2 opacity-60">Auto Spare Parts</p>
           
           <div className="mt-6 inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-4 py-1.5 rounded-full text-[10px] font-black border border-emerald-500/10 uppercase tracking-widest">

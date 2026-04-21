@@ -48,7 +48,7 @@ export default function Invoices() {
       return line + ` = ${(i.price * i.qty).toLocaleString('en-US')} ج.م`
     }).join('\n') || ''
 
-    const msg = `🧾 فاتورة من الفاروق ستور\n` +
+    const msg = `🧾 فاتورة من ELFAROUK Service\n` +
       `رقم: ${inv.number}\nالعميل: ${inv.customerData?.name}\n` +
       `${inv.customerData?.carModel ? `العربية: ${inv.customerData.carModel}\n` : ''}` +
       `\nالمنتجات:\n${items}\n\n` +
@@ -91,12 +91,12 @@ export default function Invoices() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-            <span className="w-10 h-10 bg-orange-100 rounded-2xl flex items-center justify-center">
-              <FileText size={20} className="text-orange-600" />
+            <span className="w-10 h-10 bg-primary-50 rounded-2xl flex items-center justify-center">
+              <FileText size={20} className="text-primary-600" />
             </span>
             الفواتير والمرتجعات
           </h1>
-          <p className="text-slate-400 text-xs font-bold mt-1 mr-13">إجمالي العمليات: <span className="text-orange-500 font-black">{invoices.length}</span></p>
+          <p className="text-slate-400 text-xs font-bold mt-1 mr-13">إجمالي العمليات: <span className="text-primary-600 font-black">{invoices.length}</span></p>
         </div>
         <button className="btn-ghost flex items-center gap-2 text-xs">
           <Download size={15} /> تصدير
@@ -105,7 +105,7 @@ export default function Invoices() {
 
       {/* ── Summary Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard label="إجمالي الإيرادات" value={`${Math.round(totalRevenue).toLocaleString()} ج.م`} color="orange" icon={TrendingUp} />
+        <SummaryCard label="إجمالي الإيرادات" value={`${Math.round(totalRevenue).toLocaleString()} ج.م`} color="primary" icon={TrendingUp} />
         <SummaryCard label="فواتير مكتملة" value={paidCount} color="emerald" icon={CheckCircle2} />
         <SummaryCard label="فواتير معلقة" value={pendingCount} color="rose" icon={Clock} />
       </div>
@@ -113,7 +113,7 @@ export default function Invoices() {
       {/* ── Filters ── */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 group">
-          <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors" />
+          <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="بحث بالاسم أو رقم الفاتورة..." className="input pr-11 !rounded-2xl" />
         </div>
@@ -147,7 +147,7 @@ export default function Invoices() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ delay: idx * 0.03 }}
                 className={`card !p-0 overflow-hidden cursor-pointer transition-all duration-300
-                  ${isSelected ? 'border-orange-300 shadow-lg shadow-orange-500/10' : 'hover:border-slate-300 hover:shadow-md'}`}
+                  ${isSelected ? 'border-primary-300 shadow-lg shadow-primary-500/10' : 'hover:border-slate-300 hover:shadow-md'}`}
                 onClick={() => {
                   if (isReturningMode || isDeletingMode) return
                   setSelected(isSelected ? null : inv)
@@ -334,7 +334,7 @@ export default function Invoices() {
 
 function SummaryCard({ label, value, color, icon: Icon }) {
   const palette = {
-    orange:  { bg: 'bg-orange-50',  text: 'text-orange-600',  val: 'text-orange-700' },
+    primary: { bg: 'bg-primary-50', text: 'text-primary-600', val: 'text-primary-700' },
     emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', val: 'text-emerald-700' },
     rose:    { bg: 'bg-rose-50',    text: 'text-rose-600',    val: 'text-rose-700' },
   }

@@ -40,7 +40,12 @@ function AppRouter() {
       <Toaster
         position="top-center"
         toastOptions={{
-          style: { background: '#1e293b', color: '#fff', border: '1px solid #334155' },
+          style: {
+            background: '#10243b',
+            color: '#f8fafc',
+            border: '1px solid #2d5f93',
+            boxShadow: '0 16px 40px rgba(16, 36, 59, 0.28)',
+          },
         }}
       />
       <Routes>

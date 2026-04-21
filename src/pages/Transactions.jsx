@@ -15,13 +15,13 @@ export default function Transactions() {
         {transactions.map(tx => (
           <div key={tx.id} className="card flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              tx.type === 'sale' ? 'bg-green-500/10' : tx.type === 'stockIn' ? 'bg-primary-500/10' : 'bg-orange-500/10'
+              tx.type === 'sale' ? 'bg-green-500/10' : tx.type === 'stockIn' ? 'bg-primary-500/10' : 'bg-steel-500/10'
             }`}>
               {tx.type === 'sale'
                 ? <TrendingUp size={18} className="text-green-400" />
                 : tx.type === 'stockIn'
                 ? <ArrowLeftRight size={18} className="text-primary-400" />
-                : <TrendingDown size={18} className="text-orange-400" />
+                : <TrendingDown size={18} className="text-steel-500" />
               }
             </div>
             <div className="flex-1 min-w-0">

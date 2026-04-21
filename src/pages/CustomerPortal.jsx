@@ -55,7 +55,7 @@ export default function CustomerPortal() {
                 </div>
             </motion.div>
             <div className="flex-1 text-center md:text-right">
-                <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-primary-400 font-black tracking-widest text-[10px] mb-3 uppercase leading-none">بوابة عمـلاء الفاروق ستور</motion.p>
+                <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-primary-400 font-black tracking-widest text-[10px] mb-3 uppercase leading-none">بوابة عمـلاء ELFAROUK Service</motion.p>
                 <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl md:text-6xl font-black text-white mb-6 font-display tracking-tight">مرحباً، أستاذ {customer?.name || 'العميل المميز'}</motion.h1>
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex flex-wrap justify-center md:justify-start gap-4">
                     <span className="flex items-center gap-2.5 bg-white/5 backdrop-blur-md px-4 py-2 rounded-2xl text-[10px] font-black text-slate-300 border border-white/10 uppercase tracking-widest leading-none">
@@ -171,7 +171,7 @@ export default function CustomerPortal() {
                     <MapPin size={28} className="text-primary-400" />
                 </div>
                 <h3 className="text-2xl font-black text-white mb-3 font-display tracking-tight">نفتخر بخدمتكم دائماً</h3>
-                <p className="text-[10px] text-slate-500 max-w-xs font-black uppercase tracking-widest mb-8 leading-relaxed opacity-60">الفاروق ستور - قطع غيار السيارات بجودة عالمية وأسعار تنافسية.</p>
+                <p className="text-[10px] text-slate-500 max-w-xs font-black uppercase tracking-widest mb-8 leading-relaxed opacity-60">ELFAROUK Service - إدارة أوضح لقطع الغيار والخدمة اليومية.</p>
                 <a href="tel:01000000000" className="inline-flex items-center gap-3 bg-primary-600 hover:bg-primary-500 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-neon transition-all active:scale-95">
                     <Phone size={18} /> اتصـل بنا الآن
                 </a>

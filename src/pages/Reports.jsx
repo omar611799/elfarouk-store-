@@ -14,7 +14,7 @@ import * as XLSX from 'xlsx'
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.07 } } }
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } }
 
-const PIE_COLORS = ['#f97316', '#0ea5e9', '#10b981', '#8b5cf6', '#f43f5e', '#eab308']
+const PIE_COLORS = ['#225c97', '#4b6786', '#10b981', '#7c93ad', '#f43f5e', '#eab308']
 
 export default function Reports() {
   const { products, invoices, expenses, customers } = useStore()
@@ -126,7 +126,7 @@ export default function Reports() {
 
       {/* ── KPI Cards ── */}
       <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-        <KPICard label="إجمالي الإيرادات" value={`${Math.round(totalRevenue).toLocaleString()} ج.م`} icon={Wallet} color="orange" trend="+8.2%" />
+        <KPICard label="إجمالي الإيرادات" value={`${Math.round(totalRevenue).toLocaleString()} ج.م`} icon={Wallet} color="primary" trend="+8.2%" />
         <KPICard label="صافي الربح"       value={`${Math.round(totalProfit).toLocaleString()} ج.م`} icon={TrendingUp} color="emerald" trend="+5.1%" />
         <KPICard label="عدد الفواتير"     value={invoices.length} icon={FileText} color="blue" trend={`+${Math.min(invoices.length, 30)}`} />
         <KPICard label="قيمة المخزون"     value={`${Math.round(products.reduce((s, p) => s + (p.price * p.quantity), 0)).toLocaleString()} ج.م`} icon={Package} color="violet" trend="" />
@@ -139,7 +139,7 @@ export default function Reports() {
         {[['7d','٧ أيام'], ['30d','٣٠ يوم'], ['90d','٩٠ يوم']].map(([key, label]) => (
           <button key={key} onClick={() => setPeriod(key)}
             className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all
-              ${period === key ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25' : 'bg-white border border-slate-200 text-slate-500 hover:border-orange-300'}`}>
+              ${period === key ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'bg-white border border-slate-200 text-slate-500 hover:border-primary-300'}`}>
             {label}
           </button>
         ))}
@@ -149,7 +149,7 @@ export default function Reports() {
       <motion.div variants={item} className="card !p-0 overflow-hidden">
         <div className="px-7 pt-6 pb-5 border-b border-slate-100">
           <h2 className="font-black text-slate-800 flex items-center gap-2">
-            <TrendingUp size={18} className="text-orange-500" />
+            <TrendingUp size={18} className="text-primary-600" />
             الإيرادات مقابل الأرباح
           </h2>
           <p className="text-[11px] text-slate-400 font-semibold mt-0.5">مقارنة أداء المبيعات — آخر {period === '7d' ? '٧ أيام' : period === '30d' ? '٣٠ يوم' : '٩٠ يوم'}</p>
@@ -159,8 +159,8 @@ export default function Reports() {
             <AreaChart data={salesHistory}>
               <defs>
                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#f97316" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#f97316" stopOpacity={0}   />
+                  <stop offset="5%"  stopColor="#225c97" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#225c97" stopOpacity={0}   />
                 </linearGradient>
                 <linearGradient id="profGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#10b981" stopOpacity={0.2} />
@@ -177,8 +177,8 @@ export default function Reports() {
                 formatter={(v, n) => [`${v.toLocaleString()} ج.م`, n === 'revenue' ? 'الإيرادات' : 'الأرباح']}
               />
               <Legend formatter={v => v === 'revenue' ? 'الإيرادات' : 'الأرباح'} />
-              <Area type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={3}
-                fill="url(#revGrad)" dot={false} activeDot={{ r: 5, fill: '#f97316' }} />
+              <Area type="monotone" dataKey="revenue" stroke="#225c97" strokeWidth={3}
+                fill="url(#revGrad)" dot={false} activeDot={{ r: 5, fill: '#225c97' }} />
               <Area type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={3}
                 fill="url(#profGrad)" dot={false} activeDot={{ r: 5, fill: '#10b981' }} />
             </AreaChart>
@@ -211,7 +211,7 @@ export default function Reports() {
                     tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} />
                   <Tooltip formatter={v => [`${v.toLocaleString()} ج.م`, 'الإيراد']}
                     contentStyle={{ background: '#fff', borderRadius: 12, border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', fontSize: 11 }} />
-                  <Bar dataKey="revenue" fill="#f97316" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="revenue" fill="#225c97" radius={[0, 6, 6, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -338,7 +338,7 @@ export default function Reports() {
 
 function KPICard({ label, value, icon: Icon, color, trend }) {
   const palette = {
-    orange:  { bg: 'bg-orange-50',  icon: 'bg-orange-100 text-orange-600',  val: 'text-orange-700' },
+    primary: { bg: 'bg-primary-50', icon: 'bg-primary-100 text-primary-600', val: 'text-primary-700' },
     emerald: { bg: 'bg-emerald-50', icon: 'bg-emerald-100 text-emerald-600', val: 'text-emerald-700' },
     blue:    { bg: 'bg-blue-50',    icon: 'bg-blue-100 text-blue-600',    val: 'text-blue-700' },
     violet:  { bg: 'bg-violet-50',  icon: 'bg-violet-100 text-violet-600',  val: 'text-violet-700' },

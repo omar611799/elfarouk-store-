@@ -316,7 +316,7 @@ export default function POS() {
 
   const sendWhatsApp = () => {
     if (!doneInvoice) return
-    const msg = `🧾 فاتورة من الفاروق ستور\nالإجمالي: ${doneInvoice.total} ج.م\nرقم: ${doneInvoice.id}\nشكراً لتعاملكم معنا 🙏`
+    const msg = `🧾 فاتورة من ELFAROUK Service\nالإجمالي: ${doneInvoice.total} ج.م\nرقم: ${doneInvoice.id}\nشكراً لتعاملكم معنا 🙏`
     const phone = customer.phone?.replace(/^0/, '20') || '201115329887'
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
   }
@@ -393,12 +393,12 @@ export default function POS() {
           <div className="flex-1 space-y-6">
             <div className="flex items-center justify-between sm:justify-start gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-[#f97316] rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/40">
+                <div className="w-12 h-12 bg-primary-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/30">
                   <Sparkles size={24} className="text-white" />
                 </div>
                 <div className="flex flex-col">
                   <h1 className="text-xl font-black text-slate-950 tracking-tight font-display">نقطة البيع</h1>
-                  <span className="text-[10px] font-black text-[#f97316] uppercase tracking-tighter bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">تحديث v4.0 - عالي الوضوح</span>
+                  <span className="bg-primary-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter text-primary-600 rounded-md border border-primary-100">واجهة محسنة للموبايل</span>
                 </div>
               </div>
               <button 
@@ -470,7 +470,7 @@ export default function POS() {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1 px-4 border-r-2 border-slate-200 h-20 justify-center shrink-0">
-                <span className="text-2xl sm:text-3xl font-black text-[#f97316] font-display tracking-tight whitespace-nowrap drop-shadow-sm">
+                <span className="text-2xl sm:text-3xl font-black text-primary-600 font-display tracking-tight whitespace-nowrap drop-shadow-sm">
                   {Number(p.price).toLocaleString('en-US')}
                   <span className="text-xs font-bold text-slate-600 mr-1">ج.م</span>
                 </span>

@@ -6,7 +6,7 @@ import { Plus, Trash2, Calendar, Coffee, Zap, Truck, Users, MoreHorizontal, Wall
 const EXPENSE_CATEGORIES = [
   { id: 'salaries', label: 'رواتب ويوميات', icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
   { id: 'utilities', label: 'كهرباء وغاز', icon: Zap, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
-  { id: 'food', label: 'بوفيه وضيافة', icon: Coffee, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
+  { id: 'food', label: 'بوفيه وضيافة', icon: Coffee, color: 'text-primary-500', bg: 'bg-primary-500/10 border-primary-500/20' },
   { id: 'transport', label: 'نقل ومواصلات', icon: Truck, color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
   { id: 'tips', label: 'إكرامية وعتالة', icon: Wallet, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
   { id: 'other', label: 'أخرى (منوعة)', icon: MoreHorizontal, color: 'text-slate-400', bg: 'bg-slate-500/10 border-slate-500/20' },

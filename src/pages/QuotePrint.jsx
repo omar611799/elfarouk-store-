@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../context/StoreContext'
 
-const BRAND_NAME = import.meta.env.VITE_BRAND_NAME || 'الفاروق ستور'
+const BRAND_NAME = import.meta.env.VITE_BRAND_NAME || 'ELFAROUK Service'
 
 export default function QuotePrint() {
   const { id } = useParams()
@@ -32,7 +32,7 @@ export default function QuotePrint() {
         <div className="text-center mb-8 border-b-2 border-black pb-4">
           <h1 className="text-3xl font-extrabold tracking-widest uppercase mb-2">{BRAND_NAME}</h1>
           <h2 className="text-xl font-bold text-gray-600">بـيـان عـرض سـعـر</h2>
-          <p className="text-sm mt-2 text-gray-500">مقدم من الفاروق لقطع غيار السيارات</p>
+          <p className="text-sm mt-2 text-gray-500">مقدم من ELFAROUK Service</p>
         </div>
 
         <div className="flex justify-between mb-8 text-sm font-semibold">
