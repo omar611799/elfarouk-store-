@@ -3,10 +3,18 @@ import { getAdminDb, adminTimestamp } from './_lib/firebaseAdmin.js'
 
 function verifySignature({ bookingId, status, transactionId, amount, signature }) {
   const secret = process.env.PAYMENT_WEBHOOK_SECRET
-  if (!secret) return true
+  if (!secret) {
+    throw new Error('Missing PAYMENT_WEBHOOK_SECRET')
+  }
   const base = `${bookingId}|${status}|${transactionId || ''}|${amount || ''}`
   const expected = crypto.createHmac('sha256', secret).update(base).digest('hex')
-  return signature === expected
+  const providedBuffer = Buffer.from(String(signature || ''), 'hex')
+  const expectedBuffer = Buffer.from(expected, 'hex')
+
+  return (
+    providedBuffer.length === expectedBuffer.length &&
+    crypto.timingSafeEqual(providedBuffer, expectedBuffer)
+  )
 }
 
 export default async function handler(req, res) {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
 import { Bell, MessageCircle, Calendar, User, Car, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -36,9 +36,6 @@ export default function Reminders() {
   }, [invoices])
 
   const sendReminder = (rem) => {
-    const today = new Date()
-    const isPast = rem.dueDate < today
-    
     const msg = `السلام عليكم أ/ ${rem.customerName} 👋\n` +
       `معك الفاورق ستور لقطع غيار السيارات.\n` +
       `حبينا نفكر حضرتك بموعد صيانة/تغيير (${rem.itemName}) لسيارتك (${rem.carModel || 'المسجلة لدينا'}).\n` +

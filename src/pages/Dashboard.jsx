@@ -1,17 +1,19 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
 import {
-  Package, Users, FileText, TrendingUp, AlertTriangle,
+  Package, Users, TrendingUp, AlertTriangle,
   ShoppingCart, ArrowUpRight, ArrowDownRight, Bell,
-  Star, Info, Download, ChevronDown, ChevronLeft,
-  Plus, ExternalLink, Filter, Activity, RefreshCw,
-  CheckCircle2, Clock, Zap, Mail, Phone, MapPin, Globe
+  Star, Download, ChevronDown,
+  ExternalLink, Activity, RefreshCw,
+  CheckCircle2
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts'
 import { motion } from 'framer-motion'
+import { useAuth } from '../context/AuthContext'
+import CashierAccountCard from '../components/CashierAccountCard'
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } }
 const item = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } } }
@@ -19,7 +21,8 @@ const item = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transiti
 const PIE_COLORS = ['#225c97', '#4b6786', '#10b981', '#7c93ad']
 
 export default function Dashboard() {
-  const { products, customers, invoices, expenses } = useStore()
+  const { products, customers, invoices } = useStore()
+  const { currentUser } = useAuth()
   const [period, setPeriod] = useState('7d')
   const [stockPage, setStockPage] = useState(0)
   const STOCK_PER_PAGE = 3
@@ -32,6 +35,8 @@ export default function Dashboard() {
   const paidInvoices = invoices.filter(i => i.paymentStatus === 'paid')
   const pendingInvoices = invoices.filter(i => i.paymentStatus !== 'paid')
   const activeOrders = pendingInvoices.length
+
+  const isAdmin = currentUser?.role === 'admin'
 
   // Recent 5 invoices
   const recentInvoices = [...invoices].sort((a, b) => {
@@ -120,7 +125,9 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div className="rounded-[1.35rem] border border-white/20 bg-white/10 p-3 backdrop-blur-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-100">مبيعات اليوم</p>
-                  <p className="mt-2 text-xl font-black">{Math.round(totalSales).toLocaleString()} ج.م</p>
+                  <p className="mt-2 text-xl font-black">
+                    {isAdmin ? `${Math.round(totalSales).toLocaleString()} ج.م` : 'مؤمن'}
+                  </p>
                 </div>
                 <div className="rounded-[1.35rem] border border-white/20 bg-white/10 p-3 backdrop-blur-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-100">عملاء نشطون</p>
@@ -153,13 +160,17 @@ export default function Dashboard() {
       </motion.div>
 
       {/* ── Row 1: Stats Bar ─────────────────────────────────────── */}
+      <motion.div variants={item}>
+        <CashierAccountCard />
+      </motion.div>
+
       <motion.div variants={item} className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 sm:gap-5">
         <StatCard label="إجمالي المنتجات" value={totalProducts.toLocaleString()} icon={Package}
           trend="+12%" trendUp color="primary" sparkline={[20,35,28,50,40,60,55]} />
         <StatCard label="نواقص المخزون" value={lowStock.length} icon={AlertTriangle}
-          trend="ينتظر" trendUp={false} color="amber" sparkline={[50,40,60,30,45,20,15]} />
-        <StatCard label="إجمالي المبيعات" value={`${Math.round(totalSales).toLocaleString()} ج.م`} icon={TrendingUp}
-          trend="+8.5%" trendUp color="emerald" sparkline={[10,30,20,50,40,70,90]} />
+          trend={lowStock.length > 0 ? "تنبيه" : "مستقر"} trendUp={false} color="amber" sparkline={[50,40,60,30,45,20,15]} />
+        <StatCard label="إجمالي المبيعات" value={isAdmin ? `${Math.round(totalSales).toLocaleString()} ج.م` : 'مؤمن'} icon={TrendingUp}
+          trend={isAdmin ? "+8.5%" : ""} trendUp color="emerald" sparkline={isAdmin ? [10,30,20,50,40,70,90] : [0,0,0,0,0,0,0]} />
         <StatCard label="الطلبات النشطة" value={activeOrders} icon={ShoppingCart}
           trend={`+${activeOrders}`} trendUp color="primary" sparkline={[5,12,8,14,10,18,16]} />
       </motion.div>

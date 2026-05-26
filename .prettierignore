@@ -1,0 +1,5 @@
+dist
+node_modules
+package-lock.json
+vite-dev.log
+vite-dev.err.log

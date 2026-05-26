@@ -3,7 +3,7 @@ import { useStore } from '../context/StoreContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, MessageCircle, Search, Trash2, AlertTriangle,
-  CornerUpLeft, Plus, Minus, ChevronDown, CheckCircle2,
+  CornerUpLeft, Plus, Minus, ChevronDown, CheckCircle2, MoreVertical,
   Clock, XCircle, Eye, Filter, Download, TrendingUp
 } from 'lucide-react'
 
@@ -25,6 +25,7 @@ export default function Invoices() {
   const [returnMode, setReturnMode] = useState(null)
   const [isReturning, setIsReturning] = useState(false)
   const [returnQtys, setReturnQtys] = useState({})
+  const [returnReason, setReturnReason] = useState('')
 
   const filtered = useMemo(() => {
     return invoices.filter(i => {
@@ -74,9 +75,10 @@ export default function Invoices() {
     if (itemsToReturn.length === 0) return
     setIsReturning(true)
     try {
-      await returnInvoiceItems({ invoiceId: inv.id, itemsToReturn })
+      await returnInvoiceItems({ invoiceId: inv.id, itemsToReturn, reason: returnReason })
       setReturnMode(null)
       setReturnQtys({})
+      setReturnReason('')
     } finally {
       setIsReturning(false)
     }
@@ -154,7 +156,7 @@ export default function Invoices() {
                 }}
               >
                 {/* Invoice Row */}
-                <div className="flex items-center gap-4 px-5 py-4">
+                <div className="flex items-center gap-4 px-5 py-5">
                   {/* Icon */}
                   <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${st.bg}`}>
                     <StatusIcon size={18} className={st.text} />
@@ -173,8 +175,8 @@ export default function Invoices() {
 
                   {/* Amount + Status */}
                   <div className="text-left shrink-0">
-                    <p className="font-black text-slate-800 text-base">{Number(inv.total || 0).toLocaleString('en-US')} <span className="text-[10px] text-slate-400 font-normal">ج.م</span></p>
-                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${st.bg} ${st.text}`}>{st.label}</span>
+                    <p className="font-black text-slate-900 text-base">{Number(inv.total || 0).toLocaleString('en-US')} <small className="text-[10px] font-normal">ج</small></p>
+                    <p className={`text-[9px] font-black uppercase text-center ${st.text}`}>{st.label}</p>
                   </div>
 
                   {/* Expand Arrow */}
@@ -270,6 +272,12 @@ export default function Invoices() {
                                 </div>
                               )
                             })}
+                            <input
+                              className="input w-full text-xs"
+                              placeholder="سبب المرتجع (مثلاً: قطعة تالفة أو اختيار خاطئ)"
+                              value={returnReason}
+                              onChange={(e) => setReturnReason(e.target.value)}
+                            />
                             <div className="flex gap-2 pt-1">
                               <button onClick={() => submitPartialReturn(inv)}
                                 disabled={isReturning || Object.values(returnQtys).every(q => q === 0)}

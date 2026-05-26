@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
-import { FileText, Search, Trash2, Printer, ArrowRight } from 'lucide-react'
+import { FileText, Trash2, Printer, ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
@@ -18,18 +18,18 @@ export default function Quotes() {
   }, [quotes, search])
 
   const convertToInvoice = (quote) => {
-    cartClear();
+    cartClear()
     // Re-add items to cart
-    quote.items.forEach(item => cartAdd({ ...item, qty: item.qty }));
+    quote.items.forEach(item => cartAdd({ ...item, qty: item.qty }))
     // Pass customer to localStorage to pick up in POS
-    localStorage.setItem('pendingQuoteCustomer', JSON.stringify({ ...quote.customerData }));
-    toast.success('تم نقل العرض لنقطة البيع. راجع التفاصيل وأتمم البيع.', { icon: '🛒' });
-    navigate('/');
+    localStorage.setItem('pendingQuoteCustomer', JSON.stringify({ ...quote.customerData }))
+    toast.success('تم نقل العرض لنقطة البيع. راجع التفاصيل وأتمم البيع.', { icon: '🛒' })
+    navigate('/pos')
   }
 
   const printQuote = (quote) => {
     // We will navigate to a print-only layout route
-    navigate(`/print-quote/${quote.id}`);
+    navigate(`/print-quote/${quote.id}`)
   }
 
   return (
@@ -44,7 +44,8 @@ export default function Quotes() {
 
       <div className="space-y-2">
         {filtered.map(quote => {
-          const isSelected = selected?.id === quote.id;
+          const isSelected = selected?.id === quote.id
+          const quoteDate = quote.createdAt?.toDate?.() || new Date(0)
           return (
           <div key={quote.id} className="card cursor-pointer hover:border-primary-700/50 transition-all overflow-hidden"
             onClick={() => setSelected(isSelected ? null : quote)}>
@@ -58,7 +59,7 @@ export default function Quotes() {
               </div>
               <div className="text-left flex-shrink-0">
                 <p className="font-bold text-primary-400 text-sm">{Number(quote.total || 0).toLocaleString('en-US')} ج.م</p>
-                <span className="text-[10px] text-slate-400">{new Date(quote.createdAt?.toDate?.() || Date.now()).toLocaleDateString()}</span>
+                <span className="text-[10px] text-slate-400">{quoteDate.toLocaleDateString()}</span>
               </div>
             </div>
 

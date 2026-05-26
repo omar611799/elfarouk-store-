@@ -1,7 +1,7 @@
+/* eslint-disable react/no-unescaped-entities */
 import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
 import { Search, ShoppingBag, Plus, Minus, Trash2, Truck, DollarSign, FileText, BadgeCheck } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 
 export default function Purchases() {

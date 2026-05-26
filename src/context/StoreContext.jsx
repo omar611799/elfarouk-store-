@@ -1,317 +1,592 @@
+﻿/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useReducer } from 'react'
 import toast from 'react-hot-toast'
 import {
-  listenCol, listenColLimited, COLS, addProduct, updateProduct, deleteProduct,
-  addCategory, deleteCategory, addSupplier, updateSupplier, deleteSupplier,
-  addCustomer, updateCustomer, deleteCustomer,
-  updateProductStock, addTransaction, completeSale,
-  payInvoiceDebt, deleteInvoiceAndReturnStock, returnInvoiceItems,
-  addQuote, deleteQuote, importProductsBatch,
-  addExpense, deleteExpense, recordPurchase, paySupplierDebt,
-  addServiceBooking, updateServiceBooking, addServiceMessage,
-  addNotification, markNotificationAsRead
+  listenCol,
+  listenColLimited,
+  listenColByField,
+  listenDocById,
+  COLS,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+  addCategory,
+  deleteCategory,
+  addSupplier,
+  updateSupplier,
+  deleteSupplier,
+  addCustomer,
+  updateCustomer,
+  deleteCustomer,
+  updateProductStock,
+  addTransaction,
+  completeSale,
+  payInvoiceDebt,
+  deleteInvoiceAndReturnStock,
+  returnInvoiceItems,
+  addQuote,
+  deleteQuote,
+  importProductsBatch,
+  addExpense,
+  deleteExpense,
+  recordPurchase,
+  paySupplierDebt,
+  updateServiceBooking,
+  addServiceMessage,
+  addNotification,
+  markNotificationAsRead,
+  adjustCustomerWallet,
+  reviewCustomerAccount,
 } from '../firebase/collections'
+import { createServiceBooking, updateServiceBookingAdmin } from '../services/serviceBookingApi'
 import { useAuth } from './AuthContext'
-import { auth } from '../firebase/config'
 
 const StoreContext = createContext(null)
 
 const init = {
-  products: [], categories: [], suppliers: [],
-  customers: [], invoices: [], transactions: [], expenses: [], quotes: [], purchases: [],
-  serviceBookings: [], serviceMessages: [], notifications: [],
+  products: [],
+  categories: [],
+  suppliers: [],
+  customers: [],
+  invoices: [],
+  transactions: [],
+  expenses: [],
+  quotes: [],
+  purchases: [],
+  serviceBookings: [],
+  serviceMessages: [],
+  notifications: [],
+  customerWallets: [],
+  customerAccounts: [],
   loading: true,
   cart: [],
 }
 
 function reducer(state, action) {
   switch (action.type) {
-    case 'SET': return { ...state, [action.key]: action.data }
-    case 'LOADING': return { ...state, loading: action.value }
+    case 'SET':
+      return { ...state, [action.key]: action.data }
+    case 'LOADING':
+      return { ...state, loading: action.value }
     case 'CART_ADD': {
-      const ex = state.cart.find(i => i.id === action.item.id)
-      if (ex) return { ...state, cart: state.cart.map(i => i.id === action.item.id ? { ...i, qty: i.qty + 1 } : i) }
+      const existing = state.cart.find((item) => item.id === action.item.id)
+      if (existing) {
+        return {
+          ...state,
+          cart: state.cart.map((item) =>
+            item.id === action.item.id ? { ...item, qty: item.qty + 1 } : item
+          ),
+        }
+      }
       return { ...state, cart: [...state.cart, { ...action.item, qty: 1 }] }
     }
     case 'CART_QTY':
-      if (action.qty < 1) return { ...state, cart: state.cart.filter(i => i.id !== action.id) }
-      return { ...state, cart: state.cart.map(i => i.id === action.id ? { ...i, qty: action.qty } : i) }
-    case 'CART_REMOVE': return { ...state, cart: state.cart.filter(i => i.id !== action.id) }
-    case 'CART_CLEAR': return { ...state, cart: [] }
-    default: return state
+      if (action.qty < 1) {
+        return { ...state, cart: state.cart.filter((item) => item.id !== action.id) }
+      }
+      return {
+        ...state,
+        cart: state.cart.map((item) =>
+          item.id === action.id ? { ...item, qty: action.qty } : item
+        ),
+      }
+    case 'CART_REMOVE':
+      return { ...state, cart: state.cart.filter((item) => item.id !== action.id) }
+    case 'CART_CLEAR':
+      return { ...state, cart: [] }
+    default:
+      return state
   }
+}
+
+function sortByCreatedAtDesc(items) {
+  return [...items].sort((a, b) => {
+    const aDate = a.createdAt?.toDate?.() || new Date(a.createdAt || 0)
+    const bDate = b.createdAt?.toDate?.() || new Date(b.createdAt || 0)
+    return bDate - aDate
+  })
 }
 
 export function StoreProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, init)
   const { currentUser } = useAuth()
+  const isAdminUser = currentUser?.role === 'admin'
+  const isCashierUser = currentUser?.role === 'cashier'
+  const isStaffUser = isAdminUser || isCashierUser
 
-  // ── Real-time listeners (Staggered for performance) ──
   useEffect(() => {
-    const unsubs = [];
+    const unsubs = []
 
-    // Customers should not subscribe to store business data.
-    if (currentUser?.role === 'admin') {
-      const sub1 = [
-        listenCol(COLS.PRODUCTS, data => {
+    if (isStaffUser) {
+      const primarySubs = [
+        listenCol(COLS.PRODUCTS, (data) => {
           dispatch({ type: 'SET', key: 'products', data })
-          setTimeout(() => dispatch({ type: 'LOADING', value: false }), 100);
+          setTimeout(() => dispatch({ type: 'LOADING', value: false }), 100)
         }),
-        listenCol(COLS.CATEGORIES, data => dispatch({ type: 'SET', key: 'categories', data }))
-      ];
-      unsubs.push(...sub1);
+        listenCol(COLS.CATEGORIES, (data) =>
+          dispatch({ type: 'SET', key: 'categories', data })
+        ),
+      ]
+      unsubs.push(...primarySubs)
     } else {
       dispatch({ type: 'LOADING', value: false })
     }
 
     const stage2Timer = setTimeout(() => {
-      if (currentUser?.role !== 'admin') return
-      unsubs.push(listenCol(COLS.SUPPLIERS, data => dispatch({ type: 'SET', key: 'suppliers', data })));
-      unsubs.push(listenCol(COLS.CUSTOMERS, data => dispatch({ type: 'SET', key: 'customers', data })));
-    }, 1000);
+      if (!isStaffUser) return
+      unsubs.push(
+        listenCol(COLS.SUPPLIERS, (data) => dispatch({ type: 'SET', key: 'suppliers', data }))
+      )
+      unsubs.push(
+        listenCol(COLS.CUSTOMERS, (data) => dispatch({ type: 'SET', key: 'customers', data }))
+      )
+    }, 1000)
 
     const stage3Timer = setTimeout(() => {
-      if (currentUser?.role === 'admin') {
-        unsubs.push(listenColLimited(COLS.INVOICES, data => dispatch({ type: 'SET', key: 'invoices', data }), 100));
-        unsubs.push(listenColLimited(COLS.QUOTATIONS, data => dispatch({ type: 'SET', key: 'quotes', data }), 50));
-        unsubs.push(listenColLimited(COLS.TRANSACTIONS, data => dispatch({ type: 'SET', key: 'transactions', data }), 100));
-        unsubs.push(listenColLimited(COLS.EXPENSES, data => dispatch({ type: 'SET', key: 'expenses', data }), 100));
-        unsubs.push(listenColLimited(COLS.PURCHASES, data => dispatch({ type: 'SET', key: 'purchases', data }), 50));
-        unsubs.push(listenColLimited(COLS.SERVICE_BOOKINGS, data => dispatch({ type: 'SET', key: 'serviceBookings', data }), 100));
-        unsubs.push(listenColLimited(COLS.SERVICE_MESSAGES, data => dispatch({ type: 'SET', key: 'serviceMessages', data }), 300));
-        unsubs.push(listenColLimited(COLS.NOTIFICATIONS, data => dispatch({ type: 'SET', key: 'notifications', data }), 300));
-      } else if (currentUser?.role === 'customer' && auth.currentUser?.uid) {
-        // For customers: minimal collections (they will still be filtered at UI; rules enforce privacy)
-        unsubs.push(listenColLimited(COLS.SERVICE_BOOKINGS, data => dispatch({ type: 'SET', key: 'serviceBookings', data }), 100));
-        unsubs.push(listenColLimited(COLS.SERVICE_MESSAGES, data => dispatch({ type: 'SET', key: 'serviceMessages', data }), 300));
-        unsubs.push(listenColLimited(COLS.NOTIFICATIONS, data => dispatch({ type: 'SET', key: 'notifications', data }), 300));
+      if (isAdminUser) {
+        unsubs.push(
+          listenColLimited(COLS.INVOICES, (data) =>
+            dispatch({ type: 'SET', key: 'invoices', data })
+          , 100)
+        )
+        unsubs.push(
+          listenColLimited(COLS.QUOTATIONS, (data) =>
+            dispatch({ type: 'SET', key: 'quotes', data })
+          , 50)
+        )
+        unsubs.push(
+          listenColLimited(COLS.TRANSACTIONS, (data) =>
+            dispatch({ type: 'SET', key: 'transactions', data })
+          , 100)
+        )
+        unsubs.push(
+          listenColLimited(COLS.EXPENSES, (data) =>
+            dispatch({ type: 'SET', key: 'expenses', data })
+          , 100)
+        )
+        unsubs.push(
+          listenColLimited(COLS.PURCHASES, (data) =>
+            dispatch({ type: 'SET', key: 'purchases', data })
+          , 50)
+        )
+        unsubs.push(
+          listenColLimited(COLS.SERVICE_BOOKINGS, (data) =>
+            dispatch({ type: 'SET', key: 'serviceBookings', data: sortByCreatedAtDesc(data) })
+          , 100)
+        )
+        unsubs.push(
+          listenColLimited(COLS.SERVICE_MESSAGES, (data) =>
+            dispatch({ type: 'SET', key: 'serviceMessages', data: sortByCreatedAtDesc(data) })
+          , 300)
+        )
+        unsubs.push(
+          listenColLimited(COLS.NOTIFICATIONS, (data) =>
+            dispatch({ type: 'SET', key: 'notifications', data: sortByCreatedAtDesc(data) })
+          , 300)
+        )
+        unsubs.push(
+          listenColLimited(COLS.CUSTOMER_WALLETS, (data) =>
+            dispatch({ type: 'SET', key: 'customerWallets', data })
+          , 300)
+        )
+        unsubs.push(
+          listenColLimited(COLS.CUSTOMER_ACCOUNTS, (data) =>
+            dispatch({ type: 'SET', key: 'customerAccounts', data: sortByCreatedAtDesc(data) })
+          , 300)
+        )
+      } else if (isCashierUser) {
+        unsubs.push(
+          listenColLimited(COLS.INVOICES, (data) =>
+            dispatch({ type: 'SET', key: 'invoices', data })
+          , 100)
+        )
+      } else if (currentUser?.role === 'customer' && currentUser?.uid) {
+        unsubs.push(
+          listenColByField(COLS.SERVICE_BOOKINGS, 'customerAuthUid', currentUser.uid, (data) =>
+            dispatch({ type: 'SET', key: 'serviceBookings', data: sortByCreatedAtDesc(data) })
+          , 100)
+        )
+        unsubs.push(
+          listenColByField(COLS.SERVICE_MESSAGES, 'customerAuthUid', currentUser.uid, (data) =>
+            dispatch({ type: 'SET', key: 'serviceMessages', data: sortByCreatedAtDesc(data) })
+          , 300)
+        )
+        unsubs.push(
+          listenColByField(COLS.NOTIFICATIONS, 'customerAuthUid', currentUser.uid, (data) =>
+            dispatch({ type: 'SET', key: 'notifications', data: sortByCreatedAtDesc(data) })
+          , 300)
+        )
+        unsubs.push(
+          listenDocById(COLS.CUSTOMER_WALLETS, currentUser.uid, (data) =>
+            dispatch({ type: 'SET', key: 'customerWallets', data: data ? [data] : [] })
+          )
+        )
+        unsubs.push(
+          listenDocById(COLS.CUSTOMER_ACCOUNTS, currentUser.uid, (data) =>
+            dispatch({ type: 'SET', key: 'customerAccounts', data: data ? [data] : [] })
+          )
+        )
       }
-    }, 2500);
-    
-    return () => {
-      unsubs.forEach(u => typeof u === 'function' && u());
-      clearTimeout(stage2Timer);
-      clearTimeout(stage3Timer);
-    }
-  }, [currentUser?.role])
+    }, 2500)
 
-  // ── Products ──
+    return () => {
+      unsubs.forEach((unsub) => typeof unsub === 'function' && unsub())
+      clearTimeout(stage2Timer)
+      clearTimeout(stage3Timer)
+    }
+  }, [currentUser?.role, currentUser?.uid, isAdminUser, isCashierUser, isStaffUser])
+
   const handleAddProduct = async (data) => {
     try {
       await addProduct(data)
-      toast.success('تمت إضافة القطعة')
-    } catch (e) { toast.error(e.message) }
+      toast.success('طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ظ‚ط·ط¹ط©')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
+
   const handleUpdateProduct = async (id, data) => {
     try {
       await updateProduct(id, data)
-      toast.success('تم تحديث القطعة')
-    } catch (e) { toast.error(e.message) }
+      toast.success('طھظ… طھط­ط¯ظٹط« ط§ظ„ظ‚ط·ط¹ط©')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
+
   const handleDeleteProduct = async (id) => {
     try {
       await deleteProduct(id)
-      toast.success('تم حذف القطعة')
-    } catch (e) { toast.error(e.message) }
+      toast.success('طھظ… ط­ط°ظپ ط§ظ„ظ‚ط·ط¹ط©')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
 
-  // ── Categories ──
   const handleAddCategory = async (data) => {
-    try { await addCategory(data); toast.success('تمت إضافة الفئة') }
-    catch (e) { toast.error(e.message) }
+    try {
+      await addCategory(data)
+      toast.success('طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ظپط¦ط©')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
+
   const handleDeleteCategory = async (id) => {
-    try { await deleteCategory(id); toast.success('تم حذف الفئة') }
-    catch (e) { toast.error(e.message) }
+    try {
+      await deleteCategory(id)
+      toast.success('طھظ… ط­ط°ظپ ط§ظ„ظپط¦ط©')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
 
-  // ── Suppliers ──
   const handleAddSupplier = async (data) => {
-    try { await addSupplier(data); toast.success('تمت إضافة المورد') }
-    catch (e) { toast.error(e.message) }
+    try {
+      await addSupplier(data)
+      toast.success('طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ظ…ظˆط±ط¯')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
+
   const handleUpdateSupplier = async (id, data) => {
-    try { await updateSupplier(id, data); toast.success('تم تحديث المورد') }
-    catch (e) { toast.error(e.message) }
+    try {
+      await updateSupplier(id, data)
+      toast.success('طھظ… طھط­ط¯ظٹط« ط§ظ„ظ…ظˆط±ط¯')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
+
   const handleDeleteSupplier = async (id) => {
-    try { await deleteSupplier(id); toast.success('تم حذف المورد') }
-    catch (e) { toast.error(e.message) }
+    try {
+      await deleteSupplier(id)
+      toast.success('طھظ… ط­ط°ظپ ط§ظ„ظ…ظˆط±ط¯')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
 
-  // ── Customers ──
   const handleAddCustomer = async (data) => {
-    try { await addCustomer(data); toast.success('تمت إضافة العميل') }
-    catch (e) { toast.error(e.message) }
+    try {
+      await addCustomer(data)
+      toast.success('طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ط¹ظ…ظٹظ„')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
+
   const handleUpdateCustomer = async (id, data) => {
-    try { await updateCustomer(id, data); toast.success('تم تحديث العميل') }
-    catch (e) { toast.error(e.message) }
+    try {
+      await updateCustomer(id, data)
+      toast.success('طھظ… طھط­ط¯ظٹط« ط§ظ„ط¹ظ…ظٹظ„')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
+
   const handleDeleteCustomer = async (id) => {
-    try { await deleteCustomer(id); toast.success('تم حذف العميل') }
-    catch (e) { toast.error(e.message) }
+    try {
+      await deleteCustomer(id)
+      toast.success('طھظ… ط­ط°ظپ ط§ظ„ط¹ظ…ظٹظ„')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
 
-  // ── Expenses ──
   const handleAddExpense = async (data) => {
-    try { await addExpense(data); toast.success('تم تسجيل المصروف بنجاح') }
-    catch (e) { toast.error(e.message) }
-  }
-  const handleDeleteExpense = async (id) => {
-    try { await deleteExpense(id); toast.success('تم حذف المصروف') }
-    catch (e) { toast.error(e.message) }
+    try {
+      await addExpense(data)
+      toast.success('طھظ… طھط³ط¬ظٹظ„ ط§ظ„ظ…طµط±ظˆظپ ط¨ظ†ط¬ط§ط­')
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
 
-  // ── Stock ──
+  const handleDeleteExpense = async (id) => {
+    try {
+      await deleteExpense(id)
+      toast.success('طھظ… ط­ط°ظپ ط§ظ„ظ…طµط±ظˆظپ')
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
   const stockIn = async (productId, qty, note = '') => {
     try {
       await updateProductStock(productId, qty, 'stock_in', note)
-      await addTransaction({ type: 'stockIn', refId: productId, details: `استلام ${qty} قطعة${note ? ' - ' + note : ''}`, amount: qty })
-      toast.success(`تمت إضافة ${qty} قطعة`)
-    } catch (e) { toast.error(e.message) }
+      await addTransaction({
+        type: 'stockIn',
+        refId: productId,
+        details: `ط§ط³طھظ„ط§ظ… ${qty} ظ‚ط·ط¹ط©${note ? ` - ${note}` : ''}`,
+        amount: qty,
+      })
+      toast.success(`طھظ…طھ ط¥ط¶ط§ظپط© ${qty} ظ‚ط·ط¹ط©`)
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
 
   const stockOut = async (productId, qty, reason = '') => {
-    const prod = state.products.find(p => p.id === productId)
-    if (!prod || prod.quantity < qty) { toast.error('الكمية غير متوفرة'); return }
+    const product = state.products.find((item) => item.id === productId)
+    if (!product || product.quantity < qty) {
+      toast.error('ط§ظ„ظƒظ…ظٹط© ط؛ظٹط± ظ…طھظˆظپط±ط©')
+      return
+    }
+
     try {
       await updateProductStock(productId, -qty, 'stock_out', reason)
-      await addTransaction({ type: 'stockOut', refId: productId, details: `صرف ${qty} قطعة${reason ? ' - ' + reason : ''}`, amount: qty })
-      toast.success(`تم صرف ${qty} قطعة`)
-    } catch (e) { toast.error(e.message) }
+      await addTransaction({
+        type: 'stockOut',
+        refId: productId,
+        details: `طµط±ظپ ${qty} ظ‚ط·ط¹ط©${reason ? ` - ${reason}` : ''}`,
+        amount: qty,
+      })
+      toast.success(`طھظ… طµط±ظپ ${qty} ظ‚ط·ط¹ط©`)
+    } catch (error) {
+      toast.error(error.message)
+    }
   }
 
-  // ── Sale ──
   const handleCompleteSale = async (params) => {
     try {
       const id = await completeSale(params)
       dispatch({ type: 'CART_CLEAR' })
-      toast.success('تم إتمام البيع بنجاح')
+      toast.success('طھظ… ط¥طھظ…ط§ظ… ط§ظ„ط¨ظٹط¹ ط¨ظ†ط¬ط§ط­')
       return id
-    } catch (e) { toast.error(e.message); throw e }
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const handlePayInvoiceDebt = async (invoiceId, amount, note) => {
     try {
       await payInvoiceDebt(invoiceId, amount, note)
-      toast.success('تم تسجيل سداد المديونية بنجاح')
-    } catch (e) { toast.error(e.message); throw e }
+      toast.success('طھظ… طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯ ط§ظ„ظ…ط¯ظٹظˆظ†ظٹط© ط¨ظ†ط¬ط§ط­')
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const handleDeleteInvoice = async (invoiceId) => {
     try {
       await deleteInvoiceAndReturnStock(invoiceId)
-      toast.success('تم حذف الفاتورة واسترداد المخزون بنجاح')
-    } catch (e) { toast.error(e.message); throw e }
+      toast.success('طھظ… ط­ط°ظپ ط§ظ„ظپط§طھظˆط±ط© ظˆط§ط³طھط±ط¯ط§ط¯ ط§ظ„ظ…ط®ط²ظˆظ† ط¨ظ†ط¬ط§ط­')
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const handleReturnItems = async (params) => {
     try {
       await returnInvoiceItems(params)
-      toast.success('تم إرجاع القطع وتسوية المبالغ بنجاح')
-    } catch (e) { toast.error(e.message); throw e }
+      toast.success('طھظ… ط¥ط±ط¬ط§ط¹ ط§ظ„ظ‚ط·ط¹ ظˆطھط³ظˆظٹط© ط§ظ„ظ…ط¨ط§ظ„ط؛ ط¨ظ†ط¬ط§ط­')
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const handleSaveQuote = async (data) => {
     try {
-      const id = await addQuote(data);
-      toast.success('تم حفظ عرض السعر بنجاح');
-      return id;
-    } catch (e) { toast.error(e.message); throw e }
+      const id = await addQuote(data)
+      toast.success('طھظ… ط­ظپط¸ ط¹ط±ط¶ ط§ظ„ط³ط¹ط± ط¨ظ†ط¬ط§ط­')
+      return id
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const handleDeleteQuote = async (id) => {
     try {
-      await deleteQuote(id);
-      toast.success('تم مسح عرض السعر');
-    } catch (e) { toast.error(e.message); throw e }
+      await deleteQuote(id)
+      toast.success('طھظ… ظ…ط³ط­ ط¹ط±ط¶ ط§ظ„ط³ط¹ط±')
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const handleImportProductsBatch = async (products) => {
     try {
-      const res = await importProductsBatch(products);
-      toast.success(`تم بنجاح! إضافة: ${res.addedCount} | تحديث: ${res.updatedCount}`);
-      return res;
-    } catch (e) { toast.error(e.message); throw e }
+      const result = await importProductsBatch(products)
+      toast.success(`طھظ… ط¨ظ†ط¬ط§ط­! ط¥ط¶ط§ظپط©: ${result.addedCount} | طھط­ط¯ظٹط«: ${result.updatedCount}`)
+      return result
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
-  // ── Purchases ──
   const handleRecordPurchase = async (data) => {
     try {
-      await recordPurchase(data);
-      toast.success('تم تسجيل فاتورة الشراء وتحديث المخزون');
-    } catch (e) { toast.error(e.message); throw e }
+      await recordPurchase(data)
+      toast.success('طھظ… طھط³ط¬ظٹظ„ ظپط§طھظˆط±ط© ط§ظ„ط´ط±ط§ط، ظˆطھط­ط¯ظٹط« ط§ظ„ظ…ط®ط²ظˆظ†')
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const handlePaySupplierDebt = async (supplierId, amount, note) => {
     try {
-      await paySupplierDebt(supplierId, amount, note);
-      toast.success('تم تسجيل سداد المورد بنجاح');
-    } catch (e) { toast.error(e.message); throw e }
+      await paySupplierDebt(supplierId, amount, note)
+      toast.success('طھظ… طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯ ط§ظ„ظ…ظˆط±ط¯ ط¨ظ†ط¬ط§ط­')
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
-  // ── Service Bookings ──
   const handleAddServiceBooking = async (data) => {
     try {
-      const id = await addServiceBooking(data)
-      await addNotification({
-        type: 'booking_created',
-        audience: 'admin',
-        bookingId: id,
-        title: 'حجز صيانة جديد',
-        body: `${data.name} - ${data.phone} | ${data.day} | ${data.slot}`,
-        read: false,
-      })
-      toast.success('تم تسجيل الحجز بنجاح')
-      return id
-    } catch (e) { toast.error(e.message); throw e }
+      const result = await createServiceBooking(data)
+      if (!result.alreadyExists) {
+        toast.success('طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط­ط¬ط² ط¨ظ†ط¬ط§ط­')
+      }
+      return result
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const handleUpdateServiceBooking = async (id, data) => {
     try {
-      await updateServiceBooking(id, data)
-      if (data.status || data.paymentStatus) {
-        await addNotification({
-          type: 'booking_updated',
-          audience: 'customer',
+      if (currentUser?.role === 'admin') {
+        await updateServiceBookingAdmin({
           bookingId: id,
-          title: 'تم تحديث حالة الحجز',
-          body: `الحالة: ${data.status || '-'} | الدفع: ${data.paymentStatus || '-'}`,
-          read: false,
+          status: data.status,
+          paymentStatus: data.paymentStatus,
+          paymentReviewNote: data.paymentReviewNote,
+          actorUid: currentUser?.uid || '',
+          actorName: currentUser?.name || '',
         })
+      } else {
+        await updateServiceBooking(id, data)
       }
-      toast.success('تم تحديث حالة الحجز')
-    } catch (e) { toast.error(e.message); throw e }
+
+      toast.success('طھظ… طھط­ط¯ظٹط« ط­ط§ظ„ط© ط§ظ„ط­ط¬ط²')
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const handleAddServiceMessage = async (data) => {
     try {
-      await addServiceMessage(data)
+      const booking = state.serviceBookings.find((item) => item.id === data.bookingId)
+      const customerAuthUid = data.customerAuthUid || booking?.customerAuthUid || null
+
+      await addServiceMessage({
+        ...data,
+        customerAuthUid,
+      })
+
       await addNotification({
         type: 'new_message',
         audience: data.sender === 'admin' ? 'customer' : 'admin',
         bookingId: data.bookingId,
-        title: data.sender === 'admin' ? 'رسالة جديدة من الإدارة' : 'رسالة جديدة من العميل',
+        customerAuthUid,
+        title: data.sender === 'admin' ? 'ط±ط³ط§ظ„ط© ط¬ط¯ظٹط¯ط© ظ…ظ† ط§ظ„ط¥ط¯ط§ط±ط©' : 'ط±ط³ط§ظ„ط© ط¬ط¯ظٹط¯ط© ظ…ظ† ط§ظ„ط¹ظ…ظٹظ„',
         body: data.text?.slice(0, 120) || '',
         read: false,
       })
-    } catch (e) { toast.error(e.message); throw e }
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const handleMarkNotificationAsRead = async (id) => markNotificationAsRead(id)
 
-  // ── Cart ──
+  const handleAdjustCustomerWallet = async (payload) => {
+    try {
+      const result = await adjustCustomerWallet(payload)
+      toast.success('طھظ… طھط­ط¯ظٹط« ظ…ط­ظپط¸ط© ط§ظ„ط¹ظ…ظٹظ„')
+      return result
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
+  }
+
+  const handleReviewCustomerAccount = async (uid, action, reason = '') => {
+    try {
+      await reviewCustomerAccount(uid, action, reason, {
+        uid: currentUser?.uid || '',
+        name: currentUser?.name || '',
+      })
+      const successMessage =
+        action === 'approve'
+          ? 'تم تفعيل حساب العميل'
+          : action === 'reject'
+            ? 'تم رفض الحساب'
+            : 'تم إيقاف الحساب'
+      toast.success(successMessage)
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
+  }
+
   const cartAdd = (item) => dispatch({ type: 'CART_ADD', item })
   const cartQty = (id, qty) => dispatch({ type: 'CART_QTY', id, qty })
   const cartRemove = (id) => dispatch({ type: 'CART_REMOVE', id })
   const cartClear = () => dispatch({ type: 'CART_CLEAR' })
-  const cartTotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0)
-  const cartCount = state.cart.reduce((s, i) => s + i.qty, 0)
+  const cartTotal = state.cart.reduce((sum, item) => sum + item.price * item.qty, 0)
+  const cartCount = state.cart.reduce((sum, item) => sum + item.qty, 0)
 
   return (
     <StoreContext.Provider value={{
-      ...state, cartTotal, cartCount,
+      ...state,
+      cartTotal,
+      cartCount,
       addProduct: handleAddProduct,
       updateProduct: handleUpdateProduct,
       deleteProduct: handleDeleteProduct,
@@ -323,7 +598,8 @@ export function StoreProvider({ children }) {
       addCustomer: handleAddCustomer,
       updateCustomer: handleUpdateCustomer,
       deleteCustomer: handleDeleteCustomer,
-      stockIn, stockOut,
+      stockIn,
+      stockOut,
       completeSale: handleCompleteSale,
       payInvoiceDebt: handlePayInvoiceDebt,
       deleteInvoice: handleDeleteInvoice,
@@ -339,7 +615,12 @@ export function StoreProvider({ children }) {
       updateServiceBooking: handleUpdateServiceBooking,
       addServiceMessage: handleAddServiceMessage,
       markNotificationAsRead: handleMarkNotificationAsRead,
-      cartAdd, cartQty, cartRemove, cartClear,
+      adjustCustomerWallet: handleAdjustCustomerWallet,
+      reviewCustomerAccount: handleReviewCustomerAccount,
+      cartAdd,
+      cartQty,
+      cartRemove,
+      cartClear,
     }}>
       {children}
     </StoreContext.Provider>
@@ -351,3 +632,4 @@ export const useStore = () => {
   if (!ctx) throw new Error('useStore must be inside StoreProvider')
   return ctx
 }
+

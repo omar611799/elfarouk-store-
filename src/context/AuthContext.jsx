@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
@@ -5,6 +6,7 @@ import { auth, db } from '../firebase/config'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
+const STAFF_ROLES = new Set(['admin', 'cashier'])
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
@@ -24,10 +26,19 @@ export function AuthProvider({ children }) {
           uid: fbUser.uid,
           email: fbUser.email || '',
           name: profile.name || fbUser.email || 'User',
+          phone: profile.phone || '',
           role: profile.role || 'customer',
+          phoneVerificationStatus: profile.phoneVerificationStatus || 'verified',
+          phoneVerificationReason: profile.phoneVerificationReason || '',
+          phoneVerifiedAt: profile.phoneVerifiedAt || null,
+          phoneVerifiedByUid: profile.phoneVerifiedByUid || '',
+          phoneVerifiedByName: profile.phoneVerifiedByName || '',
+          accountStatusUpdatedAt: profile.accountStatusUpdatedAt || null,
+          accountStatusUpdatedByUid: profile.accountStatusUpdatedByUid || '',
+          accountStatusUpdatedByName: profile.accountStatusUpdatedByName || '',
         })
-      } catch (e) {
-        console.error('Auth load profile error', e)
+      } catch (error) {
+        console.error('Auth load profile error', error)
         setCurrentUser(null)
       } finally {
         setLoading(false)
@@ -40,10 +51,23 @@ export function AuthProvider({ children }) {
   const attemptAdminLogin = async (email, password) => {
     setLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, String(email || '').trim(), String(password || ''))
+      const cred = await signInWithEmailAndPassword(
+        auth,
+        String(email || '').trim(),
+        String(password || '')
+      )
+      const snap = await getDoc(doc(db, 'users', cred.user.uid))
+      const role = snap.exists() ? snap.data().role : null
+
+      if (!STAFF_ROLES.has(role)) {
+        await signOut(auth)
+        toast.error('هذا الحساب لا يملك صلاحية الدخول الإداري')
+        return false
+      }
+
       return true
-    } catch (e) {
-      toast.error('بيانات دخول الأدمن غير صحيحة')
+    } catch {
+      toast.error('بيانات دخول الإدارة غير صحيحة')
       return false
     } finally {
       setLoading(false)

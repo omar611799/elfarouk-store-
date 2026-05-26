@@ -1,4 +1,4 @@
-import { useState, useMemo, memo, useCallback } from 'react'
+import { useState, useMemo, memo, useCallback, useEffect } from 'react'
 import { useStore } from '../context/StoreContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -22,14 +22,13 @@ const itemVariant = {
   show: { opacity: 1, y: 0 }
 }
 
-// ✅ IMPORTANT: CartContent MUST be wrapped in memo and defined OUTSIDE of POS component.
-// This prevents focus loss after every character typed.
 const CartContent = memo(({
   cart, cartTotal, cartClear, cartQty, cartRemove,
   customer, setCustomer, suggestedCustomers,
-  payments, setPayments,
+  payments, setPayments, isAdmin,
   saving, handleSale, setIsCartOpen
 }) => {
+  const [focusedField, setFocusedField] = useState(null)
   return (
     <div className="flex flex-col h-full bg-[#f8fafc]">
       <div className="p-4 sm:p-8 border-b border-slate-200/60 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-xl z-20">
@@ -82,6 +81,14 @@ const CartContent = memo(({
                     <p className="text-sm text-emerald-600 font-black mt-1.5 sm:mt-2 tracking-wide font-display">
                       {Number(item.price).toLocaleString('en-US')} ج.م
                     </p>
+                    {/* إضافة حقل للخصم أو الملاحظات تحت السعر */}
+                    <div className="mt-1">
+                       {isAdmin && (
+                         <span className="text-[10px] text-slate-400 font-bold bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                           الربح المتوقع: {((item.price - (item.cost || 0)) * item.qty).toLocaleString()} ج
+                         </span>
+                       )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 bg-slate-100 border border-slate-200 rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shrink-0 pointer-events-auto">
                     <button onClick={() => cartQty(item.id, item.qty - 1)} className="w-10 h-10 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-slate-200 transition-colors bg-white border border-slate-200 shadow-sm">
@@ -104,62 +111,177 @@ const CartContent = memo(({
       </div>
 
       <div className="p-6 sm:p-8 border-t border-slate-200 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.03)] pb-safe">
-        <div className="space-y-4 mb-6 sm:mb-8">
-          <div className="flex justify-between items-center px-1">
-            <span className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">إجمالي السلة</span>
-            <span className="text-2xl sm:text-4xl font-black text-slate-950 font-display tracking-tighter">
-              {cartTotal.toLocaleString('en-US')} <span className="text-xs sm:text-sm font-normal text-slate-400">ج.م</span>
+        <div className="space-y-3 mb-6 sm:mb-8 px-1">
+          <div className="flex justify-between items-center">
+            <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">إجمالي السلة</span>
+            <span className="text-lg font-bold text-slate-500 line-through decoration-rose-300 decoration-2">
+              {cartTotal.toLocaleString()} ج.م
+            </span>
+          </div>
+          <div className="flex justify-between items-center bg-primary-50 p-4 rounded-2xl border border-primary-100">
+            <div className="flex flex-col">
+              <span className="text-primary-800 text-[10px] font-black uppercase tracking-widest">المبلغ النهائي</span>
+              <input 
+                type="number" 
+                value={payments.discount || ''} 
+                onChange={e => setPayments(p => ({ ...p, discount: e.target.value }))}
+                placeholder="خصم..." 
+                className="bg-transparent border-none p-0 text-rose-500 text-[10px] font-black focus:ring-0 w-20"
+              />
+            </div>
+            <span className="text-3xl font-black text-primary-900 font-display tracking-tighter">
+              {(cartTotal - (Number(payments.discount) || 0)).toLocaleString('en-US')} <small className="text-xs font-normal">ج.م</small>
             </span>
           </div>
         </div>
 
         <div className="space-y-3 sm:space-y-4">
-          <div className="relative group">
-            <input
-              id="customer-name-input"
-              value={customer.name}
-              onChange={e => setCustomer(p => ({ ...p, name: e.target.value }))}
-              placeholder="اسم العميل..."
-              className="input !py-4 pr-12 text-sm"
-              autoComplete="off"
-            />
-            <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary-400 transition-colors" />
+          {/* Auto-save badge */}
+          {customer.name && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
+              <Users size={13} className="text-emerald-600 shrink-0" />
+              <p className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">
+                سيتم إضافة العميل تلقائياً في صفحة العملاء
+              </p>
+            </div>
+          )}
 
-            {suggestedCustomers.length > 0 && (
-              <div className="absolute bottom-full left-0 right-0 mb-3 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                {suggestedCustomers.map(sc => (
-                  <button
-                    key={sc.id}
-                    type="button"
-                    onClick={() => setCustomer({ name: sc.name, phone: sc.phone || '', carModel: sc.carModel || '', licensePlate: sc.licensePlate || '', nationalId: sc.nationalId || '' })}
-                    className="w-full text-right px-4 sm:px-6 py-4 hover:bg-primary-50 transition-all flex justify-between items-center group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <ChevronLeft size={16} className="text-slate-300 group-hover:text-primary-600 group-hover:-translate-x-1 transition-all" />
-                      <span className="text-primary-600 font-black text-xs uppercase tracking-wider">{sc.phone}</span>
-                    </div>
-                    <span className="text-slate-900 text-sm sm:text-base font-black font-display">{sc.name}</span>
-                  </button>
-                ))}
+          <div className="space-y-4">
+            <div>
+              <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">اسم العميل بالكامل *</label>
+              <div className="relative group">
+                <input
+                  id="customer-name-input"
+                  value={customer.name}
+                  onChange={e => setCustomer(p => ({ ...p, name: e.target.value }))}
+                  onFocus={() => setFocusedField('name')}
+                  onBlur={() => setTimeout(() => setFocusedField(null), 200)}
+                  placeholder="مثلاً: محمد علي"
+                  className="input !py-4 pr-12 text-sm"
+                  autoComplete="off"
+                />
+                <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary-400 transition-colors" />
+
+                {focusedField === 'name' && suggestedCustomers.length > 0 && (
+                  <div className="absolute bottom-full left-0 right-0 mb-3 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                    {suggestedCustomers.map(sc => (
+                      <button
+                        key={sc.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setCustomer({
+                            name: sc.name,
+                            phone: sc.phone || '',
+                            carModel: sc.carModel || '',
+                            licensePlate: sc.licensePlate || '',
+                            nationalId: sc.nationalId || ''
+                          })
+                          setFocusedField(null)
+                        }}
+                        className="w-full text-right px-4 sm:px-6 py-3.5 hover:bg-primary-50 transition-all flex justify-between items-center group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <ChevronLeft size={16} className="text-slate-300 group-hover:text-primary-600 group-hover:-translate-x-1 transition-all shrink-0" />
+                          {sc.phone && (
+                            <span className="text-primary-600 bg-primary-50 px-2 py-0.5 rounded text-[11px] font-black">{sc.phone}</span>
+                          )}
+                          {sc.carModel && (
+                            <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded text-[11px] font-bold max-w-[150px] truncate">
+                              🚗 {sc.carModel} {sc.licensePlate ? `(${sc.licensePlate})` : ''}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-slate-900 text-sm font-bold font-display">{sc.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <input
-              id="customer-car-input"
-              value={customer.carModel}
-              onChange={e => setCustomer(p => ({ ...p, carModel: e.target.value }))}
-              placeholder="نوع العربية"
-              className="input !py-4 text-sm font-bold"
-            />
-            <input
-              id="customer-phone-input"
-              value={customer.phone}
-              onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))}
-              placeholder="رقم الموبايل"
-              className="input !py-4 text-sm font-bold"
-            />
+            <div>
+              <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">رقم الهاتف / الواتساب</label>
+              <div className="relative group">
+                <input
+                  id="customer-phone-input"
+                  value={customer.phone}
+                  onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))}
+                  onFocus={() => setFocusedField('phone')}
+                  onBlur={() => setTimeout(() => setFocusedField(null), 200)}
+                  placeholder="01xxxxxxxxx"
+                  className="input !py-4 text-sm font-bold"
+                  autoComplete="off"
+                />
+
+                {focusedField === 'phone' && suggestedCustomers.length > 0 && (
+                  <div className="absolute bottom-full left-0 right-0 mb-3 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                    {suggestedCustomers.map(sc => (
+                      <button
+                        key={sc.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setCustomer({
+                            name: sc.name,
+                            phone: sc.phone || '',
+                            carModel: sc.carModel || '',
+                            licensePlate: sc.licensePlate || '',
+                            nationalId: sc.nationalId || ''
+                          })
+                          setFocusedField(null)
+                        }}
+                        className="w-full text-right px-4 sm:px-6 py-3.5 hover:bg-primary-50 transition-all flex justify-between items-center group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <ChevronLeft size={16} className="text-slate-300 group-hover:text-primary-600 group-hover:-translate-x-1 transition-all shrink-0" />
+                          {sc.phone && (
+                            <span className="text-primary-600 bg-primary-50 px-2 py-0.5 rounded text-[11px] font-black">{sc.phone}</span>
+                          )}
+                          {sc.carModel && (
+                            <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded text-[11px] font-bold max-w-[150px] truncate">
+                              🚗 {sc.carModel} {sc.licensePlate ? `(${sc.licensePlate})` : ''}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-slate-900 text-sm font-bold font-display">{sc.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">الرقم القومي (اختياري)</label>
+              <input
+                id="customer-national-id-input"
+                value={customer.nationalId}
+                onChange={e => setCustomer(p => ({ ...p, nationalId: e.target.value }))}
+                placeholder="29xxxxxxxxxxxx"
+                className="input !py-4 text-sm font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">نوع السيارة والموديل</label>
+              <input
+                id="customer-car-input"
+                value={customer.carModel}
+                onChange={e => setCustomer(p => ({ ...p, carModel: e.target.value }))}
+                placeholder="لانسر بومة 2008"
+                className="input !py-4 text-sm font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">رقم لوحة السيارة</label>
+              <input
+                id="customer-license-input"
+                value={customer.licensePlate}
+                onChange={e => setCustomer(p => ({ ...p, licensePlate: e.target.value }))}
+                placeholder="أ ب ج 123"
+                className="input !py-4 text-sm font-bold"
+              />
+            </div>
           </div>
 
           <div className="pt-2 border-t border-slate-200 mt-4">
@@ -256,6 +378,28 @@ export default function POS() {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [reminders, setReminders] = useState({})
 
+  useEffect(() => {
+    const raw = window.localStorage.getItem('pendingQuoteCustomer')
+    if (!raw) return
+
+    try {
+      const pendingCustomer = JSON.parse(raw)
+      if (pendingCustomer && typeof pendingCustomer === 'object') {
+        setCustomer({
+          name: String(pendingCustomer.name || ''),
+          phone: String(pendingCustomer.phone || ''),
+          carModel: String(pendingCustomer.carModel || ''),
+          licensePlate: String(pendingCustomer.licensePlate || ''),
+          nationalId: String(pendingCustomer.nationalId || ''),
+        })
+      }
+    } catch (error) {
+      console.error('Pending quote customer parse error', error)
+    } finally {
+      window.localStorage.removeItem('pendingQuoteCustomer')
+    }
+  }, [])
+
   const categoriesList = useMemo(() => {
     return [...new Set(products.map(p => p.category).filter(Boolean))]
   }, [products])
@@ -276,14 +420,19 @@ export default function POS() {
   }, [products, search, catFilter])
 
   const suggestedCustomers = useMemo(() => {
-    if (!customer.name || customer.name.length < 2) return []
-    return customers.filter(c =>
-      c.name.toLowerCase().includes(customer.name.toLowerCase()) ||
-      c.phone?.includes(customer.name)
-    ).slice(0, 5)
-  }, [customers, customer.name])
+    const nameQuery = (customer.name || '').trim().toLowerCase()
+    const phoneQuery = (customer.phone || '').trim()
 
-  const handleSale = async () => {
+    if (nameQuery.length < 2 && phoneQuery.length < 2) return []
+
+    return customers.filter(c => {
+      const matchName = nameQuery.length >= 2 && c.name?.toLowerCase().includes(nameQuery)
+      const matchPhone = phoneQuery.length >= 2 && c.phone?.includes(phoneQuery)
+      return matchName || matchPhone
+    }).slice(0, 5)
+  }, [customers, customer.name, customer.phone])
+
+  const handleSale = useCallback(async () => {
     if (cart.length === 0 || !customer.name) return
     setSaving(true)
     try {
@@ -303,7 +452,25 @@ export default function POS() {
         }
       })
 
-      setDoneInvoice({ id: invId, number: invNum, total: cartTotal, due: dueAmount > 0 ? dueAmount : 0 })
+      setDoneInvoice({
+        id: invId,
+        number: invNum,
+        total: cartTotal,
+        due: dueAmount > 0 ? dueAmount : 0,
+        customerPhone: customer.phone,
+      })
+
+      // إرسال واتساب تلقائي للعميل
+      if (customer.phone) {
+        const msg = `🧾 فاتورة من ELFAROUK Service\n` +
+          `رقم الفاتورة: #${invNum}\n` +
+          `الإجمالي: ${cartTotal.toLocaleString('en-US')} ج.م\n` +
+          `رابط المعاينة: ${window.location.origin}/receipt/${invId}\n\n` +
+          `شكراً لتعاملكم معنا 🙏`
+        const phone = customer.phone.replace(/^0/, '20')
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+      }
+
       setCustomer({ name: '', phone: '', carModel: '', licensePlate: '', nationalId: '' })
       setPayments({ cash: '', visa: '', instapay: '' })
       setReminders({})
@@ -312,21 +479,22 @@ export default function POS() {
     } finally {
       setSaving(false)
     }
-  }
+  }, [cart, cartTotal, completeSale, customer, payments, reminders])
 
   const sendWhatsApp = () => {
     if (!doneInvoice) return
     const msg = `🧾 فاتورة من ELFAROUK Service\nالإجمالي: ${doneInvoice.total} ج.م\nرقم: ${doneInvoice.id}\nشكراً لتعاملكم معنا 🙏`
-    const phone = customer.phone?.replace(/^0/, '20') || '201115329887'
+    const phone = doneInvoice.customerPhone?.replace(/^0/, '20') || '201115329887'
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0]
     if (!file) return
+    setScannerError(null)
     const html5QrCode = new Html5Qrcode('reader')
     html5QrCode.scanFile(file, true)
-      .then(decodedText => { setSearch(decodedText); setShowScanner(false) })
+      .then(decodedText => { setSearch(decodedText); setShowScanner(false); setScannerError(null) })
       .catch(() => setScannerError('فشل قراءة الملف. تأكد من وضوح الباركود.'))
   }
 
@@ -431,6 +599,12 @@ export default function POS() {
                   </button>
                 </div>
               </div>
+
+              {scannerError && (
+                <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-600">
+                  {scannerError}
+                </p>
+              )}
 
               <div className="flex overflow-x-auto gap-2 pb-1 no-scrollbar sm:hidden">
                 <button onClick={() => setCat('')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap ${!catFilter ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'bg-white text-slate-600 border border-slate-200'}`}>الكل</button>

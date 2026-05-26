@@ -3,7 +3,7 @@ import { useStore } from '../context/StoreContext'
 import { motion } from 'framer-motion'
 import {
   BarChart3, TrendingUp, TrendingDown, Download,
-  Package, Users, FileText, Wallet, Calendar, ArrowUpRight
+  Package, FileText, Wallet, Calendar, ArrowUpRight
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -17,7 +17,7 @@ const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } }
 const PIE_COLORS = ['#225c97', '#4b6786', '#10b981', '#7c93ad', '#f43f5e', '#eab308']
 
 export default function Reports() {
-  const { products, invoices, expenses, customers } = useStore()
+  const { products, invoices, expenses } = useStore()
   const [period, setPeriod] = useState('30d')
 
   // ── Calculations ──────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ export default function Reports() {
   const totalProfit   = useMemo(() => {
     const grossProfit = invoices.reduce((s, inv) =>
       s + (inv.items || []).reduce((ss, it) => {
-        const cost = it.cost > 0 ? it.cost : it.price * 0.65
+        const cost = Number(it.cost) || 0
         return ss + (it.price - cost) * (it.qty || 1)
       }, 0), 0)
     return grossProfit - totalExpenses
@@ -48,7 +48,7 @@ export default function Reports() {
       const revenue = dayInvoices.reduce((s, inv) => s + (inv.total || 0), 0)
       const profit  = dayInvoices.reduce((s, inv) =>
         s + (inv.items || []).reduce((ss, it) => {
-          const cost = it.cost > 0 ? it.cost : it.price * 0.65
+          const cost = Number(it.cost) || 0
           return ss + (it.price - cost) * (it.qty || 1)
         }, 0), 0)
       return { name: label, revenue, profit }

@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Plus, Edit2, Trash2, Users, Phone, Car, History, Wrench, Calendar, FileText, Search, X, Sparkles, CreditCard, ChevronLeft } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { Plus, Edit2, Trash2, Users, Phone, Car, History, Wrench, Calendar, Search, X, ShieldCheck, CheckCircle2, Clock3, Mail, PauseCircle, XCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { CUSTOMER_ACCOUNT_STATUSES, getCustomerAccountStatusLabel } from '../utils/customerAccounts'
 
 const EMPTY = { name: '', phone: '', nationalId: '', carModel: '', licensePlate: '' }
 
@@ -16,7 +18,16 @@ const itemVariant = {
 }
 
 export default function Customers() {
-  const { customers, addCustomer, updateCustomer, deleteCustomer, invoices } = useStore()
+  const {
+    customers,
+    customerAccounts,
+    addCustomer,
+    updateCustomer,
+    deleteCustomer,
+    invoices,
+    reviewCustomerAccount,
+  } = useStore()
+  const { currentUser } = useAuth()
   const [search, setSearch] = useState('')
   const [modal, setModal]   = useState(false)
   const [editing, setEditing] = useState(null)
@@ -40,6 +51,53 @@ export default function Customers() {
   const filtered = customers.filter(c =>
     !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search)
   )
+
+  const pendingCustomerAccounts = useMemo(
+    () =>
+      customerAccounts.filter(
+        (account) => account.status === CUSTOMER_ACCOUNT_STATUSES.PENDING
+      ),
+    [customerAccounts]
+  )
+
+  const restrictedCustomerAccounts = useMemo(
+    () =>
+      customerAccounts.filter((account) =>
+        [CUSTOMER_ACCOUNT_STATUSES.REJECTED, CUSTOMER_ACCOUNT_STATUSES.SUSPENDED].includes(
+          account.status
+        )
+      ),
+    [customerAccounts]
+  )
+
+  const activeCustomerAccounts = useMemo(
+    () =>
+      customerAccounts
+        .filter((account) => account.status === CUSTOMER_ACCOUNT_STATUSES.ACTIVE)
+        .slice(0, 6),
+    [customerAccounts]
+  )
+
+  const isAdminUser = currentUser?.role === 'admin'
+
+  const runAccountReview = async (account, action) => {
+    let reason = ''
+    if (action === 'reject' || action === 'suspend') {
+      reason = window.prompt(
+        action === 'reject' ? 'اكتب سبب رفض الحساب' : 'اكتب سبب إيقاف الحساب',
+        account.reviewReason || ''
+      ) || ''
+    }
+
+    await reviewCustomerAccount(account.id, action, reason)
+  }
+
+  const formatReviewMeta = (account) => {
+    const actor = account.statusUpdatedByName || account.statusUpdatedByUid || ''
+    const date = account.statusUpdatedAt?.toDate?.() || (account.statusUpdatedAt ? new Date(account.statusUpdatedAt) : null)
+    const dateLabel = date && !Number.isNaN(date.getTime()) ? date.toLocaleString('ar-EG') : ''
+    return [actor, dateLabel].filter(Boolean).join(' - ')
+  }
 
   const openAdd  = () => { setEditing(null); setForm(EMPTY); setModal(true) }
   const openEdit = (c) => { setEditing(c.id); setForm({ ...EMPTY, ...c }); setModal(true) }
@@ -75,6 +133,190 @@ export default function Customers() {
           placeholder="ابحث بالاسم، رقم الهاتف..." className="input pr-10 sm:pr-12 text-sm" />
       </div>
 
+      {isAdminUser && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card !p-5 sm:!p-6 border-primary-500/20 bg-primary-500/[0.03] mx-1"
+        >
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary-400 flex items-center gap-2">
+                  <ShieldCheck size={14} />
+                  Phone Verification Queue
+                </p>
+                <h2 className="mt-2 text-lg sm:text-2xl font-black text-white font-display">
+                  حسابات بانتظار تأكيد الرقم
+                </h2>
+                <p className="mt-2 text-sm text-slate-400">
+                  الحساب يظل مقفول للعميل لحد ما توافق أنت على رقم الهاتف.
+                </p>
+              </div>
+
+              <div className="badge-primary !bg-amber-500/10 !text-amber-300 !border-amber-500/20 px-3 py-2 w-fit">
+                <Clock3 size={13} />
+                {pendingCustomerAccounts.length} pending
+              </div>
+            </div>
+
+            {pendingCustomerAccounts.length === 0 ? (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-5 text-sm text-slate-400">
+                لا توجد حسابات معلقة الآن. أي عميل يسجل بحسابه سيظهر هنا إلى أن يتم التفعيل.
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {pendingCustomerAccounts.map((account) => (
+                  <div
+                    key={account.id}
+                    className="rounded-2xl border border-white/5 bg-black/20 px-4 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
+                  >
+                    <div className="grid gap-2">
+                      <p className="text-base font-black text-white">{account.name || 'عميل جديد'}</p>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 font-black uppercase tracking-widest">
+                        {account.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone size={12} className="text-emerald-400" />
+                            {account.phone}
+                          </span>
+                        )}
+                        {account.email && (
+                          <span className="flex items-center gap-1 normal-case tracking-normal">
+                            <Mail size={12} className="text-primary-400" />
+                            {account.email}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => runAccountReview(account, 'approve')}
+                      className="btn-primary !px-4 !py-2.5 text-[11px] sm:text-sm self-start lg:self-center"
+                    >
+                      <CheckCircle2 size={16} />
+                      تفعيل الحساب
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {isAdminUser && (
+        <div className="mx-1 grid gap-4 xl:grid-cols-2">
+          <div className="card !p-5 border-rose-500/10 bg-rose-500/[0.03]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-rose-300">
+                  Restricted Accounts
+                </p>
+                <h2 className="mt-2 text-lg font-black text-white">حسابات مرفوضة أو موقوفة</h2>
+              </div>
+              <div className="badge-primary !bg-rose-500/10 !text-rose-300 !border-rose-500/20 px-3 py-2">
+                <XCircle size={13} />
+                {restrictedCustomerAccounts.length}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              {restrictedCustomerAccounts.length === 0 ? (
+                <div className="rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-5 text-sm text-slate-400">
+                  لا توجد حسابات مرفوضة أو موقوفة.
+                </div>
+              ) : (
+                restrictedCustomerAccounts.map((account) => (
+                  <div key={account.id} className="rounded-2xl border border-white/5 bg-black/20 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-black text-white">{account.name || 'عميل'}</p>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-slate-200">
+                        {getCustomerAccountStatusLabel(account.status)}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-400">
+                      {account.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone size={12} className="text-emerald-400" />
+                          {account.phone}
+                        </span>
+                      )}
+                      {account.email && (
+                        <span className="flex items-center gap-1 normal-case">
+                          <Mail size={12} className="text-primary-400" />
+                          {account.email}
+                        </span>
+                      )}
+                    </div>
+                    {account.reviewReason && (
+                      <p className="mt-3 rounded-xl border border-amber-500/10 bg-amber-500/5 px-3 py-2 text-sm text-amber-200">
+                        {account.reviewReason}
+                      </p>
+                    )}
+                    <p className="mt-2 text-xs text-slate-500">{formatReviewMeta(account)}</p>
+                    <button
+                      type="button"
+                      onClick={() => runAccountReview(account, 'approve')}
+                      className="btn-primary mt-4 !px-4 !py-2.5 text-[11px] sm:text-sm"
+                    >
+                      <CheckCircle2 size={16} />
+                      إعادة التفعيل
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="card !p-5 border-white/5 bg-white/[0.02]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">
+                  Active Accounts
+                </p>
+                <h2 className="mt-2 text-lg font-black text-white">حسابات مفعلة يمكن إيقافها</h2>
+              </div>
+              <div className="badge-primary !bg-white/5 !text-slate-200 !border-white/10 px-3 py-2">
+                <PauseCircle size={13} />
+                {activeCustomerAccounts.length}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              {activeCustomerAccounts.map((account) => (
+                <div key={account.id} className="rounded-2xl border border-white/5 bg-black/20 p-4">
+                  <p className="font-black text-white">{account.name || 'عميل'}</p>
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-400">
+                    {account.phone && (
+                      <span className="flex items-center gap-1">
+                        <Phone size={12} className="text-emerald-400" />
+                        {account.phone}
+                      </span>
+                    )}
+                    {account.email && (
+                      <span className="flex items-center gap-1 normal-case">
+                        <Mail size={12} className="text-primary-400" />
+                        {account.email}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">{formatReviewMeta(account)}</p>
+                  <button
+                    type="button"
+                    onClick={() => runAccountReview(account, 'suspend')}
+                    className="btn-ghost mt-4 !px-4 !py-2.5 text-[11px] sm:text-sm"
+                  >
+                    <PauseCircle size={16} />
+                    إيقاف الحساب
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 gap-2.5 sm:gap-4 px-1">
         {filtered.map(c => (
           <motion.div variants={itemVariant} layout key={c.id} className="card !py-3 !px-4 sm:!py-6 sm:!px-8 hover:border-primary-500/30 group flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
@@ -85,9 +327,11 @@ export default function Customers() {
               
               <div className="flex-1 min-w-0 text-right">
                 <p className="font-black text-white text-sm sm:text-lg tracking-tight group-hover:text-primary-400 transition-colors font-display truncate leading-tight">{c.name}</p>
-                <div className="flex items-center gap-3 mt-1">
+                <div className="flex flex-wrap items-center gap-3 mt-1">
                     {c.phone && <span className="text-[7px] sm:text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none flex items-center gap-1"><Phone size={8} className="text-emerald-500" /> {c.phone}</span>}
                     {c.carModel && <span className="text-[7px] sm:text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none flex items-center gap-1"><Car size={8} className="text-primary-400" /> {c.carModel}</span>}
+                    {c.licensePlate && <span className="text-[7px] sm:text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none flex items-center gap-1">📋 لوحة: {c.licensePlate}</span>}
+                    {c.nationalId && <span className="text-[7px] sm:text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none flex items-center gap-1">🪪 قومي: {c.nationalId}</span>}
                 </div>
               </div>
 
@@ -142,7 +386,7 @@ export default function Customers() {
               </div>
               <div className="p-6 sm:p-8 space-y-5 sm:space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                 {[
-                  { key: 'name',         label: 'اسم العميل المزدة *', placeholder: 'مثلاً: محمد علي' },
+                  { key: 'name',         label: 'اسم العميل بالكامل *', placeholder: 'مثلاً: محمد علي' },
                   { key: 'phone',        label: 'رقم الهاتف / الواتساب', placeholder: '01xxxxxxxxx' },
                   { key: 'nationalId',   label: 'الرقم القومي (اختياري)', placeholder: '29xxxxxxxxxxxx' },
                   { key: 'carModel',     label: 'نوع السيارة والموديل', placeholder: 'لانسر بومة 2008' },
@@ -187,7 +431,7 @@ export default function Customers() {
                         <p className="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] sm:text-xs">لا يوجد صيانة مسجلة حالياً</p>
                     </div>
                 ) : (
-                    customerHistory.map((inv, idx) => (
+                    customerHistory.map((inv) => (
                         <div key={inv.id} className="relative pr-6 sm:pr-8 border-r-2 border-white/5 pb-2">
                              <div className="absolute right-[-5px] top-0 w-2 h-2 bg-primary-500 rounded-full shadow-lg shadow-primary-500/5" />
                              

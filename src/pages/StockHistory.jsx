@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useStore } from '../context/StoreContext'
 import { listenCol, COLS } from '../firebase/collections'
-import { History, Search, ArrowUpCircle, ArrowDownCircle, Info, Package, Filter, Calendar, Clock, Sparkles } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { History, Search, ArrowUpCircle, ArrowDownCircle, Info, Package, Filter, Calendar, Clock, Trash2 } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 const container = {
   hidden: { opacity: 0 },
@@ -15,7 +15,7 @@ const itemVariant = {
 }
 
 export default function StockHistory() {
-  const { products } = useStore()
+  const { deleteStockLog } = useStore()
   const [logs, setLogs] = useState([])
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -145,14 +145,22 @@ export default function StockHistory() {
                     <p className="text-[8px] text-slate-600 font-black uppercase tracking-widest mt-0.5">الرصيد: {log.newQty}</p>
                   </div>
 
-                  <div className="flex flex-col lg:items-end justify-center gap-1">
+                  <div className="flex flex-col lg:items-end justify-center gap-1.5">
                     <div className="flex items-center gap-2 text-[10px] text-slate-200 font-black font-display leading-none">
                         <Calendar size={12} className="text-primary-400/50" />
                         <span>{date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black leading-none mt-1">
+                    <div className="flex items-center justify-between lg:justify-end w-full lg:w-auto gap-2 text-[10px] text-slate-500 font-black leading-none">
+                        <div className="flex items-center gap-2">
                         <Clock size={12} className="opacity-30" />
                         <span>{date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <button
+                          onClick={() => { if(window.confirm('حذف هذا السجل وعكس تأثيره على الكمية الحالية في المخزن؟')) deleteStockLog(log) }}
+                          className="p-1.5 text-slate-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                     </div>
                   </div>
                 </motion.div>

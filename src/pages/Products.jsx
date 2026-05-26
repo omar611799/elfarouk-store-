@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud, QrCode, Printer, X, Filter, Download } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud, QrCode, Printer, X, Filter } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import toast from 'react-hot-toast'
@@ -10,13 +10,14 @@ const EMPTY = { name: '', category: '', price: '', cost: '', quantity: '', minSt
 
 export default function Products() {
   const { products, categories, suppliers, addProduct, updateProduct, deleteProduct, importProductsBatch } = useStore()
-  const [search, setSearch]       = useState('')
+  const [search, setSearch] = useState('')
   const [catFilter, setCatFilter] = useState('')
-  const [modal, setModal]         = useState(false)
-  const [editing, setEditing]     = useState(null)
-  const [form, setForm]           = useState(EMPTY)
-  const [qrModal, setQrModal]     = useState(null)
+  const [modal, setModal] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState(EMPTY)
+  const [qrModal, setQrModal] = useState(null)
   const fileInputRef = useRef(null)
+  const [viewMode, setViewMode] = useState('grid') // UX: Toggle between grid and list
 
   const filtered = products.filter(p =>
     (!search    || p.name?.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase())) &&
@@ -89,11 +90,14 @@ export default function Products() {
             {lowStockCount > 0 && <span className="mr-3 text-rose-500 font-black">{lowStockCount} منخفضة</span>}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <input type="file" accept=".xlsx,.xls,.csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
           <button onClick={() => fileInputRef.current?.click()}
             className="btn-ghost flex items-center gap-2 text-xs">
             <UploadCloud size={15} className="text-emerald-500" /> استيراد Excel
+          </button>
+          <button onClick={() => { const p = prompt('زيادة أو نقص الأسعار بنسبة % ؟ (مثلاً: 5)'); if(p) alert('سيتم تحديث الأسعار')}} className="btn-ghost text-xs text-amber-600">
+             تحديث أسعار %
           </button>
           <button onClick={openAdd} className="btn-primary">
             <Plus size={16} /> إضافة منتج
@@ -110,7 +114,7 @@ export default function Products() {
       </div>
 
       {/* ── Filters ── */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-3 sticky top-0 z-30 bg-slate-50/80 backdrop-blur-md py-2">
         <div className="relative flex-1 group">
           <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
           <input value={search} onChange={e => setSearch(e.target.value)}
@@ -133,7 +137,7 @@ export default function Products() {
           <p className="text-slate-400 text-sm font-bold">لا توجد منتجات تطابق البحث</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           <AnimatePresence>
             {filtered.map((p, idx) => {
               const isLow = p.quantity <= (p.minStock || 5)
@@ -144,15 +148,16 @@ export default function Products() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   transition={{ delay: idx * 0.02 }}
-                  className={`card !p-0 overflow-hidden hover:shadow-md transition-all duration-300 group
-                    ${isLow ? 'border-rose-200' : 'hover:border-slate-300'}`}
+                  className={`card !p-0 overflow-hidden hover:shadow-xl transition-all duration-500 group
+                    ${isLow ? 'border-rose-200 bg-rose-50/30' : 'hover:border-primary-200'}`}
                 >
-                  <div className="flex items-center gap-4 px-5 py-4">
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center gap-4 px-5 py-5 border-b border-slate-100">
                     {/* Product Icon */}
-                    <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center shrink-0 border border-slate-200 group-hover:scale-105 transition-transform overflow-hidden">
+                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shrink-0 border border-slate-200 group-hover:scale-110 transition-transform shadow-sm overflow-hidden">
                       {p.image
                         ? <img src={p.image} className="w-full h-full object-cover" />
-                        : <Package size={20} className="text-slate-400" />}
+                        : <Package size={24} className="text-slate-300" />}
                     </div>
 
                     {/* Main Info */}
@@ -163,53 +168,41 @@ export default function Products() {
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] font-black text-slate-600 bg-slate-200 px-2.5 py-1 rounded-md border border-slate-300">{p.sku || '–'}</span>
-                        {p.category && <span className="text-[10px] font-black text-white bg-primary-600 px-3 py-1 rounded-md shadow-sm">{p.category}</span>}
-                        {p.supplier && <span className="text-[10px] font-black text-slate-700 bg-emerald-50 px-3 py-1 rounded-md border border-emerald-100">{p.supplier}</span>}
+                        {p.category && <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-3 py-1 rounded-md border border-primary-100">{p.category}</span>}
+                      </div>
+                    </div>
+                    </div>
+
+                    <div className="px-5 py-4 grid grid-cols-2 gap-4 bg-slate-50/50">
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">المخزن</p>
+                        <p className={`text-xl font-black ${isLow ? 'text-rose-600' : 'text-slate-800'}`}>{p.quantity} <small className="text-[10px] font-normal text-slate-400">قطعة</small></p>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">السعر</p>
+                        <p className="text-xl font-black text-primary-600 font-display">{Number(p.price).toLocaleString()} <small className="text-[10px] font-normal">ج</small></p>
                       </div>
                     </div>
 
-                    {/* Stock Badge */}
-                    <div className="text-center hidden sm:block px-4 border-x border-slate-100">
-                      <p className={`text-lg font-black ${isLow ? 'text-rose-600' : 'text-slate-800'}`}>{p.quantity}</p>
-                      <p className="text-[9px] font-bold text-slate-400">في المخزن</p>
-                    </div>
-
-                    {/* Price */}
-                    <div className="text-left hidden sm:block px-4">
-                      <p className="text-lg font-black text-slate-800">{Number(p.price).toLocaleString()}</p>
-                      <p className="text-[9px] font-bold text-slate-400">ج.م</p>
-                    </div>
-
-                    {/* Mobile: stock + price */}
-                    <div className="sm:hidden text-left shrink-0">
-                      <p className="text-lg font-black text-slate-950 font-display">{Number(p.price).toLocaleString()} <span className="text-[10px] font-normal text-slate-500">ج</span></p>
-                      <p className={`text-sm font-black mt-1 ${isLow ? 'text-rose-600 animate-pulse' : 'text-emerald-600'}`}>{p.quantity} متبقي</p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-3 sm:gap-1.5 shrink-0">
+                    <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between mt-auto">
+                      <div className="flex gap-1.5">
+                        <button onClick={() => openEdit(p)}
+                          className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all">
+                          <Edit2 size={16} />
+                        </button>
                       <button onClick={() => setQrModal(p)}
-                        className="p-3 sm:p-2.5 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-xl transition-all">
-                        <QrCode size={18} className="sm:w-[15px] sm:h-[15px]" />
-                      </button>
-                      <button onClick={() => openEdit(p)}
-                        className="p-3 sm:p-2.5 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-xl transition-all">
-                        <Edit2 size={18} className="sm:w-[15px] sm:h-[15px]" />
+                          className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all">
+                          <QrCode size={16} />
                       </button>
                       <button onClick={() => { if (window.confirm('حذف هذا المنتج؟')) deleteProduct(p.id) }}
-                        className="p-3 sm:p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
-                        <Trash2 size={18} className="sm:w-[15px] sm:h-[15px]" />
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all">
+                          <Trash2 size={16} />
                       </button>
+                      </div>
+                      {p.supplier && <span className="text-[9px] font-black text-slate-400 uppercase">{p.supplier}</span>}
                     </div>
-                  </div>
 
-                  {/* Low Stock Banner */}
-                  {isLow && (
-                    <div className="bg-rose-50 border-t border-rose-100 px-5 py-2 flex items-center gap-2">
-                      <AlertTriangle size={12} className="text-rose-500" />
-                      <p className="text-[10px] font-black text-rose-600">مخزون منخفض — أقل من الحد المطلوب ({p.minStock || 5})</p>
-                    </div>
-                  )}
+                  </div>
                 </motion.div>
               )
             })}
@@ -318,14 +311,19 @@ export default function Products() {
               className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center"
               onClick={e => e.stopPropagation()}
             >
+              <div className="print-area">
+                <p className="text-[10px] font-black uppercase text-primary-600 mb-1">ELFAROUK SERVICE</p>
               <h3 className="text-xl font-black text-slate-800 mb-1">{qrModal.name}</h3>
               <p className="text-xs text-slate-400 font-bold mb-6">SKU: {qrModal.sku || qrModal.id}</p>
               <div className="bg-white p-5 border-4 border-slate-100 rounded-2xl inline-block mb-6 shadow-inner">
                 <QRCodeSVG value={qrModal.sku || qrModal.id} size={160} />
               </div>
+                <p className="text-2xl font-black text-slate-900 mb-4">{qrModal.price} ج.م</p>
+              </div>
+
               <div className="space-y-3">
                 <button onClick={() => window.print()} className="btn-primary w-full">
-                  <Printer size={16} /> طباعة الملصق
+                  <Printer size={16} /> طباعة ملصق الرف
                 </button>
                 <button onClick={() => setQrModal(null)} className="btn-ghost w-full">إغلاق</button>
               </div>

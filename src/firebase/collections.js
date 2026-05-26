@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   getDoc,
@@ -16,6 +17,7 @@ import {
   deleteField,
 } from 'firebase/firestore'
 import { db } from './config'
+import { buildCustomerAccountReviewState } from '../utils/customerAccounts'
 
 export const COLS = {
   PRODUCTS: 'products',
@@ -30,8 +32,11 @@ export const COLS = {
   STOCK_LOGS: 'stockLogs',
   PURCHASES: 'purchases',
   SERVICE_BOOKINGS: 'serviceBookings',
+  SERVICE_SLOT_LOCKS: 'serviceSlotLocks',
+  CUSTOMER_SERVICE_LOCKS: 'customerServiceLocks',
   SERVICE_MESSAGES: 'serviceMessages',
   CUSTOMER_ACCOUNTS: 'customerAccounts',
+  CUSTOMER_WALLETS: 'customerWallets',
   NOTIFICATIONS: 'notifications',
 }
 
@@ -54,6 +59,29 @@ export function listenColLimited(col, callback, limitCount = 100) {
   )
   return onSnapshot(q, snap => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+  })
+}
+
+export function listenColByField(col, field, value, callback, limitCount = 100) {
+  const q = query(
+    collection(db, col),
+    where(field, '==', value),
+    limit(limitCount)
+  )
+
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+  })
+}
+
+export function listenDocById(col, id, callback) {
+  if (!id) {
+    callback(null)
+    return () => {}
+  }
+
+  return onSnapshot(doc(db, col, id), (snap) => {
+    callback(snap.exists() ? { id: snap.id, ...snap.data() } : null)
   })
 }
 
@@ -153,7 +181,7 @@ export const addExpense = (d) => addDoc_(COLS.EXPENSES, d)
 export const deleteExpense = (id) => deleteDoc_(COLS.EXPENSES, id)
 
 // ── Complete Sale (atomic) ──
-export async function completeSale({ items, cartItems, customerData, total, invoiceNumber }) {
+export async function completeSale({ items, cartItems, customerData, total, invoiceNumber, paidAmount: paidAmountParam, payments: paymentsParam }) {
   const finalItems = items || cartItems || [];
   let finalInvoiceNumber = invoiceNumber;
 
@@ -172,9 +200,16 @@ export async function completeSale({ items, cartItems, customerData, total, invo
   let paidAmount = 0;
   let paymentsBreakdown = {};
 
-  if (customerData.payments) {
+  // Priority: top-level payments param → customerData.payments → customerData.paidAmount → full total
+  if (paymentsParam && typeof paymentsParam === 'object') {
+    paymentsBreakdown = paymentsParam;
+    paidAmount = Number(paymentsParam.cash || 0) + Number(paymentsParam.visa || 0) + Number(paymentsParam.instapay || 0);
+  } else if (customerData.payments) {
     paymentsBreakdown = customerData.payments;
     paidAmount = Number(paymentsBreakdown.cash || 0) + Number(paymentsBreakdown.visa || 0) + Number(paymentsBreakdown.instapay || 0);
+  } else if (paidAmountParam !== undefined) {
+    paidAmount = Number(paidAmountParam);
+    paymentsBreakdown = { cash: paidAmount };
   } else {
     paidAmount = Number(customerData.paidAmount ?? total);
     paymentsBreakdown = { cash: paidAmount };
@@ -241,19 +276,47 @@ export async function completeSale({ items, cartItems, customerData, total, invo
 
   await batch.commit()
 
-  // Update or create customer
-  const existing = await findCustomerByPhone(customerData.phone)
-  if (existing) {
-    await updateCustomer(existing.id, {
-      name: customerData.name,
-      totalSpent:   (existing.totalSpent || 0) + total,
-      invoiceCount: (existing.invoiceCount || 0) + 1,
-      debtTotal:    Math.max(0, (existing.debtTotal || 0) + dueAmount),
-      paidTotal:    (existing.paidTotal || 0) + paidAmount,
-    })
-  } else {
+  // ── Update or create customer ──
+  // Build clean customer fields (exclude payment-related internal fields)
+  const customerFields = {
+    name: customerData.name || '',
+    phone: customerData.phone || '',
+    carModel: customerData.carModel || '',
+    licensePlate: customerData.licensePlate || '',
+    nationalId: customerData.nationalId || '',
+  }
+
+  if (customerFields.phone) {
+    // Has phone: look up by phone and update or create
+    const existing = await findCustomerByPhone(customerFields.phone)
+    if (existing) {
+      const mergedFields = {
+        name: customerFields.name?.trim() || existing.name || '',
+        phone: customerFields.phone?.trim() || existing.phone || '',
+        carModel: customerFields.carModel?.trim() || existing.carModel || '',
+        licensePlate: customerFields.licensePlate?.trim() || existing.licensePlate || '',
+        nationalId: customerFields.nationalId?.trim() || existing.nationalId || '',
+      }
+      await updateCustomer(existing.id, {
+        ...mergedFields,
+        totalSpent:   (existing.totalSpent || 0) + total,
+        invoiceCount: (existing.invoiceCount || 0) + 1,
+        debtTotal:    Math.max(0, (existing.debtTotal || 0) + dueAmount),
+        paidTotal:    (existing.paidTotal || 0) + paidAmount,
+      })
+    } else {
+      await addCustomer({
+        ...customerFields,
+        totalSpent: total,
+        invoiceCount: 1,
+        paidTotal: paidAmount,
+        debtTotal: dueAmount,
+      })
+    }
+  } else if (customerFields.name) {
+    // No phone but has name: always add as new customer entry
     await addCustomer({
-      ...customerData,
+      ...customerFields,
       totalSpent: total,
       invoiceCount: 1,
       paidTotal: paidAmount,
@@ -263,6 +326,7 @@ export async function completeSale({ items, cartItems, customerData, total, invo
 
   return { id: invRef.id, number: finalInvoiceNumber }
 }
+
 
 // ── Delete Invoice (Return stock) ──
 export async function deleteInvoiceAndReturnStock(invoiceId) {
@@ -653,6 +717,45 @@ export async function findCustomerAccountByPhone(phone) {
   return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }
 }
 
+export async function reviewCustomerAccount(
+  uid,
+  action,
+  reason = '',
+  actor = { uid: '', name: '' }
+) {
+  const reviewState = buildCustomerAccountReviewState(action, reason)
+  const batch = writeBatch(db)
+
+  batch.update(doc(db, COLS.CUSTOMER_ACCOUNTS, uid), {
+    status: reviewState.accountStatus,
+    verifiedAt: reviewState.accountStatus === 'active' ? serverTimestamp() : null,
+    verifiedByUid: reviewState.accountStatus === 'active' ? actor.uid || '' : '',
+    verifiedByName: reviewState.accountStatus === 'active' ? actor.name || '' : '',
+    reviewReason: reviewState.reviewReason,
+    statusUpdatedAt: serverTimestamp(),
+    statusUpdatedByUid: actor.uid || '',
+    statusUpdatedByName: actor.name || '',
+    updatedAt: serverTimestamp(),
+  })
+
+  batch.update(doc(db, COLS.USERS, uid), {
+    phoneVerificationStatus: reviewState.phoneVerificationStatus,
+    phoneVerificationReason: reviewState.reviewReason,
+    phoneVerifiedAt:
+      reviewState.phoneVerificationStatus === 'verified' ? serverTimestamp() : null,
+    phoneVerifiedByUid:
+      reviewState.phoneVerificationStatus === 'verified' ? actor.uid || '' : '',
+    phoneVerifiedByName:
+      reviewState.phoneVerificationStatus === 'verified' ? actor.name || '' : '',
+    accountStatusUpdatedAt: serverTimestamp(),
+    accountStatusUpdatedByUid: actor.uid || '',
+    accountStatusUpdatedByName: actor.name || '',
+    updatedAt: serverTimestamp(),
+  })
+
+  await batch.commit()
+}
+
 async function hashSecret(value) {
   const data = new TextEncoder().encode(String(value))
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)
@@ -690,3 +793,31 @@ export async function loginCustomerAccount({ phone, pin }) {
 export const addNotification = (d) => addDoc_(COLS.NOTIFICATIONS, d)
 export const markNotificationAsRead = (id) => updateDoc_(COLS.NOTIFICATIONS, id, { read: true })
 
+export async function adjustCustomerWallet({ uid, amount, kind = 'cashback', note = '' }) {
+  const walletRef = doc(db, COLS.CUSTOMER_WALLETS, uid)
+  const walletSnap = await getDoc(walletRef)
+  const current = walletSnap.exists() ? walletSnap.data() : {}
+  const delta = Number(amount || 0)
+
+  const nextBalance = Math.max(0, Number(current.balance || 0) + delta)
+  const updates = {
+    uid,
+    balance: nextBalance,
+    updatedAt: serverTimestamp(),
+  }
+
+  if (!walletSnap.exists()) {
+    updates.createdAt = serverTimestamp()
+  }
+
+  await setDoc(walletRef, updates, { merge: true })
+
+  await addDoc_(COLS.TRANSACTIONS, {
+    type: 'customer_wallet_adjustment',
+    refId: uid,
+    details: `محفظة عميل - ${kind}${note ? ` - ${note}` : ''}`,
+    amount: delta,
+  })
+
+  return { balance: nextBalance }
+}
