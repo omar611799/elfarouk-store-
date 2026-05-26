@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ShoppingCart, Search, Plus, Minus, Trash2, X, Users, 
   ChevronLeft, Send, MessageCircle, Camera, Mic, Sparkles,
-  Wallet, CreditCard, Landmark
+  Wallet, CreditCard, Landmark, Wrench
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Html5Qrcode } from 'html5-qrcode'
@@ -29,6 +29,21 @@ const CartContent = memo(({
   saving, handleSale, setIsCartOpen
 }) => {
   const [focusedField, setFocusedField] = useState(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const { invoices } = useStore()
+
+  const matchedCustomerHistory = useMemo(() => {
+    if (!customer.name && !customer.phone) return []
+    return invoices.filter(inv => 
+      (customer.phone && inv.customerData?.phone === customer.phone) ||
+      (!customer.phone && customer.name && inv.customerData?.name?.toLowerCase() === customer.name?.toLowerCase())
+    ).sort((a, b) => {
+      const da = a.createdAt?.toDate?.() || new Date(a.createdAt || 0)
+      const db = b.createdAt?.toDate?.() || new Date(b.createdAt || 0)
+      return db - da
+    })
+  }, [invoices, customer.name, customer.phone])
+
   return (
     <div className="flex flex-col h-full bg-[#f8fafc]">
       <div className="p-4 sm:p-8 border-b border-slate-200/60 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-xl z-20">
@@ -284,6 +299,97 @@ const CartContent = memo(({
             </div>
           </div>
 
+          {matchedCustomerHistory.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowHistory(true)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-primary-50 border border-primary-100 hover:bg-primary-100 hover:border-primary-200 rounded-2xl transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <Users size={16} className="text-primary-600" />
+                <span className="text-xs font-black text-primary-800">
+                  عرض سجل صيانة العميل ({matchedCustomerHistory.length} زيارات)
+                </span>
+              </div>
+              <ChevronLeft size={16} className="text-primary-600" />
+            </button>
+          )}
+
+          <AnimatePresence>
+            {showHistory && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowHistory(false)}
+                  className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100]"
+                />
+                <motion.div
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                  className="fixed bottom-0 inset-x-0 h-[85vh] md:h-[75vh] bg-white rounded-t-[2.5rem] z-[110] overflow-hidden shadow-2xl flex flex-col border-t border-slate-200"
+                >
+                  <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2" onClick={() => setShowHistory(false)} />
+                  
+                  <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <div className="text-right">
+                      <h3 className="text-lg font-black text-slate-950 font-display flex items-center gap-2">
+                        <Wrench size={18} className="text-primary-600" />
+                        سجل العميل وصيانة السيارة
+                      </h3>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                        أ/ {customer.name} {customer.carModel ? `| ${customer.carModel}` : ''}
+                      </p>
+                    </div>
+                    <button onClick={() => setShowHistory(false)} className="p-2 text-slate-400 hover:text-slate-950 bg-slate-100 rounded-xl transition-colors">
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
+                    {matchedCustomerHistory.map((inv) => (
+                      <div key={inv.id} className="bg-slate-50 rounded-2xl p-4 border border-slate-200/60 shadow-sm space-y-3 text-right">
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-200/40">
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                            ⏱️ {(inv.createdAt?.toDate?.() || new Date(inv.createdAt)).toLocaleDateString('en-GB')}
+                          </span>
+                          <span className="text-xs font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-lg border border-primary-100">
+                            فاتورة #{inv.number}
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {inv.items?.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-xs">
+                              <span className="font-bold text-slate-800">{item.name}</span>
+                              <span className="text-slate-500">
+                                {item.qty} × {Number(item.price).toLocaleString()} ج.م
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-200/40 flex justify-between items-center text-xs font-black">
+                          <span className="text-slate-500">الإجمالي: {inv.total?.toLocaleString()} ج.م</span>
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] ${inv.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {inv.paymentStatus === 'paid' ? 'مدفوع' : `متبقي: ${inv.dueAmount?.toLocaleString()} ج`}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-4">
+                    <button onClick={() => setShowHistory(false)} className="btn-ghost flex-1 !py-3 text-xs font-black uppercase tracking-wider">إغلاق</button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+
           <div className="pt-2 border-t border-slate-200 mt-4">
             <p className="text-xs text-slate-500 font-black uppercase tracking-widest mb-3 px-1 text-center">طريقة الدفع (اختياري)</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
@@ -458,18 +564,10 @@ export default function POS() {
         total: cartTotal,
         due: dueAmount > 0 ? dueAmount : 0,
         customerPhone: customer.phone,
+        customerName: customer.name,
+        customerCar: customer.carModel,
+        items: cart.map(i => i.name),
       })
-
-      // إرسال واتساب تلقائي للعميل
-      if (customer.phone) {
-        const msg = `🧾 فاتورة من ELFAROUK Service\n` +
-          `رقم الفاتورة: #${invNum}\n` +
-          `الإجمالي: ${cartTotal.toLocaleString('en-US')} ج.م\n` +
-          `رابط المعاينة: ${window.location.origin}/receipt/${invId}\n\n` +
-          `شكراً لتعاملكم معنا 🙏`
-        const phone = customer.phone.replace(/^0/, '20')
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
-      }
 
       setCustomer({ name: '', phone: '', carModel: '', licensePlate: '', nationalId: '' })
       setPayments({ cash: '', visa: '', instapay: '' })
@@ -481,11 +579,55 @@ export default function POS() {
     }
   }, [cart, cartTotal, completeSale, customer, payments, reminders])
 
+  const [selectedTemplate, setSelectedTemplate] = useState('invoice')
+  const [editedMsg, setEditedMsg] = useState('')
+
+  useEffect(() => {
+    if (!doneInvoice) return
+
+    const name = doneInvoice.customerName || 'العميل الكريم'
+    const car = doneInvoice.customerCar || 'السيارة المسجلة'
+    const total = doneInvoice.total?.toLocaleString('en-US') || '0'
+    const due = doneInvoice.due?.toLocaleString('en-US') || '0'
+    const number = doneInvoice.number || ''
+    const link = `${window.location.origin}/receipt/${doneInvoice.id}`
+    const items = doneInvoice.items || []
+
+    let text = ''
+    if (selectedTemplate === 'invoice') {
+      text = `🧾 فاتورة مبيعات من ELFAROUK Service\n` +
+             `رقم الفاتورة: #${number}\n` +
+             `العميل: أ/ ${name}\n` +
+             `سيارة: ${car}\n` +
+             `الإجمالي: ${total} ج.م\n` +
+             (Number(doneInvoice.due) > 0 ? `المتبقي (مديونية): ${due} ج.م\n` : '') +
+             `رابط معاينة الفاتورة: ${link}\n\n` +
+             `شكراً لتعاملكم معنا 🙏`
+    } else if (selectedTemplate === 'maintenance') {
+      text = `🔧 تقرير فحص وصيانة سيارة - ELFAROUK Service\n` +
+             `العميل المحترم: أ/ ${name}\n` +
+             `السيارة: ${car}\n` +
+             `الأعمال المنجزة:\n` +
+             items.map((it, idx) => `  ${idx + 1}. ${it}`).join('\n') + `\n\n` +
+             `إجمالي التكلفة: ${total} ج.م\n` +
+             `الفاتورة ورابط الفحص: ${link}\n\n` +
+             `نتمنى لكم قيادة آمنة 🚗💨`
+    } else if (selectedTemplate === 'reminder') {
+      text = `🔔 تذكير صيانة دورية - ELFAROUK Service\n` +
+             `مرحباً أ/ ${name} 👋\n` +
+             `حبينا نفكر حضرتك بموعد الصيانة الوقائية القادم لسيارتك (${car}).\n` +
+             `نوصي بمراجعة وتغيير القطع/الزيوت التي تم تركيبها لضمان سلامة سيارتك.\n` +
+             `رابط آخر فاتورة صيانة ومعاينتها: ${link}\n\n` +
+             `تشرفنا بزيارتك في أي وقت 🙏`
+    }
+
+    setEditedMsg(text)
+  }, [doneInvoice, selectedTemplate])
+
   const sendWhatsApp = () => {
     if (!doneInvoice) return
-    const msg = `🧾 فاتورة من ELFAROUK Service\nالإجمالي: ${doneInvoice.total} ج.م\nرقم: ${doneInvoice.id}\nشكراً لتعاملكم معنا 🙏`
     const phone = doneInvoice.customerPhone?.replace(/^0/, '20') || '201115329887'
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(editedMsg)}`, '_blank')
   }
 
   const handleFileUpload = (e) => {
@@ -527,32 +669,100 @@ export default function POS() {
     saving, handleSale, setIsCartOpen
   ])
 
-  if (doneInvoice) return (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-2xl mx-auto py-10 px-4">
-      <div className="card text-center bg-white border-slate-200 relative overflow-hidden flex flex-col items-center py-10 sm:py-16">
-        <div className="absolute top-0 inset-x-0 h-2 bg-emerald-500" />
-        <div className="w-16 h-16 sm:w-24 sm:h-24 bg-emerald-50 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mb-6 sm:mb-8 border border-emerald-100 shadow-sm">
-          <Send size={32} className="text-emerald-500" />
+  if (doneInvoice) {
+    return (
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-2xl mx-auto py-10 px-4" dir="rtl">
+        <div className="card text-center bg-white border-slate-200 relative overflow-hidden flex flex-col items-center py-10 sm:py-12 px-6">
+          <div className="absolute top-0 inset-x-0 h-2 bg-emerald-500" />
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 rounded-2xl sm:rounded-[2rem] flex items-center justify-center mb-4 border border-emerald-100 shadow-sm">
+            <Send size={28} className="text-emerald-500" />
+          </div>
+          <h2 className="text-xl sm:text-3xl font-black text-slate-950 mb-1 font-display tracking-tight">تم البيع بنجاح!</h2>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-6">إيصال رقم: {doneInvoice.number}</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-6 text-right">
+            <div className="bg-slate-50 p-4 rounded-2xl flex items-center justify-center border border-slate-100 mx-auto md:mx-0">
+              <QRCodeSVG value={`${window.location.origin}/receipt/${doneInvoice.id}`} size={140} />
+            </div>
+            
+            <div className="flex flex-col justify-center text-right space-y-3">
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">إجمالي الحساب</p>
+                <p className="text-2xl sm:text-3xl font-black text-slate-950 font-display">
+                  {doneInvoice.total.toLocaleString('en-US')} <small className="text-xs font-normal">ج.م</small>
+                </p>
+              </div>
+              {Number(doneInvoice.due) > 0 && (
+                <div className="bg-rose-50 border border-rose-100 p-2.5 rounded-xl text-xs text-rose-700 font-black w-fit">
+                  ⚠️ متبقي ديون: {doneInvoice.due.toLocaleString()} ج.م
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* WhatsApp Templates Engine */}
+          <div className="w-full text-right border-t border-slate-100 pt-6 space-y-4">
+            <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-2 flex items-center gap-2">
+              <MessageCircle size={16} className="text-primary-600" />
+              إرسال الرسالة للعميل عبر WhatsApp
+            </h4>
+            
+            {/* Template selector tabs */}
+            <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
+              {[
+                { id: 'invoice', label: '🧾 فاتورة' },
+                { id: 'maintenance', label: '🔧 صيانة' },
+                { id: 'reminder', label: '🔔 تذكير' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedTemplate(tab.id)}
+                  className={`py-2 text-[10px] sm:text-xs font-black rounded-lg transition-all ${
+                    selectedTemplate === tab.id
+                      ? 'bg-white text-primary-600 shadow-sm border border-slate-200/50'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Editable Text Area */}
+            <div>
+              <label className="text-[10px] text-slate-500 font-bold uppercase mb-1.5 block">محتوى الرسالة (يمكنك تعديل النص):</label>
+              <textarea
+                value={editedMsg}
+                onChange={e => setEditedMsg(e.target.value)}
+                rows={5}
+                className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-1 focus:ring-primary-500 focus:bg-white text-slate-800 outline-none leading-relaxed"
+                dir="rtl"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full mt-6">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={sendWhatsApp}
+              className="btn-primary !bg-emerald-600 hover:!bg-emerald-500 !shadow-[0_10px_20px_rgba(16,185,129,0.2)] !py-3.5"
+            >
+              <MessageCircle size={18} /> إرسال واتساب
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setDoneInvoice(null)}
+              className="btn-ghost !py-3.5"
+            >
+              عملية بيع جديدة
+            </motion.button>
+          </div>
         </div>
-        <h2 className="text-2xl sm:text-4xl font-black text-slate-950 mb-2 sm:mb-3 font-display tracking-tight">تم البيع بنجاح!</h2>
-        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-8 sm:mb-10">إيصال رقم: {doneInvoice.number}</p>
-        <div className="bg-slate-50 p-6 sm:p-8 rounded-2xl sm:rounded-[2rem] mx-auto mb-8 sm:mb-10 shadow-sm border border-slate-100">
-          <QRCodeSVG value={`${window.location.origin}/receipt/${doneInvoice.id}`} size={180} />
-        </div>
-        <p className="text-3xl sm:text-5xl font-black text-slate-950 tracking-tighter mb-4 font-display">
-          {doneInvoice.total.toLocaleString('en-US')} <span className="text-sm sm:text-2xl text-slate-400 font-normal">ج.م</span>
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full mt-4 sm:mt-6 px-6">
-          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={sendWhatsApp} className="btn-primary !bg-emerald-600 hover:!bg-emerald-500 !shadow-[0_10px_20px_rgba(16,185,129,0.2)]">
-            <MessageCircle size={18} /> واتساب العميل
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setDoneInvoice(null)} className="btn-ghost">
-            عملية بيع جديدة
-          </motion.button>
-        </div>
-      </div>
-    </motion.div>
-  )
+      </motion.div>
+    )
+  }
   return (
     <div className="flex min-h-full flex-col overflow-hidden bg-[#f1f5f9] font-display xl:h-full xl:flex-row" dir="rtl">
       {/* Search & Grid Area */}

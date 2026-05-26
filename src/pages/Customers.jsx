@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
 import { useAuth } from '../context/AuthContext'
-import { Plus, Edit2, Trash2, Users, Phone, Car, History, Wrench, Calendar, Search, X, ShieldCheck, CheckCircle2, Clock3, Mail, PauseCircle, XCircle } from 'lucide-react'
+import { Plus, Edit2, Trash2, Users, Phone, Car, History, Wrench, Calendar, Search, X, ShieldCheck, CheckCircle2, Clock3, Mail, PauseCircle, XCircle, Wallet } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CUSTOMER_ACCOUNT_STATUSES, getCustomerAccountStatusLabel } from '../utils/customerAccounts'
 
@@ -26,6 +26,7 @@ export default function Customers() {
     deleteCustomer,
     invoices,
     reviewCustomerAccount,
+    payInvoiceDebt,
   } = useStore()
   const { currentUser } = useAuth()
   const [search, setSearch] = useState('')
@@ -33,6 +34,75 @@ export default function Customers() {
   const [editing, setEditing] = useState(null)
   const [form, setForm]     = useState(EMPTY)
   const [historyCustomer, setHistoryCustomer] = useState(null)
+
+  const [payModal, setPayModal] = useState(false)
+  const [payCustomer, setPayCustomer] = useState(null)
+  const [payAmount, setPayAmount] = useState('')
+  const [payNote, setPayNote] = useState('')
+  const [paying, setPaying] = useState(false)
+
+  const customerUnpaidInvoices = useMemo(() => {
+    if (!payCustomer) return []
+    return invoices
+      .filter(i => 
+        i.paymentStatus !== 'paid' && 
+        ((payCustomer.phone && i.customerData?.phone === payCustomer.phone) ||
+         (!payCustomer.phone && i.customerData?.name === payCustomer.name))
+      )
+      .sort((a, b) => {
+        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt)
+        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt)
+        return dateA - dateB
+      })
+  }, [payCustomer, invoices])
+
+  const handleCollectDebt = async () => {
+    if (!payCustomer || !payAmount || Number(payAmount) <= 0) return
+    setPaying(true)
+    try {
+      let amountToDistribute = Number(payAmount)
+      const invoicesToPay = [...customerUnpaidInvoices]
+      
+      if (amountToDistribute > payCustomer.debtTotal) {
+        alert('مبلغ السداد أكبر من إجمالي مديونية العميل!')
+        setPaying(false)
+        return
+      }
+
+      for (const inv of invoicesToPay) {
+        if (amountToDistribute <= 0) break
+        const invDue = inv.dueAmount || 0
+        if (invDue <= 0) continue
+
+        const paymentForThisInvoice = Math.min(amountToDistribute, invDue)
+        await payInvoiceDebt(inv.id, paymentForThisInvoice, payNote || 'سداد جزء من الحساب')
+        amountToDistribute -= paymentForThisInvoice
+      }
+
+      const remainingDebt = Math.max(0, payCustomer.debtTotal - Number(payAmount))
+      const msg = `💵 إيصال استلام دفعة مالية - ELFAROUK Service\n` +
+             `مرحباً أ/ ${payCustomer.name} 👋\n` +
+             `تم استلام دفعة بقيمة: ${Number(payAmount).toLocaleString()} ج.م من حسابكم المعلق.\n` +
+             (remainingDebt > 0 
+               ? `إجمالي المديونية المتبقية طرفكم حالياً: ${remainingDebt.toLocaleString()} ج.م\n` 
+               : `تم تسوية مديونياتكم بالكامل، رصيدكم الحالي 0 ج.م ✨\n`) +
+             `شكراً لتعاملكم معنا 🙏`
+
+      const phone = payCustomer.phone?.replace(/^0/, '20')
+      if (phone) {
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+      }
+
+      setPayModal(false)
+      setPayCustomer(null)
+      setPayAmount('')
+      setPayNote('')
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setPaying(false)
+    }
+  }
 
   const customerHistory = useMemo(() => {
     if (!historyCustomer) return []
@@ -353,6 +423,11 @@ export default function Customers() {
               </div>
 
               <div className="flex gap-2">
+                {c.debtTotal > 0 && (
+                  <button onClick={() => { setPayCustomer(c); setPayModal(true); }} className="p-2.5 bg-emerald-500/10 text-emerald-400 hover:text-white hover:bg-emerald-500 rounded-xl transition-all active:scale-95 animate-pulse" title="تحصيل مديونية">
+                    <Wallet size={14} />
+                  </button>
+                )}
                 <button onClick={() => setHistoryCustomer(c)} className="p-2.5 bg-white/5 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-xl transition-all active:scale-95" title="سجل الصيانة">
                   <History size={14} />
                 </button>
@@ -376,6 +451,85 @@ export default function Customers() {
 
       {/* Modals */}
       <AnimatePresence>
+        {payModal && payCustomer && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-obsidian-950/80 backdrop-blur-xl z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6">
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="bg-obsidian-900 w-full max-w-xl border-t sm:border border-white/10 shadow-[0_-20px_60px_rgba(0,0,0,0.5)] overflow-hidden rounded-t-[2.5rem] sm:rounded-[2rem] text-right" dir="rtl">
+              <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mt-4 sm:hidden" />
+              <div className="p-6 sm:p-8 border-b border-white/5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white font-display tracking-tight flex items-center gap-2">
+                    <Wallet className="text-emerald-400" size={22} />
+                    تحصيل مديونية العميل
+                  </h2>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">أ/ {payCustomer.name}</p>
+                </div>
+                <button onClick={() => { setPayModal(false); setPayCustomer(null); }} className="text-slate-500 hover:text-white bg-white/5 p-2 rounded-xl transition-colors"><X size={20} /></button>
+              </div>
+              <div className="p-6 sm:p-8 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                
+                {/* Debt Stat */}
+                <div className="grid grid-cols-2 gap-4 bg-black/30 p-4 rounded-2xl border border-white/5">
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">إجمالي المديونية</p>
+                    <p className="text-xl font-black text-rose-400">{payCustomer.debtTotal?.toLocaleString()} ج.م</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">عدد الفواتير المعلقة</p>
+                    <p className="text-xl font-black text-slate-200">{customerUnpaidInvoices.length} فواتير</p>
+                  </div>
+                </div>
+
+                {/* Invoices List */}
+                <div className="space-y-2">
+                  <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">تفاصيل الفواتير غير المدفوعة:</p>
+                  <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                    {customerUnpaidInvoices.map(inv => (
+                      <div key={inv.id} className="flex justify-between items-center bg-white/[0.02] p-2.5 rounded-xl border border-white/5 text-xs">
+                        <span className="text-slate-300">فاتورة #{inv.number} ({(inv.createdAt?.toDate?.() || new Date(inv.createdAt)).toLocaleDateString('en-GB')})</span>
+                        <span className="font-bold text-rose-400">متبقي: {inv.dueAmount?.toLocaleString()} ج.م</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Form Fields */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2 block">المبلغ المراد سداده حالياً *</label>
+                    <input
+                      type="number"
+                      value={payAmount}
+                      onChange={e => setPayAmount(e.target.value)}
+                      placeholder="أدخل قيمة السداد..."
+                      className="input text-sm font-bold bg-white/5 border-white/10"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2 block">بيان / ملاحظة السداد (اختياري)</label>
+                    <input
+                      value={payNote}
+                      onChange={e => setPayNote(e.target.value)}
+                      placeholder="مثال: سداد نقدي بالخزينة..."
+                      className="input text-sm"
+                    />
+                  </div>
+                </div>
+
+              </div>
+              <div className="p-6 sm:p-8 border-t border-white/5 flex gap-4 bg-obsidian-950/50">
+                <button onClick={() => { setPayModal(false); setPayCustomer(null); }} className="btn-ghost flex-1 py-4 text-[10px] font-black uppercase tracking-widest">إلغاء</button>
+                <button
+                  onClick={handleCollectDebt}
+                  disabled={paying || !payAmount || Number(payAmount) <= 0}
+                  className="btn-primary flex-[2] py-4 text-[10px] font-black uppercase tracking-widest shadow-neon disabled:opacity-25"
+                >
+                  {paying ? 'جار السداد...' : 'تأكيد تحصيل المبلغ'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {modal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-obsidian-950/80 backdrop-blur-xl z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6">
             <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="bg-obsidian-900 w-full max-w-xl border-t sm:border border-white/10 shadow-[0_-20px_60px_rgba(0,0,0,0.5)] overflow-hidden rounded-t-[2.5rem] sm:rounded-[2rem]">

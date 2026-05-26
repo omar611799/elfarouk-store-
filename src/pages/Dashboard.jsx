@@ -21,7 +21,7 @@ const item = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transiti
 const PIE_COLORS = ['#225c97', '#4b6786', '#10b981', '#7c93ad']
 
 export default function Dashboard() {
-  const { products, customers, invoices } = useStore()
+  const { products, customers, invoices, expenses } = useStore()
   const { currentUser } = useAuth()
   const [period, setPeriod] = useState('7d')
   const [stockPage, setStockPage] = useState(0)
@@ -35,6 +35,22 @@ export default function Dashboard() {
   const paidInvoices = invoices.filter(i => i.paymentStatus === 'paid')
   const pendingInvoices = invoices.filter(i => i.paymentStatus !== 'paid')
   const activeOrders = pendingInvoices.length
+
+  const totalExpenses = (expenses || []).reduce((s, e) => s + (Number(e.amount) || 0), 0)
+
+  const grossProfit = useMemo(() => {
+    return invoices.reduce((sum, inv) => {
+      const invProfit = (inv.items || []).reduce((itemSum, item) => {
+        const cost = Number(item.cost || 0)
+        const price = Number(item.price || 0)
+        const qty = Number(item.qty || 1)
+        return itemSum + (price - cost) * qty
+      }, 0)
+      return sum + invProfit
+    }, 0)
+  }, [invoices])
+
+  const netProfit = Math.max(0, grossProfit - totalExpenses)
 
   const isAdmin = currentUser?.role === 'admin'
 
@@ -52,15 +68,33 @@ export default function Dashboard() {
       const date = new Date()
       date.setDate(date.getDate() - (days - 1 - i))
       const label = date.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })
-      const daySales = invoices
-        .filter(inv => {
-          const d = inv.createdAt?.toDate?.() || new Date(inv.createdAt || 0)
+      
+      const dayInvoices = invoices.filter(inv => {
+        const d = inv.createdAt?.toDate?.() || new Date(inv.createdAt || 0)
+        return d.toDateString() === date.toDateString()
+      })
+      
+      const daySales = dayInvoices.reduce((s, inv) => s + (inv.total || 0), 0)
+      
+      const dayGrossProfit = dayInvoices.reduce((s, inv) => {
+        const invProfit = (inv.items || []).reduce((itemSum, item) => {
+          return itemSum + (Number(item.price || 0) - Number(item.cost || 0)) * Number(item.qty || 1)
+        }, 0)
+        return s + invProfit
+      }, 0)
+
+      const dayExpenses = (expenses || [])
+        .filter(exp => {
+          const d = exp.createdAt?.toDate?.() || new Date(exp.createdAt || 0)
           return d.toDateString() === date.toDateString()
         })
-        .reduce((s, inv) => s + (inv.total || 0), 0)
-      return { name: label, value: daySales }
+        .reduce((s, exp) => s + (Number(exp.amount) || 0), 0)
+
+      const dayNetProfit = Math.max(0, dayGrossProfit - dayExpenses)
+
+      return { name: label, value: daySales, profit: dayNetProfit }
     })
-  }, [invoices, period])
+  }, [invoices, expenses, period])
 
   // Best-selling products (by revenue on invoices)
   const bestSellers = useMemo(() => {
@@ -164,13 +198,17 @@ export default function Dashboard() {
         <CashierAccountCard />
       </motion.div>
 
-      <motion.div variants={item} className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 sm:gap-5">
+      <motion.div variants={item} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 sm:gap-5">
         <StatCard label="إجمالي المنتجات" value={totalProducts.toLocaleString()} icon={Package}
           trend="+12%" trendUp color="primary" sparkline={[20,35,28,50,40,60,55]} />
         <StatCard label="نواقص المخزون" value={lowStock.length} icon={AlertTriangle}
           trend={lowStock.length > 0 ? "تنبيه" : "مستقر"} trendUp={false} color="amber" sparkline={[50,40,60,30,45,20,15]} />
         <StatCard label="إجمالي المبيعات" value={isAdmin ? `${Math.round(totalSales).toLocaleString()} ج.م` : 'مؤمن'} icon={TrendingUp}
-          trend={isAdmin ? "+8.5%" : ""} trendUp color="emerald" sparkline={isAdmin ? [10,30,20,50,40,70,90] : [0,0,0,0,0,0,0]} />
+          trend={isAdmin ? "+8.5%" : ""} trendUp color="primary" sparkline={isAdmin ? [10,30,20,50,40,70,90] : [0,0,0,0,0,0,0]} />
+        {isAdmin && (
+          <StatCard label="صافي الأرباح الفعلي" value={`${Math.round(netProfit).toLocaleString()} ج.م`} icon={Star}
+            trend="+10.2%" trendUp color="emerald" sparkline={salesHistory.map(h => h.profit)} />
+        )}
         <StatCard label="الطلبات النشطة" value={activeOrders} icon={ShoppingCart}
           trend={`+${activeOrders}`} trendUp color="primary" sparkline={[5,12,8,14,10,18,16]} />
       </motion.div>
@@ -210,6 +248,12 @@ export default function Dashboard() {
                     <stop offset="5%" stopColor="#225c97" stopOpacity={0.2} />
                     <stop offset="95%" stopColor="#225c97" stopOpacity={0} />
                   </linearGradient>
+                  {isAdmin && (
+                    <linearGradient id="grad2" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  )}
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false}
@@ -218,10 +262,14 @@ export default function Dashboard() {
                   tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
                 <Tooltip
                   contentStyle={{ background: '#fff', borderRadius: 14, border: 'none', boxShadow: '0 20px 60px rgba(0,0,0,0.1)', textAlign: 'right', fontSize: 12 }}
-                  formatter={(v) => [`${v.toLocaleString()} ج.م`, 'المبيعات']}
+                  formatter={(v, name) => [`${v.toLocaleString()} ج.م`, name === 'value' ? 'المبيعات' : 'صافي الأرباح']}
                 />
-                <Area type="monotone" dataKey="value" stroke="#225c97" strokeWidth={3.5}
+                <Area type="monotone" dataKey="value" name="value" stroke="#225c97" strokeWidth={3.5}
                   fill="url(#grad1)" fillOpacity={1} dot={false} activeDot={{ r: 6, fill: '#225c97', strokeWidth: 2, stroke: '#fff' }} />
+                {isAdmin && (
+                  <Area type="monotone" dataKey="profit" name="profit" stroke="#10b981" strokeWidth={3.5}
+                    fill="url(#grad2)" fillOpacity={1} dot={false} activeDot={{ r: 6, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} />
+                )}
               </AreaChart>
             </ResponsiveContainer>
           </div>
