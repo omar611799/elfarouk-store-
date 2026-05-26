@@ -5,7 +5,7 @@ import {
   ShoppingCart, ArrowUpRight, ArrowDownRight, Bell,
   Star, Download, ChevronDown,
   ExternalLink, Activity, RefreshCw,
-  CheckCircle2
+  CheckCircle2, Wallet, BarChart2, TrendingDown, PhoneCall
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -53,6 +53,29 @@ export default function Dashboard() {
   const netProfit = Math.max(0, grossProfit - totalExpenses)
 
   const isAdmin = currentUser?.role === 'admin'
+
+  // ─── Debt Analytics ────────────────────────────────────────────────────────
+  const totalDebt = useMemo(() => {
+    return customers.reduce((s, c) => s + (Number(c.debtTotal) || 0), 0)
+  }, [customers])
+
+  const topDebtors = useMemo(() => {
+    return [...customers]
+      .filter(c => (c.debtTotal || 0) > 0)
+      .sort((a, b) => (b.debtTotal || 0) - (a.debtTotal || 0))
+      .slice(0, 5)
+  }, [customers])
+
+  // ─── Today's Stats ─────────────────────────────────────────────────────────
+  const todaySales = useMemo(() => {
+    const today = new Date().toDateString()
+    return invoices
+      .filter(inv => {
+        const d = inv.createdAt?.toDate?.() || new Date(inv.createdAt || 0)
+        return d.toDateString() === today
+      })
+      .reduce((s, inv) => s + (inv.total || 0), 0)
+  }, [invoices])
 
   // Recent 5 invoices
   const recentInvoices = [...invoices].sort((a, b) => {
@@ -198,18 +221,22 @@ export default function Dashboard() {
         <CashierAccountCard />
       </motion.div>
 
-      <motion.div variants={item} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 sm:gap-5">
+      <motion.div variants={item} className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard label="إجمالي المنتجات" value={totalProducts.toLocaleString()} icon={Package}
           trend="+12%" trendUp color="primary" sparkline={[20,35,28,50,40,60,55]} />
         <StatCard label="نواقص المخزون" value={lowStock.length} icon={AlertTriangle}
           trend={lowStock.length > 0 ? "تنبيه" : "مستقر"} trendUp={false} color="amber" sparkline={[50,40,60,30,45,20,15]} />
-        <StatCard label="إجمالي المبيعات" value={isAdmin ? `${Math.round(totalSales).toLocaleString()} ج.م` : 'مؤمن'} icon={TrendingUp}
+        <StatCard label="مبيعات اليوم" value={isAdmin ? `${Math.round(todaySales).toLocaleString()} ج.م` : 'مؤمن'} icon={TrendingUp}
           trend={isAdmin ? "+8.5%" : ""} trendUp color="primary" sparkline={isAdmin ? [10,30,20,50,40,70,90] : [0,0,0,0,0,0,0]} />
         {isAdmin && (
-          <StatCard label="صافي الأرباح الفعلي" value={`${Math.round(netProfit).toLocaleString()} ج.م`} icon={Star}
+          <StatCard label="صافي الأرباح" value={`${Math.round(netProfit).toLocaleString()} ج.م`} icon={Star}
             trend="+10.2%" trendUp color="emerald" sparkline={salesHistory.map(h => h.profit)} />
         )}
-        <StatCard label="الطلبات النشطة" value={activeOrders} icon={ShoppingCart}
+        {isAdmin && (
+          <StatCard label="إجمالي المديونيات" value={`${Math.round(totalDebt).toLocaleString()} ج.م`} icon={Wallet}
+            trend={totalDebt > 0 ? `${topDebtors.length} عميل` : 'صفر'} trendUp={false} color="rose" sparkline={[15,22,18,30,25,35,topDebtors.length*5]} />
+        )}
+        <StatCard label="طلبات معلقة" value={activeOrders} icon={ShoppingCart}
           trend={`+${activeOrders}`} trendUp color="primary" sparkline={[5,12,8,14,10,18,16]} />
       </motion.div>
 
@@ -335,7 +362,7 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* ── Row 3: Best Sellers + Customer Activity + Stock Table ─ */}
+      {/* ── Row 3: Best Sellers + Customer Activity + Debt Center ─ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
 
         {/* Best Sellers */}
@@ -402,38 +429,135 @@ export default function Dashboard() {
           )}
         </motion.div>
 
-        {/* Recent Activity Feed */}
-        <motion.div variants={item} className="card !p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="font-black text-slate-800 flex items-center gap-2">
-              <Bell size={16} className="text-slate-500" />
-              تنبيهات المنظومة
-            </h3>
-            <RefreshCw size={14} className="text-slate-300 cursor-pointer hover:text-primary-500 transition-colors" />
-          </div>
-          <div className="space-y-5 relative">
-            <div className="absolute right-[14px] top-3 bottom-3 w-px bg-slate-100 z-0" />
-            <ActivityFeedItem
-              icon={CheckCircle2} color="emerald"
-              title="فاتورة مكتملة" sub={`INV-#${invoices[0]?.number || '0001'} — ${(invoices[0]?.total || 0).toLocaleString()} ج.م`}
-              time="منذ 10 دقائق" />
-            <ActivityFeedItem
-              icon={Package} color="primary"
-              title="تحديث مخزون" sub={`${products[0]?.name || 'منتج'} — ${products[0]?.quantity || 0} قطعة`}
-              time="منذ 40 دقيقة" />
-            <ActivityFeedItem
-              icon={Users} color="primary"
-              title="عميل جديد" sub={`${customers[0]?.name || 'عميل'} — ${customers[0]?.phone || '05X XXX XXXX'}`}
-              time="منذ ساعتين" />
-            {lowStock.length > 0 && (
+        {/* Debt Center — Top Debtors */}
+        {isAdmin ? (
+          <motion.div variants={item} className="card !p-6 border-rose-100">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-black text-slate-800 flex items-center gap-2">
+                <Wallet size={16} className="text-rose-500" />
+                مركز تحصيل المديونيات
+              </h3>
+              <a href="/customers" className="text-[9px] font-black text-rose-500 bg-rose-50 px-2 py-1 rounded-lg hover:bg-rose-100 transition-colors">
+                إدارة الكل
+              </a>
+            </div>
+
+            {/* Total Debt Badge */}
+            <div className="mb-4 p-4 bg-gradient-to-l from-rose-50 to-rose-100/60 rounded-2xl border border-rose-200/60 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">إجمالي المديونيات</p>
+                <p className="text-2xl font-black text-rose-700 font-display mt-1">{totalDebt.toLocaleString()} <span className="text-sm font-normal">ج.م</span></p>
+              </div>
+              <div className="w-12 h-12 bg-rose-100 rounded-2xl flex items-center justify-center">
+                <TrendingDown size={22} className="text-rose-500" />
+              </div>
+            </div>
+
+            {/* Top Debtors List */}
+            <div className="space-y-3">
+              {topDebtors.length === 0 ? (
+                <div className="text-center py-6 opacity-40">
+                  <p className="text-xs font-black text-slate-500">🎉 لا توجد مديونيات حالياً</p>
+                </div>
+              ) : (
+                topDebtors.map((c, i) => (
+                  <div key={c.id} className="flex items-center gap-3 group">
+                    <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0 text-xs font-black text-rose-600">
+                      {i + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-black text-slate-800 truncate">{c.name}</p>
+                      {c.phone && (
+                        <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                          <PhoneCall size={9} /> {c.phone}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-left flex flex-col items-end gap-1">
+                      <span className="text-xs font-black text-rose-600">{Number(c.debtTotal).toLocaleString()} ج</span>
+                      <a
+                        href={`https://wa.me/${c.phone?.replace(/^0/, '20')}?text=${encodeURIComponent(`مرحباً أ/ ${c.name}، هل يمكن التواصل بخصوص الحساب المعلق بقيمة ${Number(c.debtTotal).toLocaleString()} ج.م؟`)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg hover:bg-emerald-100 transition-colors"
+                      >
+                        واتساب
+                      </a>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        ) : (
+          /* Recent Activity Feed for non-admins */
+          <motion.div variants={item} className="card !p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-black text-slate-800 flex items-center gap-2">
+                <Bell size={16} className="text-slate-500" />
+                تنبيهات المنظومة
+              </h3>
+              <RefreshCw size={14} className="text-slate-300 cursor-pointer hover:text-primary-500 transition-colors" />
+            </div>
+            <div className="space-y-5 relative">
+              <div className="absolute right-[14px] top-3 bottom-3 w-px bg-slate-100 z-0" />
               <ActivityFeedItem
-                icon={AlertTriangle} color="rose"
-                title="تحذير مخزون" sub={`${lowStock[0]?.name} — ${lowStock[0]?.quantity} قطعة فقط`}
-                time="منذ 3 ساعات" />
-            )}
+                icon={CheckCircle2} color="emerald"
+                title="فاتورة مكتملة" sub={`INV-#${invoices[0]?.number || '0001'} — ${(invoices[0]?.total || 0).toLocaleString()} ج.م`}
+                time="منذ 10 دقائق" />
+              <ActivityFeedItem
+                icon={Package} color="primary"
+                title="تحديث مخزون" sub={`${products[0]?.name || 'منتج'} — ${products[0]?.quantity || 0} قطعة`}
+                time="منذ 40 دقيقة" />
+              {lowStock.length > 0 && (
+                <ActivityFeedItem
+                  icon={AlertTriangle} color="rose"
+                  title="تحذير مخزون" sub={`${lowStock[0]?.name} — ${lowStock[0]?.quantity} قطعة فقط`}
+                  time="منذ 3 ساعات" />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* ── Profit Breakdown (Admin Only) ─────────────────────────── */}
+      {isAdmin && (
+        <motion.div variants={item} className="card !p-0 overflow-hidden border-emerald-100">
+          <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 bg-gradient-to-l from-emerald-50/50">
+            <h3 className="font-black text-slate-800 flex items-center gap-2">
+              <BarChart2 size={16} className="text-emerald-500" />
+              تفصيلة الأرباح الصافية
+            </h3>
+            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">إداري فقط</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x sm:divide-x-reverse divide-slate-100">
+            <div className="p-6 text-right">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">إجمالي الإيرادات</p>
+              <p className="text-2xl font-black text-slate-800 font-display">{Math.round(totalSales).toLocaleString()} <span className="text-sm font-normal text-slate-400">ج.م</span></p>
+              <div className="mt-3 h-1 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-primary-500 rounded-full" style={{ width: '100%' }} />
+              </div>
+            </div>
+            <div className="p-6 text-right">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">إجمالي المصروفات</p>
+              <p className="text-2xl font-black text-rose-600 font-display">{Math.round(totalExpenses).toLocaleString()} <span className="text-sm font-normal text-slate-400">ج.م</span></p>
+              <div className="mt-3 h-1 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-rose-400 rounded-full" style={{ width: totalSales > 0 ? `${Math.min(100, (totalExpenses/totalSales)*100)}%` : '0%' }} />
+              </div>
+            </div>
+            <div className="p-6 text-right bg-emerald-50/30">
+              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">صافي الأرباح الحقيقي</p>
+              <p className="text-2xl font-black text-emerald-700 font-display">{Math.round(netProfit).toLocaleString()} <span className="text-sm font-normal text-slate-400">ج.م</span></p>
+              <div className="mt-3 h-1 bg-emerald-100 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full" style={{ width: totalSales > 0 ? `${Math.min(100, (netProfit/totalSales)*100)}%` : '0%' }} />
+              </div>
+              <p className="text-[10px] font-bold text-emerald-600 mt-2">
+                هامش الربح: {totalSales > 0 ? ((netProfit/totalSales)*100).toFixed(1) : '0'}%
+              </p>
+            </div>
           </div>
         </motion.div>
-      </div>
+      )}
 
       {/* ── Row 4: Quick Reports ─────────────────────────────────── */}
       <motion.div variants={item} className="card !p-0 overflow-hidden">
@@ -588,6 +712,7 @@ function StatCard({ label, value, icon: Icon, trend, trendUp, color, sparkline }
     amber:   { bg: 'bg-amber-50',   text: 'text-amber-600',   stroke: '#f59e0b' },
     emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', stroke: '#10b981' },
     slate:   { bg: 'bg-slate-50',   text: 'text-slate-600',   stroke: '#64748b' },
+    rose:    { bg: 'bg-rose-50',    text: 'text-rose-600',    stroke: '#f43f5e' },
   }
   const p = palette[color] || palette.primary
   const data = sparkline.map(v => ({ v }))

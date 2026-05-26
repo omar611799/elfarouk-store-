@@ -26,7 +26,8 @@ const CartContent = memo(({
   cart, cartTotal, cartClear, cartQty, cartRemove,
   customer, setCustomer, suggestedCustomers,
   payments, setPayments, isAdmin,
-  saving, handleSale, setIsCartOpen
+  saving, handleSale, setIsCartOpen,
+  itemWeights, setItemWeight
 }) => {
   const [focusedField, setFocusedField] = useState(null)
   const [showHistory, setShowHistory] = useState(false)
@@ -97,13 +98,24 @@ const CartContent = memo(({
                       {Number(item.price).toLocaleString('en-US')} ج.م
                     </p>
                     {/* إضافة حقل للخصم أو الملاحظات تحت السعر */}
-                    <div className="mt-1">
-                       {isAdmin && (
-                         <span className="text-[10px] text-slate-400 font-bold bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-                           الربح المتوقع: {((item.price - (item.cost || 0)) * item.qty).toLocaleString()} ج
-                         </span>
-                       )}
+                  <div className="mt-1">
+                     {isAdmin && (
+                       <span className="text-[10px] text-slate-400 font-bold bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                         الربح المتوقع: {((item.price - (item.cost || 0)) * item.qty).toLocaleString()} ج
+                       </span>
+                     )}
+                  </div>
+                  {/* Weight-based pricing for سوست products */}
+                  {item.weight > 0 && (
+                    <div className="mt-2 flex items-center gap-2 pointer-events-auto">
+                      <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">
+                        ⚖️ {item.weight} كجم
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-bold">
+                        السعر: {(item.price).toLocaleString()} ج.م
+                      </span>
                     </div>
+                  )}
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 bg-slate-100 border border-slate-200 rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shrink-0 pointer-events-auto">
                     <button onClick={() => cartQty(item.id, item.qty - 1)} className="w-10 h-10 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-slate-200 transition-colors bg-white border border-slate-200 shadow-sm">
@@ -483,6 +495,11 @@ export default function POS() {
   const [isListening, setIsListening] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [reminders, setReminders] = useState({})
+  const [itemWeights, setItemWeightsState] = useState({})
+
+  const setItemWeight = useCallback((itemId, kg) => {
+    setItemWeightsState(prev => ({ ...prev, [itemId]: kg }))
+  }, [])
 
   useEffect(() => {
     const raw = window.localStorage.getItem('pendingQuoteCustomer')
@@ -661,12 +678,14 @@ export default function POS() {
     cart, cartTotal, cartClear, cartQty, cartRemove,
     customer, setCustomer, suggestedCustomers,
     payments, setPayments,
-    saving, handleSale, setIsCartOpen
+    saving, handleSale, setIsCartOpen,
+    itemWeights, setItemWeight
   }), [
     cart, cartTotal, cartClear, cartQty, cartRemove,
     customer, setCustomer, suggestedCustomers,
     payments, setPayments,
-    saving, handleSale, setIsCartOpen
+    saving, handleSale, setIsCartOpen,
+    itemWeights, setItemWeight
   ])
 
   if (doneInvoice) {
