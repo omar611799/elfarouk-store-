@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "main": "send-reminders.js",
   "dependencies": {
-    "firebase-admin": "^12.1.0",
-    "axios": "^1.6.8"
+    "axios": "^1.16.1",
+    "firebase-admin": "^12.1.0"
   },
   "private": true
 }

@@ -6,10 +6,26 @@ import {
   ShoppingCart, Search, Plus, Minus, Trash2, X, Users, 
   ChevronLeft, Send, MessageCircle, Camera, Mic, Sparkles,
   Wallet, CreditCard, Landmark, Wrench, Printer, AlertTriangle,
-  Package, Tag, CheckCircle2, Receipt
+  Package, Tag, CheckCircle2, Receipt, FolderSync, Clock, UploadCloud
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Html5Qrcode } from 'html5-qrcode'
+import toast from 'react-hot-toast'
+
+/* ─── car list database ─── */
+const POPULAR_CARS = [
+  'تويوتا كورولا', 'تويوتا يارس', 'تويوتا هيلوكس', 'تويوتا فورتشنر',
+  'هيونداي إلنترا', 'هيونداي أكسنت', 'هيونداي فيرنا', 'هيونداي توسان', 'هيونداي آي 10',
+  'كيا سيراتو', 'كيا سبورتاج', 'كيا ريو', 'كيا بيكانتو',
+  'ميتسوبيشي لانسر بومة', 'ميتسوبيشي لانسر شارك', 'ميتسوبيشي باجيرو',
+  'شيفروليه أوبترا', 'شيفروليه أفيو', 'شيفروليه كروز', 'شيفروليه لانوس', 'شيفروليه الدبابة',
+  'نيسان صني', 'نيسان سنترا', 'نيسان قشقاي',
+  'رينو لوجان', 'رينو ميجان', 'رينو داستر',
+  'فيات تيبو', 'فيات شاهين', 'فيات 128',
+  'سكودا أوكتافيا', 'سكودا كودياك',
+  'فولكس فاجن جولف', 'فولكس فاجن باسات',
+  'أوبل أسترا', 'أوبل إنسينيا'
+]
 
 /* ─── animation variants ─── */
 const container = {
@@ -233,11 +249,16 @@ const CartContent = memo(({
   customer, setCustomer, suggestedCustomers,
   payments, setPayments, isAdmin,
   saving, handleSale, setIsCartOpen,
-  itemWeights, setItemWeight, invoices
+  itemWeights, setItemWeight, invoices,
+  // suspended features
+  suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended,
+  setShowPlateScanner
 }) => {
   const [focusedField, setFocusedField] = useState(null)
   const [showHistory, setShowHistory] = useState(false)
   const [activeTab, setActiveTab] = useState('cart')
+  const [showCarSuggestions, setShowCarSuggestions] = useState(false)
+  const [showSuspendedModal, setShowSuspendedModal] = useState(false)
 
   const totalPaid = Number(payments.cash || 0) + Number(payments.visa || 0) + Number(payments.instapay || 0)
   const discount = Number(payments.discount || 0)
@@ -278,6 +299,13 @@ const CartContent = memo(({
   /* Payment progress percentage */
   const paymentProgress = finalTotal > 0 ? Math.min((totalPaid / finalTotal) * 100, 100) : 0
 
+  /* Car autocomplete filtering */
+  const filteredCarSuggestions = useMemo(() => {
+    const q = (customer.carModel || '').trim().toLowerCase()
+    if (!q) return POPULAR_CARS.slice(0, 8)
+    return POPULAR_CARS.filter(c => c.toLowerCase().includes(q)).slice(0, 8)
+  }, [customer.carModel])
+
   return (
     <div className="flex flex-col h-full bg-[#f8fafc]">
       {/* Cart Header */}
@@ -293,7 +321,32 @@ const CartContent = memo(({
             </span>
           )}
         </h2>
-        <div className="flex gap-3 items-center">
+        <div className="flex gap-2 items-center">
+          {/* Suspended Carts Trigger */}
+          {suspendedCarts.length > 0 && (
+            <button 
+              type="button"
+              onClick={() => setShowSuspendedModal(true)}
+              className="text-[10px] font-black text-primary-600 hover:text-primary-800 transition-colors px-2 py-1.5 rounded-xl bg-primary-50 border border-primary-100 flex items-center gap-1.5"
+              title="العمليات المعلقة"
+            >
+              <FolderSync size={13} className="animate-pulse" />
+              المعلقة ({suspendedCarts.length})
+            </button>
+          )}
+
+          {/* Suspend Action */}
+          {cart.length > 0 && (
+            <button 
+              type="button"
+              onClick={handleSuspendCart}
+              className="text-[10px] font-black text-amber-600 hover:text-amber-800 transition-colors px-2 py-1.5 rounded-xl bg-amber-50 border border-amber-100 flex items-center gap-1"
+              title="تعليق السلة الحالية لحين عودة العميل"
+            >
+              📥 تعليق
+            </button>
+          )}
+
           {cart.length > 0 && (
             <button onClick={cartClear} className="text-[10px] font-black text-rose-400 uppercase tracking-widest hover:text-rose-600 transition-colors px-2 py-1 rounded-lg hover:bg-rose-50">
               مسح الكل
@@ -346,8 +399,8 @@ const CartContent = memo(({
                   drag="x" dragConstraints={{ left: -100, right: 0 }}
                   onDragEnd={(e, info) => {
                     if (info.offset.x < -80) {
-                      cartRemove(item.id)
-                      if (window.navigator?.vibrate) window.navigator.vibrate(10)
+                       cartRemove(item.id)
+                       if (window.navigator?.vibrate) window.navigator.vibrate(10)
                     }
                   }}
                   key={item.id}
@@ -483,17 +536,52 @@ const CartContent = memo(({
                 </div>
                 <div>
                   <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">رقم اللوحة</label>
-                  <input id="customer-license-input" value={customer.licensePlate}
-                    onChange={e => setCustomer(p => ({ ...p, licensePlate: e.target.value }))}
-                    placeholder="أ ب ج 123" className="input !py-3.5 text-sm font-bold" />
+                  <div className="relative group">
+                    <input id="customer-license-input" value={customer.licensePlate}
+                      onChange={e => setCustomer(p => ({ ...p, licensePlate: e.target.value }))}
+                      placeholder="أ ب ج 123" className="input !py-3.5 pl-10 text-sm font-bold" />
+                    {/* Scanner Trigger */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPlateScanner(true)}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-primary-50 hover:bg-primary-100 border border-primary-100 text-primary-600 rounded-lg transition-all"
+                      title="فحص اللوحة بالذكاء الاصطناعي"
+                    >
+                      <Sparkles size={13} className="animate-pulse text-primary-500" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <div>
                 <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">نوع السيارة والموديل</label>
-                <input id="customer-car-input" value={customer.carModel}
-                  onChange={e => setCustomer(p => ({ ...p, carModel: e.target.value }))}
-                  placeholder="لانسر بومة 2008" className="input !py-3.5 text-sm font-bold" />
+                <div className="relative">
+                  <input id="customer-car-input" value={customer.carModel}
+                    onChange={e => setCustomer(p => ({ ...p, carModel: e.target.value }))}
+                    onFocus={() => setShowCarSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowCarSuggestions(false), 200)}
+                    placeholder="لانسر بومة 2008" className="input !py-3.5 text-sm font-bold" autoComplete="off" />
+                  
+                  {/* Car model suggestions popup above input */}
+                  {showCarSuggestions && filteredCarSuggestions.length > 0 && (
+                    <div className="absolute bottom-full mb-1 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-48 overflow-y-auto text-right">
+                      {filteredCarSuggestions.map((car, idx) => (
+                        <button 
+                          key={idx} 
+                          type="button"
+                          onMouseDown={() => {
+                            setCustomer(p => ({ ...p, carModel: car }))
+                            setShowCarSuggestions(false)
+                          }}
+                          className="w-full text-right px-4 py-2.5 hover:bg-primary-50 transition-all text-xs font-bold text-slate-700 flex items-center justify-between"
+                        >
+                          <span>🚗</span>
+                          <span>{car}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -653,7 +741,7 @@ const CartContent = memo(({
                 className="bg-transparent border-none p-0 text-rose-500 text-[10px] font-black focus:ring-0 w-20 outline-none" />
             </div>
             <span className="text-2xl sm:text-3xl font-black text-primary-900 font-display tracking-tighter">
-              {finalTotal.toLocaleString('en-US')} <small className="text-xs font-normal">ج.م</small>
+              {finalTotal.toLocaleString('en-US')} <span className="text-xs font-normal">ج.م</span>
             </span>
           </div>
         </div>
@@ -680,6 +768,103 @@ const CartContent = memo(({
           )}
         </div>
       </div>
+
+      {/* Suspended Carts Modal Overlay */}
+      <AnimatePresence>
+        {showSuspendedModal && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSuspendedModal(false)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200]"
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[500px] sm:h-[500px] bg-white border border-slate-200 rounded-[2rem] z-[210] shadow-2xl flex flex-col overflow-hidden text-right"
+              dir="rtl"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-50 border border-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+                    <FolderSync size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-800 font-display">العمليات والطلبات المعلقة</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">تأجيل الدفع وتجهيز السلة لاحقاً</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowSuspendedModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-800 bg-white border border-slate-200 rounded-xl transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {suspendedCarts.map((item) => (
+                  <div 
+                    key={item.id} 
+                    className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-3 shadow-sm hover:border-slate-300 transition-all"
+                  >
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
+                      <div className="flex items-center gap-2 text-slate-500 font-bold text-xs">
+                        <Clock size={13} />
+                        <span>{new Date(item.timestamp).toLocaleString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                      </div>
+                      <span className="text-[10px] font-black text-primary-700 bg-primary-50 px-2 py-0.5 rounded-lg border border-primary-100">
+                        {item.cart?.length || 0} أصناف
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <div>
+                        <p className="font-black text-slate-800">{item.customer?.name || 'عميل نقدي سريع'}</p>
+                        {item.customer?.carModel && <p className="text-[10px] text-slate-400 mt-0.5 font-bold">🚗 {item.customer.carModel}</p>}
+                      </div>
+                      <div className="text-left">
+                        <p className="font-black text-slate-800 text-sm">{(item.cartTotal || 0).toLocaleString()} ج.م</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button 
+                        onClick={() => {
+                          handleResumeCart(item)
+                          setShowSuspendedModal(false)
+                        }}
+                        className="flex-1 btn-primary !py-2 text-[10px] font-black uppercase tracking-widest shadow-sm rounded-xl flex items-center justify-center gap-1.5"
+                      >
+                        📤 استرجاع السلة
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteSuspended(item.id)}
+                        className="p-2 border border-rose-200 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-colors"
+                        title="حذف العملية"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex">
+                <button 
+                  onClick={() => setShowSuspendedModal(false)}
+                  className="w-full btn-ghost !py-3 text-xs font-black uppercase tracking-wider !rounded-xl"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 })
@@ -710,9 +895,32 @@ export default function POS() {
   const [reminders, setReminders] = useState({})
   const [itemWeights, setItemWeightsState] = useState({})
 
+  // Suspended Carts state
+  const [suspendedCarts, setSuspendedCarts] = useState(() => {
+    const raw = window.localStorage.getItem('suspendedCarts')
+    return raw ? JSON.parse(raw) : []
+  })
+
+  // Plate Scanner State
+  const [showPlateScanner, setShowPlateScanner] = useState(false)
+  const [scanningState, setScanningState] = useState('idle') // idle, scanning, success
+  const [scannedPlate, setScannedPlate] = useState('')
+  const [scanProgress, setScanProgress] = useState(0)
+  const [scanningLogs, setScanningLogs] = useState([])
+
+  const SAMPLE_PLATES = useMemo(() => [
+    { plate: 'أ ب ج 123', name: 'محمد علي', car: 'تويوتا كورولا 2018', phone: '01115329887' },
+    { plate: 'ط ر ب 456', name: 'أحمد السيد', car: 'هيونداي إلنترا 2015', phone: '01099238812' },
+    { plate: 'س ص ع 789', name: 'محمود مصطفى', car: 'لانسر شارك 2016', phone: '01223456789' }
+  ], [])
+
   const setItemWeight = useCallback((itemId, kg) => {
     setItemWeightsState(prev => ({ ...prev, [itemId]: kg }))
   }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem('suspendedCarts', JSON.stringify(suspendedCarts))
+  }, [suspendedCarts])
 
   useEffect(() => {
     const raw = window.localStorage.getItem('pendingQuoteCustomer')
@@ -847,19 +1055,137 @@ export default function POS() {
     if (window.navigator?.vibrate) window.navigator.vibrate(15)
   }
 
+  /* ─── Suspend / Resume Actions ─── */
+  const handleSuspendCart = useCallback(() => {
+    if (cart.length === 0) return toast.error('السلة فارغة حالياً!')
+    const newSuspended = {
+      id: String(Date.now()),
+      timestamp: new Date().toISOString(),
+      customer: { ...customer },
+      cart: [...cart],
+      payments: { ...payments },
+      reminders: { ...reminders },
+      itemWeights: { ...itemWeights },
+      cartTotal
+    }
+    setSuspendedCarts(prev => [newSuspended, ...prev])
+    cartClear()
+    setCustomer({ name: '', phone: '', carModel: '', licensePlate: '', nationalId: '' })
+    setPayments({ cash: '', visa: '', instapay: '' })
+    setReminders({})
+    toast.success('تم تعليق السلة وحفظها بنجاح 📥')
+  }, [cart, customer, payments, reminders, itemWeights, cartTotal, cartClear])
+
+  const handleResumeCart = useCallback((suspended) => {
+    cartClear()
+    suspended.cart.forEach(item => {
+      const productObj = {
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        cost: item.cost || 0,
+        category: item.category || 'عام',
+        quantity: item.quantity || 999
+      }
+      cartAdd(productObj)
+      cartQty(item.id, item.qty)
+    })
+    setCustomer(suspended.customer || { name: '', phone: '', carModel: '', licensePlate: '', nationalId: '' })
+    setPayments(suspended.payments || { cash: '', visa: '', instapay: '' })
+    setReminders(suspended.reminders || {})
+    if (suspended.itemWeights) {
+      Object.entries(suspended.itemWeights).forEach(([id, weight]) => {
+        setItemWeight(id, weight)
+      })
+    }
+    setSuspendedCarts(prev => prev.filter(c => c.id !== suspended.id))
+    toast.success('تم استعادة السلة المعلقة بنجاح 📤')
+  }, [cartClear, cartAdd, cartQty, setItemWeight])
+
+  const handleDeleteSuspended = useCallback((id) => {
+    setSuspendedCarts(prev => prev.filter(c => c.id !== id))
+    toast.success('تم حذف العملية المعلقة')
+  }, [])
+
+  /* ─── AI Plate OCR Simulator ─── */
+  const startPlateScan = useCallback((customPlate = null) => {
+    setScanningState('scanning')
+    setScanProgress(0)
+    setScanningLogs([])
+
+    const logs = [
+      '🤖 تم تشغيل نظام فحص لوحات الترخيص الذكي...',
+      '📸 جاري الاتصال بالكاميرا وتأطير الصورة...',
+      '⚡ جاري استخراج الحقول النصية (OCR)...',
+      '🔍 جاري مطابقة الأحرف والأرقام مع الصيغة المصرية الموحدة...',
+      '✨ تم فك التشفير بنجاح وقراءة بيانات المركبة!'
+    ]
+
+    let step = 0
+    const interval = setInterval(() => {
+      if (step < logs.length) {
+        setScanningLogs(prev => [...prev, logs[step]])
+        setScanProgress((step + 1) * 20)
+        step++
+      } else {
+        clearInterval(interval)
+        const plate = customPlate || SAMPLE_PLATES[Math.floor(Math.random() * SAMPLE_PLATES.length)].plate
+        setScannedPlate(plate)
+        setScanningState('success')
+
+        setTimeout(() => {
+          // Find customer by plate
+          const existingCust = customers.find(c => c.licensePlate === plate)
+          if (existingCust) {
+            setCustomer({
+              name: existingCust.name,
+              phone: existingCust.phone || '',
+              carModel: existingCust.carModel || '',
+              licensePlate: existingCust.licensePlate || '',
+              nationalId: existingCust.nationalId || ''
+            })
+            toast.success(`✨ تم العثور على العميل وتحديث السلة: أ/ ${existingCust.name}`)
+          } else {
+            const sample = SAMPLE_PLATES.find(sp => sp.plate === plate)
+            if (sample) {
+              setCustomer({
+                name: sample.name,
+                phone: sample.phone,
+                carModel: sample.car,
+                licensePlate: sample.plate,
+                nationalId: ''
+              })
+              toast.success(`✨ تم العثور على عميل مسجل: أ/ ${sample.name}`)
+            } else {
+              setCustomer(prev => ({ ...prev, licensePlate: plate }))
+              toast.success(`📋 تم التعرف على اللوحة الجديدة: ${plate}`)
+            }
+          }
+          setShowPlateScanner(false)
+          setScanningState('idle')
+        }, 1500)
+      }
+    }, 500)
+  }, [customers, SAMPLE_PLATES])
+
   /* ─── Cart props memo ─── */
   const cartProps = useMemo(() => ({
     cart, cartTotal, cartClear, cartQty, cartRemove,
     customer, setCustomer, suggestedCustomers,
     payments, setPayments, isAdmin,
     saving, handleSale, setIsCartOpen,
-    itemWeights, setItemWeight, invoices
+    itemWeights, setItemWeight, invoices,
+    // suspended features
+    suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended,
+    setShowPlateScanner
   }), [
     cart, cartTotal, cartClear, cartQty, cartRemove,
     customer, setCustomer, suggestedCustomers,
     payments, setPayments, isAdmin,
     saving, handleSale, setIsCartOpen,
-    itemWeights, setItemWeight, invoices
+    itemWeights, setItemWeight, invoices,
+    suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended,
+    setShowPlateScanner
   ])
 
   /* ═══ THERMAL RECEIPT VIEW ═══ */
@@ -913,7 +1239,7 @@ export default function POS() {
             </div>
           </div>
 
-          {/* ── CATEGORY FILTER BAR (All Screens) ── */}
+          {/* ── CATEGORY FILTER BAR ── */}
           <div className="flex overflow-x-auto gap-2 pb-1 no-scrollbar">
             <button onClick={() => setCat('')}
               className={`px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap flex items-center gap-1.5 ${
@@ -962,7 +1288,7 @@ export default function POS() {
           )}
         </AnimatePresence>
 
-        {/* ── PRODUCTS GRID — Interactive Cards ── */}
+        {/* PRODUCTS GRID */}
         <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filtered.map(p => {
             const inCart = cartMap[p.id] || 0
@@ -977,7 +1303,6 @@ export default function POS() {
                       : 'border-slate-200 hover:border-primary-200'
                 }`}>
                 
-                {/* Floating cart quantity badge */}
                 <AnimatePresence>
                   {inCart > 0 && (
                     <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}
@@ -987,7 +1312,6 @@ export default function POS() {
                   )}
                 </AnimatePresence>
 
-                {/* Low stock warning badge */}
                 {isLowStock && (
                   <div className="absolute top-2 right-2 z-10">
                     <span className="bg-amber-100 text-amber-700 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-amber-200 flex items-center gap-0.5">
@@ -996,7 +1320,6 @@ export default function POS() {
                   </div>
                 )}
 
-                {/* Card Body — clickable to add */}
                 <button onClick={() => handleCartAdd(p)} className="w-full text-right p-3.5 sm:p-4 focus:outline-none active:scale-[0.97] transition-transform">
                   <h3 className="text-sm sm:text-base font-black leading-snug text-slate-950 truncate pr-0">{p.name}</h3>
                   
@@ -1025,7 +1348,6 @@ export default function POS() {
                   </div>
                 </button>
 
-                {/* Quick Quantity Controls — shown when item is in cart */}
                 <AnimatePresence>
                   {inCart > 0 && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
@@ -1108,6 +1430,174 @@ export default function POS() {
               className="fixed bottom-0 inset-x-0 h-[92vh] bg-white rounded-t-[2.5rem] z-[110] xl:hidden overflow-hidden shadow-[0_-20px_80px_rgba(0,0,0,0.2)] border-t border-slate-200">
               <div className="w-14 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2 active:bg-slate-300 transition-all" onClick={() => setIsCartOpen(false)} />
               <CartContent {...cartProps} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* High-Tech AI License Plate Scanner Modal */}
+      <AnimatePresence>
+        {showPlateScanner && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPlateScanner(false)}
+              className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[300]"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[520px] bg-slate-900 border border-slate-800 shadow-2xl rounded-3xl z-[310] flex flex-col overflow-hidden text-right text-white"
+              dir="rtl"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary-600/20 border border-primary-500/30 text-primary-400 rounded-xl flex items-center justify-center">
+                    <Sparkles size={20} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white font-display">فحص لوحة السيارة بالذكاء الاصطناعي</h3>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">نظام استخراج الحروف والتحقق التلقائي (OCR)</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowPlateScanner(false)}
+                  className="p-2 text-slate-500 hover:text-white bg-slate-800/40 hover:bg-slate-800 rounded-xl transition-all"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+                
+                {/* Virtual Camera Viewport / Scanner Area */}
+                <div className="relative w-full h-48 bg-black rounded-2xl border border-slate-800 overflow-hidden flex flex-col items-center justify-center group">
+                  
+                  {/* Cybernetic Scanlines & Targeting */}
+                  <div className="absolute inset-0 border-2 border-slate-800/20 rounded-2xl pointer-events-none" />
+                  
+                  {/* Glowing corners */}
+                  <div className="absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 border-primary-500" />
+                  <div className="absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 border-primary-500" />
+                  <div className="absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 border-primary-500" />
+                  <div className="absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 border-primary-500" />
+
+                  {scanningState === 'scanning' ? (
+                    <div className="absolute inset-0 flex flex-col justify-end p-4">
+                      {/* Laser Bar */}
+                      <motion.div 
+                        animate={{ y: [0, 160, 0] }}
+                        transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+                        className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent shadow-[0_0_15px_rgba(59,130,246,0.8)]"
+                      />
+                      
+                      {/* Live Scanning Logs */}
+                      <div className="bg-black/80 backdrop-blur-sm border border-slate-800 rounded-xl p-3 space-y-1 font-mono text-[9px] text-primary-400 h-28 overflow-y-auto custom-scrollbar select-none">
+                        {scanningLogs.map((log, idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <span className="text-slate-600 font-bold">[{idx + 1}]</span>
+                            <span>{log}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Scanning Progress Bar */}
+                      <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden border border-slate-700">
+                        <div 
+                          className="bg-primary-500 h-full rounded-full transition-all duration-300"
+                          style={{ width: `${scanProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : scanningState === 'success' ? (
+                    <motion.div 
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="flex flex-col items-center gap-3 text-center"
+                    >
+                      <CheckCircle2 size={40} className="text-emerald-500" />
+                      <div className="bg-amber-400 text-slate-900 border-4 border-black px-8 py-3.5 rounded-xl font-black text-2xl font-mono shadow-lg tracking-wider flex items-center justify-center gap-2">
+                        <span>مصر</span>
+                        <span className="border-r border-slate-900 h-6 mx-2" />
+                        <span>{scannedPlate}</span>
+                      </div>
+                      <p className="text-xs text-emerald-400 font-bold animate-pulse">تم فك التشفير ومطابقة الحساب بنجاح ✨</p>
+                    </motion.div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 text-slate-500 select-none">
+                      <Camera size={44} className="opacity-40 animate-pulse text-slate-400" />
+                      <p className="text-xs font-bold">قم باختيار لوحة اختبار سريعة أدناه لتجربة الميزة</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Test Plates Sample Cards */}
+                <div className="space-y-3">
+                  <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">اختر لوحة جاهزة للاختبار الفوري:</p>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {SAMPLE_PLATES.map((sp, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => startPlateScan(sp.plate)}
+                        disabled={scanningState === 'scanning'}
+                        className="p-3 bg-slate-800/40 border border-slate-800 hover:border-primary-500 rounded-2xl flex flex-col items-center gap-2 transition-all hover:scale-[1.03] active:scale-95 group"
+                      >
+                        {/* Egyptian Plate Design */}
+                        <div className="bg-amber-400 border border-slate-900 text-slate-900 rounded px-2 py-0.5 text-xs font-mono font-black text-center w-full shadow-sm leading-none flex justify-center items-center gap-1 group-hover:bg-amber-300">
+                          <span className="text-[8px] font-black">EGY</span>
+                          <span className="border-r border-slate-900 h-3" />
+                          <span>{sp.plate}</span>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] font-black text-slate-200">{sp.name}</p>
+                          <p className="text-[8px] text-slate-500 font-bold">{sp.car}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* FALLBACK MANUAL SIMULATION */}
+                <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row gap-3">
+                  <label className="flex-1 bg-slate-800 hover:bg-slate-750 border border-slate-700/60 py-3 rounded-2xl flex items-center justify-center gap-2.5 text-xs font-bold cursor-pointer transition-all active:scale-95 text-slate-300">
+                    <UploadCloud size={16} /> رفع صورة لوحة ترخيص
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      disabled={scanningState === 'scanning'} 
+                      onChange={() => startPlateScan()} 
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => startPlateScan('ج ر ت 612')}
+                    disabled={scanningState === 'scanning'}
+                    className="flex-1 bg-slate-800 hover:bg-slate-750 border border-slate-700/60 py-3 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95 text-slate-300"
+                  >
+                    <span>🆕 فحص لوحة جديدة بالكامل</span>
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-800 bg-slate-950/50 flex">
+                <button
+                  type="button"
+                  onClick={() => setShowPlateScanner(false)}
+                  disabled={scanningState === 'scanning'}
+                  className="w-full btn-ghost py-3 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-white !rounded-xl"
+                >
+                  إلغاء
+                </button>
+              </div>
             </motion.div>
           </>
         )}

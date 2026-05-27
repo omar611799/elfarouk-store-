@@ -70,186 +70,206 @@ export default function Purchases() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-          <ShoppingBag className="text-primary-400" /> تسجيل مشتريات (توريد)
-        </h1>
-        <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">رقم فاتورة المورد:</span>
-            <input 
-                value={billNumber} 
-                onChange={e => setBillNumber(e.target.value)} 
-                placeholder="مثال: 5542" 
-                className="input text-xs w-32 py-1.5" 
-            />
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 flex items-center gap-3 tracking-tight">
+            <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center">
+              <ShoppingBag size={20} className="text-primary-600" />
+            </div>
+            تسجيل مشتريات (توريد)
+          </h1>
+          <p className="text-slate-500 text-xs mt-1 mr-13">استلام بضاعة من الموردين وتحديث المخزون</p>
+        </div>
+        <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-4 py-2 shadow-sm">
+          <span className="text-xs text-slate-500 font-bold">رقم فاتورة المورد:</span>
+          <input 
+            value={billNumber} 
+            onChange={e => setBillNumber(e.target.value)} 
+            placeholder="مثال: 5542" 
+            className="text-xs w-28 py-1 bg-transparent text-slate-800 font-bold outline-none placeholder:text-slate-300 border-b border-slate-200 focus:border-primary-500 transition-colors" 
+          />
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Product Search & Items */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="glass-card">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-white flex items-center gap-2">
-                    <Plus size={18} className="text-primary-400" /> إضافة أصناف للفاتورة
-                </h2>
-                <div className="relative flex-1 max-w-xs mr-4">
-                    <Search size={16} className="absolute right-3 top-2.5 text-slate-500" />
-                    <input 
-                        value={search} 
-                        onChange={e => setSearch(e.target.value)} 
-                        placeholder="ابحث عن قطعة غيار لإضافتها..." 
-                        className="input pr-10 text-sm" 
-                    />
-                    
-                    {filteredProducts.length > 0 && (
-                        <div className="absolute top-full right-0 left-0 bg-slate-900 border border-white/10 mt-1 rounded-xl shadow-2xl z-20 overflow-hidden">
-                            {filteredProducts.map(p => (
-                                <button 
-                                    key={p.id} 
-                                    onClick={() => addToBill(p)}
-                                    className="w-full text-right px-4 py-2.5 text-sm text-slate-300 hover:bg-primary-500 hover:text-white transition-colors flex justify-between items-center"
-                                >
-                                    <span>{p.name}</span>
-                                    <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded">متاح: {p.quantity}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4 gap-4">
+              <h2 className="font-bold text-slate-700 flex items-center gap-2 text-sm whitespace-nowrap">
+                <Plus size={16} className="text-primary-500" /> إضافة أصناف للفاتورة
+              </h2>
+              <div className="relative flex-1 max-w-sm">
+                <Search size={15} className="absolute right-3 top-2.5 text-slate-400" />
+                <input 
+                  value={search} 
+                  onChange={e => setSearch(e.target.value)} 
+                  placeholder="ابحث عن قطعة غيار لإضافتها..." 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all" 
+                />
+                
+                {filteredProducts.length > 0 && (
+                  <div className="absolute top-full right-0 left-0 bg-white border border-slate-200 mt-1 rounded-xl shadow-xl z-20 overflow-hidden">
+                    {filteredProducts.map(p => (
+                      <button 
+                        key={p.id} 
+                        onClick={() => addToBill(p)}
+                        className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-primary-50 hover:text-primary-700 transition-colors flex justify-between items-center"
+                      >
+                        <span className="font-medium">{p.name}</span>
+                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg font-bold">متاح: {p.quantity}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="overflow-x-auto">
-                <table className="w-full text-right text-sm">
-                    <thead>
-                        <tr className="text-slate-500 border-b border-white/5">
-                            <th className="pb-3 pr-2">المنتج</th>
-                            <th className="pb-3">الكمية المستلمة</th>
-                            <th className="pb-3 text-center">سعر الشراء (التكلفة)</th>
-                            <th className="pb-3 text-left pl-2">الإجمالي</th>
-                            <th className="pb-3 w-10"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                        {billItems.map(item => (
-                            <tr key={item.id} className="group">
-                                <td className="py-3 pr-2">
-                                    <p className="text-white font-medium">{item.name}</p>
-                                </td>
-                                <td className="py-3">
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => updateItem(item.id, 'qty', Math.max(1, item.qty - 1))} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10"><Minus size={14}/></button>
-                                        <input 
-                                            type="number" 
-                                            value={item.qty} 
-                                            onChange={e => updateItem(item.id, 'qty', Number(e.target.value))}
-                                            className="w-12 bg-transparent text-center font-bold text-white border-b border-white/10 focus:border-primary-500 outline-none"
-                                        />
-                                        <button onClick={() => updateItem(item.id, 'qty', item.qty + 1)} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10"><Plus size={14}/></button>
-                                    </div>
-                                </td>
-                                <td className="py-3">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <input 
-                                            type="number" 
-                                            value={item.cost} 
-                                            onChange={e => updateItem(item.id, 'cost', e.target.value)}
-                                            className="w-24 bg-slate-800/50 rounded-lg px-3 py-1.5 text-center font-bold text-emerald-400 outline-none border border-white/5"
-                                        />
-                                        <span className="text-[10px] text-slate-500">ج.م</span>
-                                    </div>
-                                </td>
-                                <td className="py-3 text-left pl-2 font-bold text-white">
-                                    {(Number(item.cost) * item.qty).toLocaleString('en-US')}
-                                </td>
-                                <td className="py-3 text-center">
-                                    <button onClick={() => removeItem(item.id)} className="text-slate-600 hover:text-red-400 p-2 transition-colors"><Trash2 size={16}/></button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                {billItems.length === 0 && (
-                    <div className="text-center py-20">
-                        <ShoppingBag size={48} className="mx-auto text-slate-700 mb-4 opacity-20" />
-                        <p className="text-slate-500">ابدأ بالبحث عن منتجات لإضافتها للفاتورة</p>
-                    </div>
-                )}
+              <table className="w-full text-right text-sm">
+                <thead>
+                  <tr className="text-slate-400 border-b border-slate-100 text-xs font-bold uppercase tracking-wider">
+                    <th className="pb-3 pr-2">المنتج</th>
+                    <th className="pb-3">الكمية</th>
+                    <th className="pb-3 text-center">سعر الشراء</th>
+                    <th className="pb-3 text-left pl-2">الإجمالي</th>
+                    <th className="pb-3 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {billItems.map(item => (
+                    <tr key={item.id} className="group hover:bg-slate-50/50 transition-colors">
+                      <td className="py-3 pr-2">
+                        <p className="text-slate-800 font-semibold">{item.name}</p>
+                      </td>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => updateItem(item.id, 'qty', Math.max(1, item.qty - 1))} 
+                            className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-slate-200 text-slate-600 transition-colors"
+                          >
+                            <Minus size={13}/>
+                          </button>
+                          <input 
+                            type="number" 
+                            value={item.qty} 
+                            onChange={e => updateItem(item.id, 'qty', Number(e.target.value))}
+                            className="w-12 bg-transparent text-center font-bold text-slate-800 border-b border-slate-200 focus:border-primary-500 outline-none"
+                          />
+                          <button 
+                            onClick={() => updateItem(item.id, 'qty', item.qty + 1)} 
+                            className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-slate-200 text-slate-600 transition-colors"
+                          >
+                            <Plus size={13}/>
+                          </button>
+                        </div>
+                      </td>
+                      <td className="py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <input 
+                            type="number" 
+                            value={item.cost} 
+                            onChange={e => updateItem(item.id, 'cost', e.target.value)}
+                            className="w-24 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 text-center font-bold text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-100"
+                          />
+                          <span className="text-[10px] text-slate-400 font-bold">ج.م</span>
+                        </div>
+                      </td>
+                      <td className="py-3 text-left pl-2 font-black text-slate-800">
+                        {(Number(item.cost) * item.qty).toLocaleString('en-US')}
+                        <span className="text-[10px] font-normal text-slate-400 mr-1">ج.م</span>
+                      </td>
+                      <td className="py-3 text-center">
+                        <button onClick={() => removeItem(item.id)} className="text-slate-300 hover:text-red-400 p-2 transition-colors rounded-lg hover:bg-red-50">
+                          <Trash2 size={15}/>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {billItems.length === 0 && (
+                <div className="text-center py-16">
+                  <ShoppingBag size={40} className="mx-auto text-slate-200 mb-3" />
+                  <p className="text-slate-400 text-sm font-medium">ابدأ بالبحث عن منتجات لإضافتها للفاتورة</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Right: Supplier & Totals */}
         <div className="space-y-4">
-          <div className="glass-card space-y-4">
-             <h2 className="font-bold text-white flex items-center gap-2 text-sm border-b border-white/5 pb-3">
-                <Truck size={16} className="text-primary-400" /> بيانات المورد والدفع
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+            <h2 className="font-bold text-slate-700 flex items-center gap-2 text-sm border-b border-slate-100 pb-3">
+              <Truck size={16} className="text-primary-500" /> بيانات المورد والدفع
             </h2>
 
             <div className="space-y-3">
-                <div>
-                    <label className="text-xs text-slate-500 block mb-1.5">اختر المورد:</label>
-                    <select 
-                        value={selectedSupplierId} 
-                        onChange={e => setSupplierId(e.target.value)} 
-                        className="input text-sm"
-                    >
-                        <option value="">-- اختر المورد --</option>
-                        {suppliers.map(s => (
-                            <option key={s.id} value={s.id}>{s.name} {s.debtTotal > 0 ? `(مديونية: ${s.debtTotal})` : ''}</option>
-                        ))}
-                    </select>
-                </div>
+              <div>
+                <label className="text-xs text-slate-500 font-bold block mb-1.5">اختر المورد:</label>
+                <select 
+                  value={selectedSupplierId} 
+                  onChange={e => setSupplierId(e.target.value)} 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all"
+                >
+                  <option value="">-- اختر المورد --</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} {s.debtTotal > 0 ? `(مديونية: ${s.debtTotal})` : ''}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div className="pt-2">
-                    <div className="flex items-center justify-between text-slate-400 text-sm mb-2">
-                        <span>إجمالي الفاتورة:</span>
-                        <span className="text-white font-bold">{total.toLocaleString('en-US')} ج.م</span>
-                    </div>
-                    <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/5">
-                        <div>
-                            <label className="text-xs text-slate-500 block mb-1.5 font-bold">المبلغ المدفوع للمورد (كاش):</label>
-                            <div className="relative">
-                                <DollarSign size={14} className="absolute right-3 top-2.5 text-emerald-400" />
-                                <input 
-                                    type="number" 
-                                    value={paidAmount} 
-                                    onChange={e => setPaidAmount(e.target.value)} 
-                                    placeholder="0" 
-                                    className="input pr-9 pl-4 py-2 font-bold text-emerald-400 border-emerald-500/20" 
-                                />
-                            </div>
-                        </div>
-                        
-                        {due > 0 && (
-                            <div className="flex justify-between items-center text-xs pt-1">
-                                <span className="text-red-400 font-bold bg-red-400/10 px-2 py-0.5 rounded">سيتم تسجيل مديونية:</span>
-                                <span className="text-red-400 font-bold underline">{due.toLocaleString('en-US')} ج.م</span>
-                            </div>
-                        )}
-                        {due === 0 && total > 0 && (
-                             <div className="flex justify-center items-center gap-2 text-[10px] text-emerald-400 font-bold">
-                                <BadgeCheck size={14} /> تم دفع الفاتورة بالكامل
-                            </div>
-                        )}
-                    </div>
+              <div className="pt-2">
+                <div className="flex items-center justify-between text-sm mb-3">
+                  <span className="text-slate-500 font-medium">إجمالي الفاتورة:</span>
+                  <span className="text-slate-800 font-black text-lg">{total.toLocaleString('en-US')} <span className="text-xs font-normal text-slate-400">ج.م</span></span>
                 </div>
+                <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div>
+                    <label className="text-xs text-slate-500 font-bold block mb-1.5">المبلغ المدفوع للمورد (كاش):</label>
+                    <div className="relative">
+                      <DollarSign size={14} className="absolute right-3 top-2.5 text-emerald-500" />
+                      <input 
+                        type="number" 
+                        value={paidAmount} 
+                        onChange={e => setPaidAmount(e.target.value)} 
+                        placeholder="0" 
+                        className="w-full bg-white border border-emerald-200 rounded-xl pr-9 pl-4 py-2.5 font-bold text-emerald-700 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" 
+                      />
+                    </div>
+                  </div>
+                  
+                  {due > 0 && (
+                    <div className="flex justify-between items-center text-xs pt-1 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                      <span className="text-red-600 font-bold">سيتم تسجيل مديونية:</span>
+                      <span className="text-red-600 font-black">{due.toLocaleString('en-US')} ج.م</span>
+                    </div>
+                  )}
+                  {due === 0 && total > 0 && (
+                    <div className="flex justify-center items-center gap-2 text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 rounded-xl py-2">
+                      <BadgeCheck size={14} /> تم دفع الفاتورة بالكامل
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <button 
-                onClick={handleSave}
-                disabled={saving || billItems.length === 0}
-                className="btn-primary w-full py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-glow font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
+              onClick={handleSave}
+              disabled={saving || billItems.length === 0}
+              className="btn-primary w-full py-3.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                <FileText size={18} />
-                {saving ? 'جاري الحفظ...' : 'اعتماد فاتورة الشراء'}
+              <FileText size={17} />
+              {saving ? 'جاري الحفظ...' : 'اعتماد فاتورة الشراء'}
             </button>
           </div>
 
-          <div className="glass-card bg-primary-500/5 border-primary-500/10">
-              <p className="text-[10px] text-slate-400 leading-relaxed italic">
-                  * سيتم تحديث الكميات في المخزن تلقائياً وتحديث "سعر التكلفة" للصنف بناءً على هذه الفاتورة لضمان دقة حساب الأرباح مستقبلاً.
-              </p>
+          <div className="bg-primary-50 border border-primary-100 rounded-2xl p-4">
+            <p className="text-[10px] text-primary-700/70 leading-relaxed">
+              * سيتم تحديث الكميات في المخزن تلقائياً وتحديث "سعر التكلفة" للصنف بناءً على هذه الفاتورة لضمان دقة حساب الأرباح مستقبلاً.
+            </p>
           </div>
         </div>
       </div>
