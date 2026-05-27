@@ -1017,11 +1017,34 @@ export default function POS() {
         items: cart.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
       })
 
+      // ── إرسال الفاتورة تلقائياً عبر واتساب إذا كان للعميل رقم هاتف ──
+      if (customer.phone) {
+        toast.loading('جاري إرسال الفاتورة على واتساب...', { id: 'wa-send' })
+        try {
+          const waRes = await fetch('/api/send-invoice-whatsapp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: invId }),
+          })
+          if (waRes.ok) {
+            toast.success('✅ تم إرسال الفاتورة للعميل على واتساب!', { id: 'wa-send', duration: 4000 })
+          } else {
+            const err = await waRes.json().catch(() => ({}))
+            console.warn('WhatsApp send failed:', err)
+            toast.error(`⚠️ لم يُرسل الواتساب: ${err?.error || 'خطأ غير معروف'}`, { id: 'wa-send', duration: 5000 })
+          }
+        } catch (waErr) {
+          console.warn('WhatsApp send error:', waErr)
+          toast.error('⚠️ تعذّر الاتصال بخدمة الواتساب', { id: 'wa-send', duration: 5000 })
+        }
+      }
+
       setCustomer({ name: '', phone: '', carModel: '', licensePlate: '', nationalId: '' })
       setPayments({ cash: '', visa: '', instapay: '' })
       setReminders({})
     } catch (e) {
       console.error(e)
+      toast.error('حدث خطأ أثناء حفظ الفاتورة!')
     } finally {
       setSaving(false)
     }
