@@ -1,0 +1,11 @@
+{
+  "name": "elfarouk-whatsapp-reminders",
+  "description": "سكريبت إرسال تذكيرات الواتساب عبر GitHub Actions",
+  "version": "1.0.0",
+  "main": "send-reminders.js",
+  "dependencies": {
+    "firebase-admin": "^12.1.0",
+    "axios": "^1.6.8"
+  },
+  "private": true
+}

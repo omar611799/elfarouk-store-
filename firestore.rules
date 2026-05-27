@@ -384,6 +384,15 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ====================================================
+    // مجموعة الصيانة - لإرسال تذكيرات الواتساب
+    // Cloud Functions تقرأها بصلاحيات Admin (تتجاوز Rules)
+    // ====================================================
+    match /maintenance/{id} {
+      allow read, write: if isAdmin();
+      allow read: if isStaff();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
