@@ -327,6 +327,13 @@ export async function completeSale({ items, cartItems, customerData, total, invo
       debtTotal: dueAmount,
     })
   }
+  
+  // إرسال الفاتورة تلقائياً للعميل عبر الواتساب في الخلفية دون تعطيل الواجهة
+  if (customerFields.phone) {
+    fetch(`/api/send-invoice-whatsapp?id=${invRef.id}`).catch((err) => {
+      console.error('❌ WhatsApp auto-send error:', err);
+    });
+  }
 
   return { id: invRef.id, number: finalInvoiceNumber }
 }
