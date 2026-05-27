@@ -1,5 +1,4 @@
 import { getAdminDb } from './_lib/firebaseAdmin.js'
-import axios from 'axios'
 
 function normalizePhone(phone) {
   let cleaned = String(phone || '').replace(/\D/g, '');
@@ -75,36 +74,44 @@ export default async function handler(req, res) {
       `الفاروق ستور للسيارات`;
 
     const url = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
-    const response = await axios.post(
-      url,
-      {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
+    
+    const waResponse = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
         to: phone,
-        type: "text",
+        type: 'text',
         text: {
-          preview_url: true, // لتفعيل المعاينة الأنيقة للرابط
+          preview_url: true,
           body: messageBody,
         },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+      }),
+    });
+
+    const waData = await waResponse.json();
+
+    if (!waResponse.ok) {
+      console.error('❌ WhatsApp API error:', JSON.stringify(waData));
+      return res.status(502).json({
+        error: 'WhatsApp API rejected the request',
+        details: waData,
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      messageId: response.data?.messages?.[0]?.id,
+      messageId: waData?.messages?.[0]?.id,
     });
 
   } catch (error) {
     console.error('💥 WhatsApp sending error:', error);
     return res.status(500).json({
       error: error.message || 'Failed to send WhatsApp message',
-      details: error.response?.data || null
     });
   }
 }
