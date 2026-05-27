@@ -3,7 +3,7 @@ import { useStore } from '../context/StoreContext'
 import { motion } from 'framer-motion'
 import {
   BarChart3, TrendingUp, TrendingDown, Download,
-  Package, FileText, Wallet, Calendar, ArrowUpRight
+  Package, FileText, Wallet, Calendar, ArrowUpRight, Users
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -17,7 +17,7 @@ const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } }
 const PIE_COLORS = ['#225c97', '#4b6786', '#10b981', '#7c93ad', '#f43f5e', '#eab308']
 
 export default function Reports() {
-  const { products, invoices, expenses } = useStore()
+  const { products, invoices, expenses, customers = [], purchases = [], suppliers = [], transactions = [] } = useStore()
   const [period, setPeriod] = useState('30d')
 
   // ── Calculations ──────────────────────────────────────────────────────────
@@ -31,6 +31,41 @@ export default function Reports() {
       }, 0), 0)
     return grossProfit - totalExpenses
   }, [invoices, totalExpenses])
+
+  // ── Cashier Performance Chart Data ──────────────────────────────────────
+  const cashierSales = useMemo(() => {
+    const map = {}
+    invoices.forEach(inv => {
+      const name = inv.cashierName || 'كاشير غير محدد'
+      map[name] = (map[name] || 0) + Number(inv.total || 0)
+    })
+    return Object.entries(map).map(([name, sales]) => ({ name, sales: Math.round(sales) }))
+  }, [invoices])
+
+  // ── Top Customers ─────────────────────────────────────────────────────────
+  const topCustomersList = useMemo(() => {
+    return [...customers]
+      .sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0))
+      .slice(0, 5)
+  }, [customers])
+
+  // ── Returns vs Sales/Purchases ───────────────────────────────────────────
+  const returnsMetrics = useMemo(() => {
+    const totalSales = totalRevenue
+    const totalSalesReturns = transactions
+      .filter(t => t.type === 'return')
+      .reduce((sum, t) => sum + Math.abs(Number(t.amount || 0)), 0)
+
+    const totalPurchases = purchases.reduce((sum, p) => sum + Number(p.total || 0), 0)
+    const totalSupplierReturns = transactions
+      .filter(t => t.type === 'supplier_return')
+      .reduce((sum, t) => sum + Math.abs(Number(t.amount || 0)), 0)
+
+    return [
+      { name: 'مبيعات vs مرتجع مبيعات', 'المبيعات': Math.round(totalSales), 'المرتجعات': Math.round(totalSalesReturns) },
+      { name: 'مشتريات vs مرتجع مشتريات', 'المشتريات': Math.round(totalPurchases), 'المرتجعات': Math.round(totalSupplierReturns) }
+    ]
+  }, [transactions, purchases, totalRevenue])
 
   // ── Sales history ─────────────────────────────────────────────────────────
   const salesHistory = useMemo(() => {
@@ -86,15 +121,20 @@ export default function Reports() {
   // ── Export ────────────────────────────────────────────────────────────────
   const exportExcel = () => {
     const wb = XLSX.utils.book_new()
+    
+    // 1. Invoices Sheet
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
       invoices.map(i => ({
         'رقم الفاتورة': i.number,
         'العميل':       i.customerData?.name || 'نقدي',
         'الإجمالي':     i.total || 0,
         'الحالة':       i.paymentStatus === 'paid' ? 'مدفوعة' : 'جزئية',
+        'الكاشير':      i.cashierName || 'غير حدد',
         'التاريخ':      (i.createdAt?.toDate?.() || new Date(i.createdAt || 0)).toLocaleDateString('ar-EG'),
       }))
     ), 'الفواتير')
+    
+    // 2. Inventory Sheet
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
       products.map(p => ({
         'الاسم': p.name, 'الكمية': p.quantity,
@@ -102,6 +142,32 @@ export default function Reports() {
         'الفئة': p.category || 'غير مصنف',
       }))
     ), 'المخزون')
+
+    // 3. Expenses Sheet
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+      expenses.map(e => ({
+        'البند/المصروف': e.category || e.name || 'أخرى',
+        'المبلغ': e.amount || 0,
+        'ملاحظات': e.notes || '',
+        'التاريخ': (e.createdAt?.toDate?.() || new Date(e.createdAt || 0)).toLocaleDateString('ar-EG'),
+      }))
+    ), 'المصروفات')
+
+    // 4. Purchases Sheet
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+      purchases.map(p => {
+        const supplier = suppliers.find(s => s.id === p.supplierId)
+        return {
+          'رقم فاتورة المورد': p.billNumber || '—',
+          'المورد': supplier?.name || 'مورد غير معروف',
+          'الإجمالي': p.total || 0,
+          'المدفوع': p.paidAmount || 0,
+          'المتبقي': p.dueAmount || 0,
+          'التاريخ': (p.createdAt?.toDate?.() || new Date(p.createdAt || 0)).toLocaleDateString('ar-EG'),
+        }
+      })
+    ), 'المشتريات')
+
     XLSX.writeFile(wb, `تقرير-الفاروق-${new Date().toLocaleDateString('ar-EG')}.xlsx`)
   }
 
@@ -111,7 +177,7 @@ export default function Reports() {
       {/* ── Header ── */}
       <motion.div variants={item} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+          <h1 className="text-xl sm:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
             <span className="w-10 h-10 bg-violet-100 rounded-2xl flex items-center justify-center">
               <BarChart3 size={20} className="text-violet-600" />
             </span>
@@ -186,6 +252,61 @@ export default function Reports() {
         </div>
       </motion.div>
 
+      {/* ── Row: Cashier Performance + Returns Chart ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Cashier Performance */}
+        <motion.div variants={item} className="card !p-0 overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+            <h3 className="font-black text-slate-800 flex items-center gap-2">
+              <Users size={16} className="text-primary-600" />
+              أداء مبيعات الكاشير
+            </h3>
+          </div>
+          {cashierSales.length === 0 ? (
+            <div className="py-16 text-center text-slate-350">
+              <p className="text-sm font-bold">لا توجد مبيعات مسجلة للكاشير</p>
+            </div>
+          ) : (
+            <div className="h-[280px] px-4 py-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={cashierSales} barSize={24}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 700 }} />
+                  <Tooltip formatter={v => [`${v.toLocaleString()} ج.م`, 'المبيعات']}
+                    contentStyle={{ background: '#fff', borderRadius: 12, border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', fontSize: 11 }} />
+                  <Bar dataKey="sales" fill="#10b981" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Returns Comparison */}
+        <motion.div variants={item} className="card !p-0 overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+            <h3 className="font-black text-slate-800 flex items-center gap-2">
+              <ArrowUpRight size={16} className="text-rose-500" />
+              المرتجعات مقابل العمليات الأصلية
+            </h3>
+          </div>
+          <div className="h-[280px] px-4 py-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={returnsMetrics} barSize={20}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 700 }} />
+                <Tooltip contentStyle={{ background: '#fff', borderRadius: 12, border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', fontSize: 11 }} />
+                <Legend />
+                <Bar dataKey="المبيعات" fill="#225c97" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="المشتريات" fill="#4b6786" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="المرتجعات" fill="#f43f5e" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+      </div>
+
       {/* ── Row: Top Products Bar + Category Pie ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -209,7 +330,7 @@ export default function Reports() {
                     tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="name" width={90} axisLine={false} tickLine={false}
                     tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} />
-                  <Tooltip formatter={v => [`${v.toLocaleString()} ج.م`, 'الإيراد']}
+                  <Tooltip formatter={v => [`${v.toLocaleString()} ج.م`, 'المبيعات']}
                     contentStyle={{ background: '#fff', borderRadius: 12, border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', fontSize: 11 }} />
                   <Bar dataKey="revenue" fill="#225c97" radius={[0, 6, 6, 0]} />
                 </BarChart>
@@ -274,63 +395,103 @@ export default function Reports() {
         </motion.div>
       </div>
 
-      {/* ── Low Stock Table ── */}
-      <motion.div variants={item} className="card !p-0 overflow-hidden">
-        <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-black text-slate-800 flex items-center gap-2">
-            <TrendingDown size={16} className="text-rose-500" />
-            منتجات تحتاج إعادة طلب
-          </h3>
-          <span className="text-[10px] font-black text-rose-500 bg-rose-50 px-3 py-1 rounded-full">
-            {products.filter(p => p.quantity <= (p.minStock || 5)).length} منتج
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-right">
-            <thead className="bg-slate-50">
-              <tr className="text-[10px] font-black text-slate-400 uppercase">
-                <th className="px-6 py-3">المنتج</th>
-                <th className="px-4 py-3 text-center">المخزون</th>
-                <th className="px-4 py-3 text-center">الحد الأدنى</th>
-                <th className="px-4 py-3 text-center">الفئة</th>
-                <th className="px-4 py-3 text-left">السعر</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {products
-                .filter(p => p.quantity <= (p.minStock || 5))
-                .slice(0, 10)
-                .map(p => (
-                  <tr key={p.id} className="hover:bg-red-50/50 transition-colors">
-                    <td className="px-6 py-3">
-                      <p className="font-black text-slate-800 text-sm">{p.name}</p>
-                      <p className="text-[9px] text-slate-400 font-bold">{p.sku || '–'}</p>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-rose-600 font-black text-base">{p.quantity}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-slate-500 font-bold text-sm">{p.minStock || 5}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-[10px] font-black text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">{p.category || '–'}</span>
-                    </td>
-                    <td className="px-4 py-3 text-left">
-                      <span className="font-black text-slate-800">{Number(p.price).toLocaleString()} ج</span>
+      {/* ── Row: Top Customers + Low Stock Table ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Spending Customers */}
+        <motion.div variants={item} className="card !p-0 overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="font-black text-slate-800 flex items-center gap-2">
+              <Users size={16} className="text-primary-600" />
+              العملاء الأكثر إنفاقاً
+            </h3>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {topCustomersList.length === 0 ? (
+              <div className="py-12 text-center text-slate-300">
+                <p className="text-sm font-bold">لا يوجد عملاء مسجلين بعد</p>
+              </div>
+            ) : (
+              topCustomersList.map((cust, i) => (
+                <div key={cust.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-black text-xs">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="font-black text-slate-800 text-sm">{cust.name}</p>
+                      <p className="text-[10px] text-slate-400 font-bold">{cust.phone || 'بدون هاتف'}</p>
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <p className="font-black text-slate-800 text-sm">
+                      {Number(cust.totalSpent || 0).toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">ج.م</span>
+                    </p>
+                    <p className="text-[9px] text-slate-400 font-bold">{cust.invoiceCount || 0} فواتير</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </motion.div>
+
+        {/* Low Stock Table */}
+        <motion.div variants={item} className="card !p-0 overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="font-black text-slate-800 flex items-center gap-2">
+              <TrendingDown size={16} className="text-rose-500" />
+              منتجات تحتاج إعادة طلب
+            </h3>
+            <span className="text-[10px] font-black text-rose-500 bg-rose-50 px-3 py-1 rounded-full">
+              {products.filter(p => p.quantity <= (p.minStock || 5)).length} منتج
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-right">
+              <thead className="bg-slate-50">
+                <tr className="text-[10px] font-black text-slate-400 uppercase">
+                  <th className="px-6 py-3">المنتج</th>
+                  <th className="px-4 py-3 text-center">المخزون</th>
+                  <th className="px-4 py-3 text-center">الحد الأدنى</th>
+                  <th className="px-4 py-3 text-center">الفئة</th>
+                  <th className="px-4 py-3 text-left">السعر</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {products
+                  .filter(p => p.quantity <= (p.minStock || 5))
+                  .slice(0, 10)
+                  .map(p => (
+                    <tr key={p.id} className="hover:bg-red-50/50 transition-colors">
+                      <td className="px-6 py-3">
+                        <p className="font-black text-slate-800 text-sm">{p.name}</p>
+                        <p className="text-[9px] text-slate-400 font-bold">{p.sku || '–'}</p>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-rose-600 font-black text-base">{p.quantity}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-slate-500 font-bold text-sm">{p.minStock || 5}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-[10px] font-black text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">{p.category || '–'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-left">
+                        <span className="font-black text-slate-800">{Number(p.price).toLocaleString()} ج</span>
+                      </td>
+                    </tr>
+                  ))}
+                {products.filter(p => p.quantity <= (p.minStock || 5)).length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-bold">
+                      ✅ جميع المنتجات فوق الحد المطلوب
                     </td>
                   </tr>
-                ))}
-              {products.filter(p => p.quantity <= (p.minStock || 5)).length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-bold">
-                    ✅ جميع المنتجات فوق الحد المطلوب
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      </div>
 
     </motion.div>
   )

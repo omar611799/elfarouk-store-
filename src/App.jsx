@@ -32,6 +32,10 @@ const CustomerLogin = lazy(() => import('./pages/CustomerLogin'))
 const CustomerAccount = lazy(() => import('./pages/CustomerAccount'))
 const Launchpad = lazy(() => import('./pages/Launchpad'))
 const Login = lazy(() => import('./pages/Login'))
+const SupplierReturns = lazy(() => import('./pages/SupplierReturns'))
+const SalesReturns = lazy(() => import('./pages/SalesReturns'))
+const StaffActivity = lazy(() => import('./pages/StaffActivity'))
+const ServiceCalendar = lazy(() => import('./pages/ServiceCalendar'))
 
 function isStaffRole(role) {
   return role === 'admin' || role === 'cashier'
@@ -149,16 +153,20 @@ function AppRouter() {
               <>
                 <Route path="categories" element={<Categories />} />
                 <Route path="suppliers" element={<Suppliers />} />
+                <Route path="supplier-returns" element={<SupplierReturns />} />
                 <Route path="invoices" element={<Invoices />} />
+                <Route path="sales-returns" element={<SalesReturns />} />
                 <Route path="quotes" element={<Quotes />} />
                 <Route path="stock-history" element={<StockHistory />} />
                 <Route path="ledger" element={<Ledger />} />
                 <Route path="expenses" element={<Expenses />} />
                 <Route path="transactions" element={<Transactions />} />
                 <Route path="reports" element={<Reports />} />
+                <Route path="staff-activity" element={<StaffActivity />} />
                 <Route path="reminders" element={<Reminders />} />
                 <Route path="purchases" element={<Purchases />} />
                 <Route path="service-bookings" element={<ServiceBookingsAdmin />} />
+                <Route path="service-calendar" element={<ServiceCalendar />} />
               </>
             ) : null}
 

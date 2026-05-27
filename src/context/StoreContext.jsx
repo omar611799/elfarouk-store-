@@ -31,6 +31,7 @@ import {
   deleteExpense,
   recordPurchase,
   paySupplierDebt,
+  recordSupplierReturn,
   updateServiceBooking,
   addServiceMessage,
   addNotification,
@@ -53,6 +54,7 @@ const init = {
   expenses: [],
   quotes: [],
   purchases: [],
+  supplierReturns: [],
   serviceBookings: [],
   serviceMessages: [],
   notifications: [],
@@ -167,6 +169,11 @@ export function StoreProvider({ children }) {
         unsubs.push(
           listenColLimited(COLS.PURCHASES, (data) =>
             dispatch({ type: 'SET', key: 'purchases', data })
+          , 50)
+        )
+        unsubs.push(
+          listenColLimited(COLS.SUPPLIER_RETURNS, (data) =>
+            dispatch({ type: 'SET', key: 'supplierReturns', data: sortByCreatedAtDesc(data) })
           , 50)
         )
         unsubs.push(
@@ -391,7 +398,12 @@ export function StoreProvider({ children }) {
 
   const handleCompleteSale = async (params) => {
     try {
-      const id = await completeSale(params)
+      // Attach cashier info to be saved with the invoice
+      const enrichedCustomerData = {
+        ...params.customerData,
+        _cashier: { uid: currentUser?.uid || '', name: currentUser?.name || '' },
+      }
+      const id = await completeSale({ ...params, customerData: enrichedCustomerData })
       dispatch({ type: 'CART_CLEAR' })
       toast.success('تم إتمام البيع بنجاح')
       return id
@@ -467,6 +479,20 @@ export function StoreProvider({ children }) {
     try {
       await recordPurchase(data)
       toast.success('تم تسجيل فاتورة الشراء وتحديث المخزون')
+    } catch (error) {
+      toast.error(error.message)
+      throw error
+    }
+  }
+
+  const handleRecordSupplierReturn = async (data) => {
+    try {
+      await recordSupplierReturn({
+        ...data,
+        cashierUid: currentUser?.uid || '',
+        cashierName: currentUser?.name || '',
+      })
+      toast.success('تم تسجيل المرتجع وتحديث المخزون بنجاح')
     } catch (error) {
       toast.error(error.message)
       throw error
@@ -611,6 +637,7 @@ export function StoreProvider({ children }) {
       deleteExpense: handleDeleteExpense,
       recordPurchase: handleRecordPurchase,
       paySupplierDebt: handlePaySupplierDebt,
+      recordSupplierReturn: handleRecordSupplierReturn,
       addServiceBooking: handleAddServiceBooking,
       updateServiceBooking: handleUpdateServiceBooking,
       addServiceMessage: handleAddServiceMessage,

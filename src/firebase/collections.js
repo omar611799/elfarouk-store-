@@ -31,6 +31,7 @@ export const COLS = {
   USERS: 'users',
   STOCK_LOGS: 'stockLogs',
   PURCHASES: 'purchases',
+  SUPPLIER_RETURNS: 'supplierReturns',
   SERVICE_BOOKINGS: 'serviceBookings',
   SERVICE_SLOT_LOCKS: 'serviceSlotLocks',
   CUSTOMER_SERVICE_LOCKS: 'customerServiceLocks',
@@ -250,6 +251,7 @@ export async function completeSale({ items, cartItems, customerData, total, invo
     cost: item.cost || 0 // cost should be passed from POS
   }))
 
+  const cashierData = customerData._cashier || {}
   batch.set(invRef, {
     number: finalInvoiceNumber,
     items: enrichedItems,
@@ -259,6 +261,8 @@ export async function completeSale({ items, cartItems, customerData, total, invo
     payments: paymentsBreakdown,
     dueAmount,
     paymentStatus,
+    cashierUid: cashierData.uid || '',
+    cashierName: cashierData.name || '',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
@@ -820,4 +824,66 @@ export async function adjustCustomerWallet({ uid, amount, kind = 'cashback', not
   })
 
   return { balance: nextBalance }
+}
+
+// ── Supplier Returns (مرتجعات الموردين) ──
+export async function recordSupplierReturn({ supplierId, purchaseId, items, totalValue, note, cashierUid, cashierName }) {
+  const batch = writeBatch(db)
+
+  // 1. Save return record
+  const returnRef = doc(collection(db, COLS.SUPPLIER_RETURNS))
+  batch.set(returnRef, {
+    supplierId,
+    purchaseId: purchaseId || '',
+    items,
+    totalValue,
+    note: note || '',
+    cashierUid: cashierUid || '',
+    cashierName: cashierName || '',
+    createdAt: serverTimestamp(),
+  })
+
+  // 2. Deduct stock for returned items
+  for (const item of items) {
+    if (item.qty <= 0) continue
+    const p = await getDoc_(COLS.PRODUCTS, item.id)
+    if (p) {
+      const newQty = Math.max(0, (p.quantity || 0) - item.qty)
+      batch.update(doc(db, COLS.PRODUCTS, item.id), {
+        quantity: newQty,
+        updatedAt: serverTimestamp(),
+      })
+      logStockChange(batch, {
+        productId: item.id,
+        productName: item.name,
+        type: 'supplier_return',
+        delta: -item.qty,
+        newQty,
+        refId: returnRef.id,
+        note: `مرتجع للمورد${note ? ' - ' + note : ''}`,
+      })
+    }
+  }
+
+  // 3. Update supplier debt (reduce by return value)
+  const s = await getDoc_(COLS.SUPPLIERS, supplierId)
+  if (s) {
+    batch.update(doc(db, COLS.SUPPLIERS, supplierId), {
+      debtTotal: Math.max(0, (s.debtTotal || 0) - totalValue),
+      updatedAt: serverTimestamp(),
+    })
+  }
+
+  // 4. Register transaction
+  const txRef = doc(collection(db, COLS.TRANSACTIONS))
+  batch.set(txRef, {
+    type: 'supplier_return',
+    refId: returnRef.id,
+    details: `مرتجع للمورد${note ? ' - ' + note : ''}`,
+    amount: totalValue,
+    createdAt: serverTimestamp(),
+  })
+
+  await batch.commit()
+  return returnRef.id
 }

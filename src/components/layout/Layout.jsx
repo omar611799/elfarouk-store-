@@ -2,16 +2,20 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
+  Activity,
   ArrowLeftRight,
   BarChart3,
   Bell,
   BookOpen,
+  Calendar,
   ClipboardList,
   FileText,
   LayoutDashboard,
   LogOut,
   Menu,
   Package,
+  RefreshCcw,
+  RotateCcw,
   Search,
   Settings,
   ShoppingBag,
@@ -32,15 +36,19 @@ const nav = [
   { to: '/products', icon: Package, label: 'المخزن', adminOnly: false },
   { to: '/categories', icon: Tag, label: 'الفئات', adminOnly: true },
   { to: '/suppliers', icon: Truck, label: 'الموردين', adminOnly: true },
+  { to: '/supplier-returns', icon: RotateCcw, label: 'مرتجعات الموردين', adminOnly: true },
   { to: '/purchases', icon: ShoppingBag, label: 'المشتريات', adminOnly: true },
   { to: '/customers', icon: Users, label: 'العملاء', adminOnly: false },
   { to: '/invoices', icon: FileText, label: 'الفواتير', adminOnly: true },
+  { to: '/sales-returns', icon: RefreshCcw, label: 'مرتجعات المبيعات', adminOnly: true },
   { to: '/quotes', icon: ClipboardList, label: 'عروض أسعار', adminOnly: true },
   { to: '/ledger', icon: BookOpen, label: 'المديونيات', adminOnly: true },
   { to: '/reminders', icon: Bell, label: 'المنبهات', adminOnly: true },
   { to: '/transactions', icon: ArrowLeftRight, label: 'المعاملات', adminOnly: true },
   { to: '/reports', icon: BarChart3, label: 'التقارير', adminOnly: true },
+  { to: '/staff-activity', icon: Activity, label: 'نشاط الموظفين', adminOnly: true },
   { to: '/service-bookings', icon: Wrench, label: 'حجوزات الصيانة', adminOnly: true },
+  { to: '/service-calendar', icon: Calendar, label: 'تقويم الصيانة', adminOnly: true },
 ]
 
 function matchesRoute(pathname, to) {
@@ -56,9 +64,21 @@ function getMobileNavLabel(to, label) {
 
 export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const { cartCount, products } = useStore()
+  const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const [notifTab, setNotifTab] = useState('stock')
+  const { cartCount, products, notifications = [], markNotificationAsRead } = useStore()
   const { currentUser, logout } = useAuth()
   const location = useLocation()
+
+  const lowStockProducts = useMemo(() => {
+    return products.filter(p => p.quantity <= (p.minStock || 5))
+  }, [products])
+
+  const unreadDbNotifications = useMemo(() => {
+    return notifications.filter(n => !n.read)
+  }, [notifications])
+
+  const totalNotifCount = lowStockProducts.length + unreadDbNotifications.length
 
   const activePage = nav.find((item) => matchesRoute(location.pathname, item.to)) || nav[0]
   const isPosRoute = location.pathname.startsWith('/pos')
@@ -295,11 +315,124 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <div className="hidden items-center gap-2 sm:flex">
-              <button className="group relative flex h-11 w-11 items-center justify-center rounded-2xl border border-primary-100 bg-white text-slate-500 transition-all hover:bg-primary-50 hover:text-primary-600">
+            {/* Bell Notifications */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="group relative flex h-11 w-11 items-center justify-center rounded-2xl border border-primary-100 bg-white text-slate-500 transition-all hover:bg-primary-50 hover:text-primary-600"
+              >
                 <Bell size={20} />
-                <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full border-2 border-white bg-primary-500 group-hover:animate-ping" />
+                {totalNotifCount > 0 && (
+                  <span className="absolute -top-1.5 -left-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white ring-2 ring-white">
+                    {totalNotifCount}
+                  </span>
+                )}
               </button>
+
+              <AnimatePresence>
+                {isNotifOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsNotifOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 mt-3 z-50 w-80 sm:w-96 rounded-3xl border border-slate-100 bg-white p-4 shadow-[0_20px_50px_rgba(8,17,28,0.15)]"
+                    >
+                      {/* Dropdown Header */}
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                        <h3 className="font-black text-slate-900 text-sm">الإشعارات</h3>
+                        {totalNotifCount > 0 && (
+                          <span className="text-[10px] font-black bg-rose-50 text-rose-600 px-2.5 py-0.5 rounded-full">
+                            {totalNotifCount} جديدة
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Tabs */}
+                      <div className="flex border-b border-slate-100 pb-2 mb-2 text-xs font-bold text-slate-500">
+                        <button
+                          onClick={() => setNotifTab('stock')}
+                          className={`flex-1 pb-1.5 text-center border-b-2 transition-all ${
+                            notifTab === 'stock'
+                              ? 'border-primary-500 text-primary-600 font-black'
+                              : 'border-transparent hover:text-slate-800'
+                          }`}
+                        >
+                          مخزون منخفض ({lowStockProducts.length})
+                        </button>
+                        {currentUser?.role === 'admin' && (
+                          <button
+                            onClick={() => setNotifTab('system')}
+                            className={`flex-1 pb-1.5 text-center border-b-2 transition-all ${
+                              notifTab === 'system'
+                                ? 'border-primary-500 text-primary-600 font-black'
+                                : 'border-transparent hover:text-slate-800'
+                            }`}
+                          >
+                            النظام ({unreadDbNotifications.length})
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="max-h-64 overflow-y-auto space-y-2 custom-scrollbar text-right">
+                        {notifTab === 'stock' ? (
+                          lowStockProducts.length === 0 ? (
+                            <p className="text-center py-6 text-xs text-slate-400 font-bold">جميع المنتجات متوفرة بمخزون كافٍ ✓</p>
+                          ) : (
+                            lowStockProducts.map(p => (
+                              <div key={p.id} className="p-2.5 rounded-2xl bg-amber-500/[0.03] border border-amber-500/10 flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                                  <Package size={16} className="text-amber-500" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-black text-slate-900 text-xs truncate">{p.name}</p>
+                                  <p className="text-[10px] text-slate-500 font-bold mt-1">
+                                    الكمية الحالية: <span className="text-rose-500 font-black">{p.quantity}</span> (الحد الأدنى: {p.minStock || 5})
+                                  </p>
+                                </div>
+                              </div>
+                            ))
+                          )
+                        ) : (
+                          unreadDbNotifications.length === 0 ? (
+                            <p className="text-center py-6 text-xs text-slate-400 font-bold">لا توجد إشعارات نظام غير مقروءة</p>
+                          ) : (
+                            unreadDbNotifications.map(n => {
+                              const date = n.createdAt?.toDate?.() || new Date(n.createdAt || 0)
+                              return (
+                                <div key={n.id} className="p-2.5 rounded-2xl bg-primary-500/[0.03] border border-primary-500/10 flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-xl bg-primary-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                                    <Bell size={14} className="text-primary-500" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex justify-between items-start">
+                                      <p className="font-black text-slate-900 text-xs">{n.title}</p>
+                                      <button
+                                        onClick={() => markNotificationAsRead(n.id)}
+                                        className="text-[9px] text-primary-500 font-black hover:underline shrink-0"
+                                      >
+                                        قراءة
+                                      </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-1 line-clamp-2">{n.body}</p>
+                                    <p className="text-[8px] text-slate-400 font-bold mt-1">{date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                                  </div>
+                                </div>
+                              )
+                            })
+                          )
+                        )}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="hidden items-center gap-2 sm:flex">
               <button className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary-100 bg-white text-slate-500 transition-all hover:bg-primary-50 hover:text-primary-600">
                 <Settings size={20} />
               </button>
