@@ -326,8 +326,8 @@ export default function Layout() {
         </header>
 
         <main
-          className={`custom-scrollbar flex-1 overflow-y-auto bg-transparent ${
-            isPosRoute ? 'p-0' : 'p-4 pb-32 sm:p-6 sm:pb-8 lg:p-7'
+          className={`custom-scrollbar flex-1 bg-transparent ${
+            isPosRoute ? 'p-0 overflow-hidden h-full' : 'p-4 pb-32 sm:p-6 sm:pb-8 lg:p-7 overflow-y-auto'
           }`}
         >
           <motion.div
@@ -335,7 +335,7 @@ export default function Layout() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-            className={isPosRoute ? 'min-h-full' : 'mx-auto max-w-[1400px]'}
+            className={isPosRoute ? 'h-full min-h-full' : 'mx-auto max-w-[1400px]'}
           >
             <Outlet />
           </motion.div>

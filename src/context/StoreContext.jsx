@@ -1,4 +1,4 @@
-﻿/* eslint-disable react-refresh/only-export-components */
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useReducer } from 'react'
 import toast from 'react-hot-toast'
 import {
@@ -239,7 +239,7 @@ export function StoreProvider({ children }) {
   const handleAddProduct = async (data) => {
     try {
       await addProduct(data)
-      toast.success('طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ظ‚ط·ط¹ط©')
+      toast.success('تمت إضافة القطعة')
     } catch (error) {
       toast.error(error.message)
     }
@@ -248,7 +248,7 @@ export function StoreProvider({ children }) {
   const handleUpdateProduct = async (id, data) => {
     try {
       await updateProduct(id, data)
-      toast.success('طھظ… طھط­ط¯ظٹط« ط§ظ„ظ‚ط·ط¹ط©')
+      toast.success('تم تحديث القطعة')
     } catch (error) {
       toast.error(error.message)
     }
@@ -257,7 +257,7 @@ export function StoreProvider({ children }) {
   const handleDeleteProduct = async (id) => {
     try {
       await deleteProduct(id)
-      toast.success('طھظ… ط­ط°ظپ ط§ظ„ظ‚ط·ط¹ط©')
+      toast.success('تم حذف القطعة')
     } catch (error) {
       toast.error(error.message)
     }
@@ -266,7 +266,7 @@ export function StoreProvider({ children }) {
   const handleAddCategory = async (data) => {
     try {
       await addCategory(data)
-      toast.success('طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ظپط¦ط©')
+      toast.success('تمت إضافة الفئة')
     } catch (error) {
       toast.error(error.message)
     }
@@ -275,7 +275,7 @@ export function StoreProvider({ children }) {
   const handleDeleteCategory = async (id) => {
     try {
       await deleteCategory(id)
-      toast.success('طھظ… ط­ط°ظپ ط§ظ„ظپط¦ط©')
+      toast.success('تم حذف الفئة')
     } catch (error) {
       toast.error(error.message)
     }
@@ -284,7 +284,7 @@ export function StoreProvider({ children }) {
   const handleAddSupplier = async (data) => {
     try {
       await addSupplier(data)
-      toast.success('طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ظ…ظˆط±ط¯')
+      toast.success('تمت إضافة المورد')
     } catch (error) {
       toast.error(error.message)
     }
@@ -293,7 +293,7 @@ export function StoreProvider({ children }) {
   const handleUpdateSupplier = async (id, data) => {
     try {
       await updateSupplier(id, data)
-      toast.success('طھظ… طھط­ط¯ظٹط« ط§ظ„ظ…ظˆط±ط¯')
+      toast.success('تم تحديث المورد')
     } catch (error) {
       toast.error(error.message)
     }
@@ -302,7 +302,7 @@ export function StoreProvider({ children }) {
   const handleDeleteSupplier = async (id) => {
     try {
       await deleteSupplier(id)
-      toast.success('طھظ… ط­ط°ظپ ط§ظ„ظ…ظˆط±ط¯')
+      toast.success('تم حذف المورد')
     } catch (error) {
       toast.error(error.message)
     }
@@ -311,7 +311,7 @@ export function StoreProvider({ children }) {
   const handleAddCustomer = async (data) => {
     try {
       await addCustomer(data)
-      toast.success('طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ط¹ظ…ظٹظ„')
+      toast.success('تمت إضافة العميل')
     } catch (error) {
       toast.error(error.message)
     }
@@ -320,7 +320,7 @@ export function StoreProvider({ children }) {
   const handleUpdateCustomer = async (id, data) => {
     try {
       await updateCustomer(id, data)
-      toast.success('طھظ… طھط­ط¯ظٹط« ط§ظ„ط¹ظ…ظٹظ„')
+      toast.success('تم تحديث العميل')
     } catch (error) {
       toast.error(error.message)
     }
@@ -329,7 +329,7 @@ export function StoreProvider({ children }) {
   const handleDeleteCustomer = async (id) => {
     try {
       await deleteCustomer(id)
-      toast.success('طھظ… ط­ط°ظپ ط§ظ„ط¹ظ…ظٹظ„')
+      toast.success('تم حذف العميل')
     } catch (error) {
       toast.error(error.message)
     }
@@ -338,7 +338,7 @@ export function StoreProvider({ children }) {
   const handleAddExpense = async (data) => {
     try {
       await addExpense(data)
-      toast.success('طھظ… طھط³ط¬ظٹظ„ ط§ظ„ظ…طµط±ظˆظپ ط¨ظ†ط¬ط§ط­')
+      toast.success('تم تسجيل المصروف بنجاح')
     } catch (error) {
       toast.error(error.message)
     }
@@ -347,7 +347,7 @@ export function StoreProvider({ children }) {
   const handleDeleteExpense = async (id) => {
     try {
       await deleteExpense(id)
-      toast.success('طھظ… ط­ط°ظپ ط§ظ„ظ…طµط±ظˆظپ')
+      toast.success('تم حذف المصروف')
     } catch (error) {
       toast.error(error.message)
     }
@@ -359,10 +359,10 @@ export function StoreProvider({ children }) {
       await addTransaction({
         type: 'stockIn',
         refId: productId,
-        details: `ط§ط³طھظ„ط§ظ… ${qty} ظ‚ط·ط¹ط©${note ? ` - ${note}` : ''}`,
+        details: `استلام ${qty} قطعة${note ? ` - ${note}` : ''}`,
         amount: qty,
       })
-      toast.success(`طھظ…طھ ط¥ط¶ط§ظپط© ${qty} ظ‚ط·ط¹ط©`)
+      toast.success(`تمت إضافة ${qty} قطعة`)
     } catch (error) {
       toast.error(error.message)
     }
@@ -371,7 +371,7 @@ export function StoreProvider({ children }) {
   const stockOut = async (productId, qty, reason = '') => {
     const product = state.products.find((item) => item.id === productId)
     if (!product || product.quantity < qty) {
-      toast.error('ط§ظ„ظƒظ…ظٹط© ط؛ظٹط± ظ…طھظˆظپط±ط©')
+      toast.error('الكمية غير متوفرة')
       return
     }
 
@@ -380,10 +380,10 @@ export function StoreProvider({ children }) {
       await addTransaction({
         type: 'stockOut',
         refId: productId,
-        details: `طµط±ظپ ${qty} ظ‚ط·ط¹ط©${reason ? ` - ${reason}` : ''}`,
+        details: `صرف ${qty} قطعة${reason ? ` - ${reason}` : ''}`,
         amount: qty,
       })
-      toast.success(`طھظ… طµط±ظپ ${qty} ظ‚ط·ط¹ط©`)
+      toast.success(`تم صرف ${qty} قطعة`)
     } catch (error) {
       toast.error(error.message)
     }
@@ -393,7 +393,7 @@ export function StoreProvider({ children }) {
     try {
       const id = await completeSale(params)
       dispatch({ type: 'CART_CLEAR' })
-      toast.success('طھظ… ط¥طھظ…ط§ظ… ط§ظ„ط¨ظٹط¹ ط¨ظ†ط¬ط§ط­')
+      toast.success('تم إتمام البيع بنجاح')
       return id
     } catch (error) {
       toast.error(error.message)
@@ -404,7 +404,7 @@ export function StoreProvider({ children }) {
   const handlePayInvoiceDebt = async (invoiceId, amount, note) => {
     try {
       await payInvoiceDebt(invoiceId, amount, note)
-      toast.success('طھظ… طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯ ط§ظ„ظ…ط¯ظٹظˆظ†ظٹط© ط¨ظ†ط¬ط§ط­')
+      toast.success('تم تسجيل سداد المديونية بنجاح')
     } catch (error) {
       toast.error(error.message)
       throw error
@@ -414,7 +414,7 @@ export function StoreProvider({ children }) {
   const handleDeleteInvoice = async (invoiceId) => {
     try {
       await deleteInvoiceAndReturnStock(invoiceId)
-      toast.success('طھظ… ط­ط°ظپ ط§ظ„ظپط§طھظˆط±ط© ظˆط§ط³طھط±ط¯ط§ط¯ ط§ظ„ظ…ط®ط²ظˆظ† ط¨ظ†ط¬ط§ط­')
+      toast.success('تم حذف الفاتورة واسترداد المخزون بنجاح')
     } catch (error) {
       toast.error(error.message)
       throw error
@@ -424,7 +424,7 @@ export function StoreProvider({ children }) {
   const handleReturnItems = async (params) => {
     try {
       await returnInvoiceItems(params)
-      toast.success('طھظ… ط¥ط±ط¬ط§ط¹ ط§ظ„ظ‚ط·ط¹ ظˆطھط³ظˆظٹط© ط§ظ„ظ…ط¨ط§ظ„ط؛ ط¨ظ†ط¬ط§ط­')
+      toast.success('تم إرجاع القطع وتسوية المبالغ بنجاح')
     } catch (error) {
       toast.error(error.message)
       throw error
@@ -434,7 +434,7 @@ export function StoreProvider({ children }) {
   const handleSaveQuote = async (data) => {
     try {
       const id = await addQuote(data)
-      toast.success('طھظ… ط­ظپط¸ ط¹ط±ط¶ ط§ظ„ط³ط¹ط± ط¨ظ†ط¬ط§ط­')
+      toast.success('تم حفظ عرض السعر بنجاح')
       return id
     } catch (error) {
       toast.error(error.message)
@@ -445,7 +445,7 @@ export function StoreProvider({ children }) {
   const handleDeleteQuote = async (id) => {
     try {
       await deleteQuote(id)
-      toast.success('طھظ… ظ…ط³ط­ ط¹ط±ط¶ ط§ظ„ط³ط¹ط±')
+      toast.success('تم مسح عرض السعر')
     } catch (error) {
       toast.error(error.message)
       throw error
@@ -455,7 +455,7 @@ export function StoreProvider({ children }) {
   const handleImportProductsBatch = async (products) => {
     try {
       const result = await importProductsBatch(products)
-      toast.success(`طھظ… ط¨ظ†ط¬ط§ط­! ط¥ط¶ط§ظپط©: ${result.addedCount} | طھط­ط¯ظٹط«: ${result.updatedCount}`)
+      toast.success(`تم بنجاح! إضافة: ${result.addedCount} | تحديث: ${result.updatedCount}`)
       return result
     } catch (error) {
       toast.error(error.message)
@@ -466,7 +466,7 @@ export function StoreProvider({ children }) {
   const handleRecordPurchase = async (data) => {
     try {
       await recordPurchase(data)
-      toast.success('طھظ… طھط³ط¬ظٹظ„ ظپط§طھظˆط±ط© ط§ظ„ط´ط±ط§ط، ظˆطھط­ط¯ظٹط« ط§ظ„ظ…ط®ط²ظˆظ†')
+      toast.success('تم تسجيل فاتورة الشراء وتحديث المخزون')
     } catch (error) {
       toast.error(error.message)
       throw error
@@ -476,7 +476,7 @@ export function StoreProvider({ children }) {
   const handlePaySupplierDebt = async (supplierId, amount, note) => {
     try {
       await paySupplierDebt(supplierId, amount, note)
-      toast.success('طھظ… طھط³ط¬ظٹظ„ ط³ط¯ط§ط¯ ط§ظ„ظ…ظˆط±ط¯ ط¨ظ†ط¬ط§ط­')
+      toast.success('تم تسجيل سداد المورد بنجاح')
     } catch (error) {
       toast.error(error.message)
       throw error
@@ -487,7 +487,7 @@ export function StoreProvider({ children }) {
     try {
       const result = await createServiceBooking(data)
       if (!result.alreadyExists) {
-        toast.success('طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط­ط¬ط² ط¨ظ†ط¬ط§ط­')
+        toast.success('تم تسجيل الحجز بنجاح')
       }
       return result
     } catch (error) {
@@ -533,7 +533,7 @@ export function StoreProvider({ children }) {
         audience: data.sender === 'admin' ? 'customer' : 'admin',
         bookingId: data.bookingId,
         customerAuthUid,
-        title: data.sender === 'admin' ? 'ط±ط³ط§ظ„ط© ط¬ط¯ظٹط¯ط© ظ…ظ† ط§ظ„ط¥ط¯ط§ط±ط©' : 'ط±ط³ط§ظ„ط© ط¬ط¯ظٹط¯ط© ظ…ظ† ط§ظ„ط¹ظ…ظٹظ„',
+        title: data.sender === 'admin' ? 'رسالة جديدة من الإدارة' : 'رسالة جديدة من العميل',
         body: data.text?.slice(0, 120) || '',
         read: false,
       })
@@ -548,7 +548,7 @@ export function StoreProvider({ children }) {
   const handleAdjustCustomerWallet = async (payload) => {
     try {
       const result = await adjustCustomerWallet(payload)
-      toast.success('طھظ… طھط­ط¯ظٹط« ظ…ط­ظپط¸ط© ط§ظ„ط¹ظ…ظٹظ„')
+      toast.success('تم تحديث محفظة العميل')
       return result
     } catch (error) {
       toast.error(error.message)

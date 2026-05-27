@@ -955,7 +955,7 @@ export default function POS() {
       </motion.div>
 
       {/* Desktop Side Cart */}
-      <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} className="xl:w-[420px] 2xl:w-[450px] shrink-0 hidden xl:block border-r border-slate-200">
+      <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} className="xl:w-[420px] 2xl:w-[450px] shrink-0 hidden xl:block border-r border-slate-200 h-full">
         <div className="flex flex-col h-full bg-white shadow-xl">
           <CartContent {...cartProps} />
         </div>
