@@ -4,11 +4,10 @@ import { useAuth } from '../context/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ShoppingCart, Search, Plus, Minus, Trash2, X, Users, 
-  ChevronLeft, Send, MessageCircle, Camera, Mic, Sparkles,
+  ChevronLeft, Send, MessageCircle, Camera, Sparkles,
   Wallet, CreditCard, Landmark, Wrench, Printer, AlertTriangle,
-  Package, Tag, CheckCircle2, Receipt, FolderSync, Clock, UploadCloud
+  Package, Receipt, FolderSync, Clock
 } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
 import { Html5Qrcode } from 'html5-qrcode'
 import toast from 'react-hot-toast'
 
@@ -48,7 +47,7 @@ const getCatIcon = (cat) => catIcons[cat] || '📦'
 /* ═══════════════════════════════════════════════════════════════
    THERMAL RECEIPT — Realistic paper receipt with print support
    ═══════════════════════════════════════════════════════════════ */
-const ThermalReceipt = memo(({ invoice, onClose, onNewSale }) => {
+const ThermalReceipt = memo(({ invoice, onNewSale }) => {
   const receiptRef = useRef(null)
   const [selectedTemplate, setSelectedTemplate] = useState('invoice')
   const [editedMsg, setEditedMsg] = useState('')
@@ -249,10 +248,9 @@ const CartContent = memo(({
   customer, setCustomer, suggestedCustomers,
   payments, setPayments, isAdmin,
   saving, handleSale, setIsCartOpen,
-  itemWeights, setItemWeight, invoices,
+  invoices,
   // suspended features
   suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended,
-  setShowPlateScanner
 }) => {
   const [focusedField, setFocusedField] = useState(null)
   const [showHistory, setShowHistory] = useState(false)
@@ -536,20 +534,9 @@ const CartContent = memo(({
                 </div>
                 <div>
                   <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">رقم اللوحة</label>
-                  <div className="relative group">
-                    <input id="customer-license-input" value={customer.licensePlate}
-                      onChange={e => setCustomer(p => ({ ...p, licensePlate: e.target.value }))}
-                      placeholder="أ ب ج 123" className="input !py-3.5 pl-10 text-sm font-bold" />
-                    {/* Scanner Trigger */}
-                    <button
-                      type="button"
-                      onClick={() => setShowPlateScanner(true)}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-primary-50 hover:bg-primary-100 border border-primary-100 text-primary-600 rounded-lg transition-all"
-                      title="فحص اللوحة بالذكاء الاصطناعي"
-                    >
-                      <Sparkles size={13} className="animate-pulse text-primary-500" />
-                    </button>
-                  </div>
+                  <input id="customer-license-input" value={customer.licensePlate}
+                    onChange={e => setCustomer(p => ({ ...p, licensePlate: e.target.value }))}
+                    placeholder="أ ب ج 123" className="input !py-3.5 text-sm font-bold" />
                 </div>
               </div>
 
@@ -901,12 +888,169 @@ export default function POS() {
     return raw ? JSON.parse(raw) : []
   })
 
-  // Plate Scanner State
-  const [showPlateScanner, setShowPlateScanner] = useState(false)
-  const [scanningState, setScanningState] = useState('idle') // idle, scanning, success
-  const [scannedPlate, setScannedPlate] = useState('')
-  const [scanProgress, setScanProgress] = useState(0)
-  const [scanningLogs, setScanningLogs] = useState([])
+  // Visual Search State
+  const [showVisionScanner, setShowVisionScanner] = useState(false)
+  const [isVisionScanning, setIsVisionScanning] = useState(false)
+  const [geminiApiKey, setGeminiApiKey] = useState(() => {
+    return window.localStorage.getItem('geminiApiKey') || import.meta.env.VITE_GEMINI_API_KEY || ''
+  })
+  const videoRef = useRef(null)
+  useEffect(() => {
+    const stored = window.localStorage.getItem('geminiApiKey')
+    if (!stored) {
+      setGeminiApiKey(import.meta.env.VITE_GEMINI_API_KEY || '')
+    }
+  }, [])
+
+  const startVisionCamera = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('المتصفح لا يدعم الكاميرا في الروابط غير المشفرة (HTTP). يرجى فتح الموقع عبر رابط HTTPS آمن أو localhost.')
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
+    } catch (err) {
+      toast.error('تعذر تشغيل الكاميرا: ' + err.message, { duration: 6000 })
+    }
+  }
+
+  const stopVisionCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = videoRef.current.srcObject.getTracks()
+      tracks.forEach(track => track.stop())
+      videoRef.current.srcObject = null
+    }
+  }
+
+  useEffect(() => {
+    if (showVisionScanner) {
+      startVisionCamera()
+    } else {
+      stopVisionCamera()
+    }
+    return () => stopVisionCamera()
+  }, [showVisionScanner])
+
+  const handleVisionRecognize = async () => {
+    const video = videoRef.current
+    if (!video || !video.videoWidth) {
+      toast.error('الكاميرا غير جاهزة بعد!')
+      return
+    }
+    setIsVisionScanning(true)
+    const providerName = aiProvider === 'gemini' ? 'Gemini' : 'Ollama'
+    const t = toast.loading(`جاري إرسال الصورة للتعرف البصري عبر ${providerName}...`, { id: 'ollama-vision' })
+    try {
+      const canvas = document.createElement('canvas')
+      const MAX_DIM = 400
+      let w = video.videoWidth
+      let h = video.videoHeight
+      if (w > h) {
+        if (w > MAX_DIM) {
+          h *= MAX_DIM / w
+          w = MAX_DIM
+        }
+      } else {
+        if (h > MAX_DIM) {
+          w *= MAX_DIM / h
+          h = MAX_DIM
+        }
+      }
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(video, 0, 0, w, h)
+      
+      const base64Image = canvas.toDataURL('image/jpeg', 0.6)
+      const base64Data = base64Image.split(',')[1]
+
+      const productList = products.map(p => `- ${p.name}`).join('\n')
+      const promptText = `Analyze this image and match it to exactly one product from this list. Respond with ONLY the exact product name, nothing else. If none match, respond with 'NONE'.\nList of products:\n${productList}`
+
+      let matchedName = ''
+
+      if (aiProvider === 'gemini') {
+        if (!geminiApiKey) {
+          throw new Error('مفتاح Gemini API غير مدخل! يرجى إدخال المفتاح في الإعدادات بالأسفل.')
+        }
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: promptText },
+                  {
+                    inlineData: {
+                      mimeType: 'image/jpeg',
+                      data: base64Data
+                    }
+                  }
+                ]
+              }
+            ]
+          })
+        })
+
+        if (!response.ok) {
+          const errText = await response.text()
+          console.error('Gemini error response:', errText)
+          throw new Error(`فشل الاتصال بـ Gemini API (${response.status}): ${errText.slice(0, 200)}`)
+        }
+
+        const resData = await response.json()
+        matchedName = String(resData.candidates?.[0]?.content?.parts?.[0]?.text || '').trim()
+      } else {
+        let fetchUrl = `${ollamaHost.replace(/\/$/, '')}/api/chat`
+        // If we are on HTTPS (e.g. secure local host) and trying to access local Ollama, route through Vite proxy to bypass Mixed Content block
+        if (window.location.protocol === 'https:' && 
+            (ollamaHost.includes('localhost') || 
+             ollamaHost.includes('127.0.0.1') || 
+             ollamaHost.includes('192.168.'))) {
+          fetchUrl = '/api/ollama/api/chat'
+        }
+
+        const response = await fetch(fetchUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: ollamaModel,
+            messages: [
+              {
+                role: 'user',
+                content: promptText,
+                images: [base64Data]
+              }
+            ],
+            stream: false
+          })
+        })
+
+        if (!response.ok) throw new Error('Ollama connection failed')
+        const resData = await response.json()
+        matchedName = String(resData.message?.content || '').trim()
+      }
+
+      console.log(`${providerName} vision result:`, matchedName)
+
+      const matchedProduct = products.find(p => p.name.trim().toLowerCase() === matchedName.toLowerCase() || matchedName.toLowerCase().includes(p.name.trim().toLowerCase()))
+      if (matchedProduct) {
+        handleCartAdd(matchedProduct)
+        toast.success(`✨ تم التعرف وإضافة: ${matchedProduct.name}`, { id: 'ollama-vision' })
+        setShowVisionScanner(false)
+      } else {
+        toast.error(`لم يتم التعرف على منتج مطابق. رد النموذج: ${matchedName}`, { id: 'ollama-vision' })
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(err.message || `حدث خطأ أثناء الاتصال بـ ${providerName}!`, { id: 'ollama-vision', duration: 6000 })
+    } finally {
+      setIsVisionScanning(false)
+    }
+  }
 
   const SAMPLE_PLATES = useMemo(() => [
     { plate: 'أ ب ج 123', name: 'محمد علي', car: 'تويوتا كورولا 2018', phone: '01115329887' },
@@ -1061,6 +1205,36 @@ export default function POS() {
       .catch(() => setScannerError('فشل قراءة الملف. تأكد من وضوح الباركود.'))
   }
 
+  useEffect(() => {
+    let qrScanner = null
+    if (showScanner) {
+      qrScanner = new Html5Qrcode('reader')
+      qrScanner.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        (decodedText) => {
+          setSearch(decodedText)
+          setShowScanner(false)
+          toast.success(`تم العثور على باركود: ${decodedText}`)
+        },
+        (errorMessage) => {
+          // ignore standard scanning noise errors
+        }
+      ).catch(err => {
+        console.error('Html5Qrcode start error:', err)
+        setScannerError('تعذر تشغيل الكاميرا: ' + err.message)
+      })
+    }
+    return () => {
+      if (qrScanner && qrScanner.isScanning) {
+        qrScanner.stop().catch(err => console.error('Html5Qrcode stop error:', err))
+      }
+    }
+  }, [showScanner])
+
   const startVoiceSearch = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) return
@@ -1197,7 +1371,7 @@ export default function POS() {
     customer, setCustomer, suggestedCustomers,
     payments, setPayments, isAdmin,
     saving, handleSale, setIsCartOpen,
-    itemWeights, setItemWeight, invoices,
+    invoices,
     // suspended features
     suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended,
     setShowPlateScanner
@@ -1206,15 +1380,10 @@ export default function POS() {
     customer, setCustomer, suggestedCustomers,
     payments, setPayments, isAdmin,
     saving, handleSale, setIsCartOpen,
-    itemWeights, setItemWeight, invoices,
+    invoices,
     suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended,
     setShowPlateScanner
   ])
-
-  /* ═══ THERMAL RECEIPT VIEW ═══ */
-  if (doneInvoice) {
-    return <ThermalReceipt invoice={doneInvoice} onClose={() => setDoneInvoice(null)} onNewSale={() => setDoneInvoice(null)} />
-  }
 
   /* ═══ MAIN POS LAYOUT ═══ */
   return (
@@ -1247,6 +1416,13 @@ export default function POS() {
                 className="h-11 w-full rounded-xl bg-slate-50 pr-10 pl-3 text-sm font-bold text-slate-800 outline-none placeholder:text-slate-400 sm:h-12" />
             </div>
             <div className="flex shrink-0 gap-1.5">
+              <button
+                onClick={() => setShowVisionScanner(true)}
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-100 text-purple-600 transition-all active:scale-95"
+                title="التعرف البصري بالذكاء الاصطناعي"
+              >
+                <Sparkles size={18} className="animate-pulse" />
+              </button>
               {showScanner ? (
                 <button onClick={() => setShowScanner(false)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-100 text-rose-600 transition-all active:scale-95">
                   <X size={18} />
@@ -1256,9 +1432,6 @@ export default function POS() {
                   <Camera size={18} />
                 </button>
               )}
-              <button onClick={startVoiceSearch} className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all ${isListening ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
-                <Mic size={18} />
-              </button>
             </div>
           </div>
 
@@ -1311,6 +1484,77 @@ export default function POS() {
           )}
         </AnimatePresence>
 
+        {/* Ollama AI Vision Scanner UI */}
+        <AnimatePresence>
+          {showVisionScanner && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="overflow-hidden bg-slate-900 border border-slate-700/50 p-5 relative mb-4 rounded-3xl shadow-xl flex flex-col gap-4 text-right"
+            >
+              <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                <div className="flex items-center gap-2 text-purple-400">
+                  <Sparkles size={16} className="animate-pulse" />
+                  <span className="text-xs font-black">التعرف البصري الذكي للقطع (بالذكاء الاصطناعي)</span>
+                </div>
+                <button
+                  onClick={() => setShowVisionScanner(false)}
+                  className="p-1 text-slate-400 hover:text-slate-200 bg-slate-800 rounded-lg transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              {/* Video Stream Preview */}
+              <div className="relative aspect-video w-full max-w-sm mx-auto rounded-2xl overflow-hidden bg-black shadow-inner border border-slate-800">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
+                {isVisionScanning && (
+                  <div className="absolute inset-0 bg-black/55 backdrop-blur-sm flex flex-col items-center justify-center text-center gap-3">
+                    <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">جاري التحليل والمطابقة...</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Settings and Actions */}
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2 font-display">
+                  <label className="text-[10px] text-slate-400 font-bold mb-1 block">مفتاح Gemini API</label>
+                  <input
+                    type="password"
+                    value={geminiApiKey}
+                    onChange={(e) => {
+                      setGeminiApiKey(e.target.value)
+                      window.localStorage.setItem('geminiApiKey', e.target.value)
+                    }}
+                    placeholder="مفتاح API الخاص بك"
+                    className="input !py-2.5 !bg-slate-950 !border-slate-800 !text-slate-100 !rounded-xl text-xs text-left"
+                    dir="ltr"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isVisionScanning}
+                  onClick={handleVisionRecognize}
+                  className="btn-primary !bg-purple-600 hover:!bg-purple-500 !py-3 w-full text-xs font-black"
+                >
+                  {isVisionScanning ? 'جاري التحليل والمطابقة...' : 'التقاط وتحليل الصورة 📸'}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+
+
         {/* PRODUCTS GRID */}
         <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filtered.map(p => {
@@ -1344,15 +1588,25 @@ export default function POS() {
                 )}
 
                 <button onClick={() => handleCartAdd(p)} className="w-full text-right p-3.5 sm:p-4 focus:outline-none active:scale-[0.97] transition-transform">
-                  <h3 className="text-sm sm:text-base font-black leading-snug text-slate-950 truncate pr-0">{p.name}</h3>
-                  
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[9px] font-black text-white">{p.category || 'عام'}</span>
-                    {!isLowStock && (
-                      <span className="rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[9px] font-black text-emerald-600">
-                        متاح {p.quantity}
-                      </span>
-                    )}
+                  <div className="flex gap-3 items-start">
+                    <div className="w-12 h-12 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+                      {p.image ? (
+                        <img src={p.image} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-lg">{getCatIcon(p.category)}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm sm:text-base font-black leading-snug text-slate-950 truncate pr-0">{p.name}</h3>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[9px] font-black text-white">{p.category || 'عام'}</span>
+                        {!isLowStock && (
+                          <span className="rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[9px] font-black text-emerald-600">
+                            متاح {p.quantity}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-3">
@@ -1458,167 +1712,50 @@ export default function POS() {
         )}
       </AnimatePresence>
 
-      {/* High-Tech AI License Plate Scanner Modal */}
+      {/* Checkout Success Modal with WhatsApp option */}
       <AnimatePresence>
-        {showPlateScanner && (
+        {doneInvoice && (
           <>
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              onClick={() => setShowPlateScanner(false)}
-              className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[300]"
-            />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }} 
-              animate={{ scale: 1, opacity: 1 }} 
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[520px] bg-slate-900 border border-slate-800 shadow-2xl rounded-3xl z-[310] flex flex-col overflow-hidden text-right text-white"
-              dir="rtl"
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setDoneInvoice(null)} className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[400]" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[450px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 z-[410] shadow-2xl text-center flex flex-col items-center justify-center gap-5"
             >
-              {/* Modal Header */}
-              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary-600/20 border border-primary-500/30 text-primary-400 rounded-xl flex items-center justify-center">
-                    <Sparkles size={20} className="animate-pulse" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-white font-display">فحص لوحة السيارة بالذكاء الاصطناعي</h3>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">نظام استخراج الحروف والتحقق التلقائي (OCR)</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowPlateScanner(false)}
-                  className="p-2 text-slate-500 hover:text-white bg-slate-800/40 hover:bg-slate-800 rounded-xl transition-all"
-                >
-                  <X size={18} />
-                </button>
+              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 rounded-full flex items-center justify-center text-3xl">
+                ✓
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white font-display">تمت عملية البيع بنجاح!</h3>
+                <p className="text-xs text-slate-400 font-bold mt-1">فاتورة مبيعات رقم #{doneInvoice.number}</p>
               </div>
 
-              {/* Modal Body */}
-              <div className="p-6 space-y-6 flex-1 overflow-y-auto">
-                
-                {/* Virtual Camera Viewport / Scanner Area */}
-                <div className="relative w-full h-48 bg-black rounded-2xl border border-slate-800 overflow-hidden flex flex-col items-center justify-center group">
-                  
-                  {/* Cybernetic Scanlines & Targeting */}
-                  <div className="absolute inset-0 border-2 border-slate-800/20 rounded-2xl pointer-events-none" />
-                  
-                  {/* Glowing corners */}
-                  <div className="absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 border-primary-500" />
-                  <div className="absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 border-primary-500" />
-                  <div className="absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 border-primary-500" />
-                  <div className="absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 border-primary-500" />
-
-                  {scanningState === 'scanning' ? (
-                    <div className="absolute inset-0 flex flex-col justify-end p-4">
-                      {/* Laser Bar */}
-                      <motion.div 
-                        animate={{ y: [0, 160, 0] }}
-                        transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-                        className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent shadow-[0_0_15px_rgba(59,130,246,0.8)]"
-                      />
-                      
-                      {/* Live Scanning Logs */}
-                      <div className="bg-black/80 backdrop-blur-sm border border-slate-800 rounded-xl p-3 space-y-1 font-mono text-[9px] text-primary-400 h-28 overflow-y-auto custom-scrollbar select-none">
-                        {scanningLogs.map((log, idx) => (
-                          <div key={idx} className="flex gap-2">
-                            <span className="text-slate-600 font-bold">[{idx + 1}]</span>
-                            <span>{log}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Scanning Progress Bar */}
-                      <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden border border-slate-700">
-                        <div 
-                          className="bg-primary-500 h-full rounded-full transition-all duration-300"
-                          style={{ width: `${scanProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  ) : scanningState === 'success' ? (
-                    <motion.div 
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="flex flex-col items-center gap-3 text-center"
-                    >
-                      <CheckCircle2 size={40} className="text-emerald-500" />
-                      <div className="bg-amber-400 text-slate-900 border-4 border-black px-8 py-3.5 rounded-xl font-black text-2xl font-mono shadow-lg tracking-wider flex items-center justify-center gap-2">
-                        <span>مصر</span>
-                        <span className="border-r border-slate-900 h-6 mx-2" />
-                        <span>{scannedPlate}</span>
-                      </div>
-                      <p className="text-xs text-emerald-400 font-bold animate-pulse">تم فك التشفير ومطابقة الحساب بنجاح ✨</p>
-                    </motion.div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-3 text-slate-500 select-none">
-                      <Camera size={44} className="opacity-40 animate-pulse text-slate-400" />
-                      <p className="text-xs font-bold">قم باختيار لوحة اختبار سريعة أدناه لتجربة الميزة</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Test Plates Sample Cards */}
-                <div className="space-y-3">
-                  <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">اختر لوحة جاهزة للاختبار الفوري:</p>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {SAMPLE_PLATES.map((sp, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => startPlateScan(sp.plate)}
-                        disabled={scanningState === 'scanning'}
-                        className="p-3 bg-slate-800/40 border border-slate-800 hover:border-primary-500 rounded-2xl flex flex-col items-center gap-2 transition-all hover:scale-[1.03] active:scale-95 group"
-                      >
-                        {/* Egyptian Plate Design */}
-                        <div className="bg-amber-400 border border-slate-900 text-slate-900 rounded px-2 py-0.5 text-xs font-mono font-black text-center w-full shadow-sm leading-none flex justify-center items-center gap-1 group-hover:bg-amber-300">
-                          <span className="text-[8px] font-black">EGY</span>
-                          <span className="border-r border-slate-900 h-3" />
-                          <span>{sp.plate}</span>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[10px] font-black text-slate-200">{sp.name}</p>
-                          <p className="text-[8px] text-slate-500 font-bold">{sp.car}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* FALLBACK MANUAL SIMULATION */}
-                <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row gap-3">
-                  <label className="flex-1 bg-slate-800 hover:bg-slate-750 border border-slate-700/60 py-3 rounded-2xl flex items-center justify-center gap-2.5 text-xs font-bold cursor-pointer transition-all active:scale-95 text-slate-300">
-                    <UploadCloud size={16} /> رفع صورة لوحة ترخيص
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      disabled={scanningState === 'scanning'} 
-                      onChange={() => startPlateScan()} 
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => startPlateScan('ج ر ت 612')}
-                    disabled={scanningState === 'scanning'}
-                    className="flex-1 bg-slate-800 hover:bg-slate-750 border border-slate-700/60 py-3 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95 text-slate-300"
-                  >
-                    <span>🆕 فحص لوحة جديدة بالكامل</span>
-                  </button>
-                </div>
-
+              <div className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 rounded-2xl p-4 text-right space-y-2">
+                <div className="flex justify-between text-xs font-bold"><span className="text-slate-400">العميل:</span><span className="text-slate-800 dark:text-slate-100">{doneInvoice.customerName || 'نقدي'}</span></div>
+                <div className="flex justify-between text-xs font-bold"><span className="text-slate-400">الإجمالي:</span><span className="text-slate-900 dark:text-white font-black">{doneInvoice.total?.toLocaleString()} ج.م</span></div>
+                {doneInvoice.customerPhone && <div className="flex justify-between text-xs font-bold"><span className="text-slate-400">الهاتف:</span><span className="text-slate-800 dark:text-slate-100">{doneInvoice.customerPhone}</span></div>}
               </div>
 
-              {/* Modal Footer */}
-              <div className="p-4 border-t border-slate-800 bg-slate-950/50 flex">
+              <div className="w-full space-y-2">
                 <button
-                  type="button"
-                  onClick={() => setShowPlateScanner(false)}
-                  disabled={scanningState === 'scanning'}
-                  className="w-full btn-ghost py-3 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-white !rounded-xl"
+                  onClick={() => {
+                    let phone = doneInvoice.customerPhone
+                    if (!phone) {
+                      phone = window.prompt('يرجى إدخال رقم هاتف العميل لإرسال الفاتورة عبر واتساب (مثال: 01115329887):')
+                      if (!phone) return
+                    }
+                    const cleanPhone = phone.replace(/^0/, '20').replace(/\D/g, '')
+                    const msg = `🧾 فاتورة مبيعات من ELFAROUK Service\nرقم الفاتورة: #${doneInvoice.number}\nالعميل: ${doneInvoice.customerName || 'نقدي'}\nالإجمالي: ${doneInvoice.total} ج.م\nشكراً لتعاملكم معنا 🙏`
+                    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+                  }}
+                  className="w-full btn-primary !bg-emerald-600 hover:!bg-emerald-500 !py-3 text-xs font-black flex items-center justify-center gap-2"
                 >
-                  إلغاء
+                  <MessageCircle size={16} /> إرسال الفاتورة عبر واتساب للعميل
+                </button>
+                <button
+                  onClick={() => setDoneInvoice(null)}
+                  className="w-full btn-ghost !py-3 text-xs font-black"
+                >
+                  إتمام عملية جديدة
                 </button>
               </div>
             </motion.div>

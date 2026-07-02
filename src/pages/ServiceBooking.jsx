@@ -24,7 +24,7 @@ import {
   getCustomerAccountStatusLabel,
   isCustomerAccountRestricted,
 } from '../utils/customerAccounts'
-import { normalizeCustomerPhone, normalizeCustomerDigits } from '../utils/customerAuth'
+import { normalizeCustomerPhone } from '../utils/customerAuth'
 import {
   SERVICE_PAYMENT_STATUSES,
   canCustomerSubmitPaymentProof,

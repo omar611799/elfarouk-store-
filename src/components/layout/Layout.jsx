@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Activity,
   ArrowLeftRight,
@@ -26,6 +26,8 @@ import {
   Users,
   Wrench,
   X,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { useStore } from '../../context/StoreContext'
 import { useAuth } from '../../context/AuthContext'
@@ -66,9 +68,42 @@ export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [notifTab, setNotifTab] = useState('stock')
-  const { cartCount, products, notifications = [], markNotificationAsRead } = useStore()
+  const { cartCount, products = [], customers = [], invoices = [], notifications = [], markNotificationAsRead } = useStore()
   const { currentUser, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
+
+  // Theme support
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'light'
+  })
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  // Command Palette
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false)
+  const [paletteSearch, setPaletteSearch] = useState('')
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        setIsPaletteOpen(prev => !prev)
+      }
+      if (e.key === 'Escape') {
+        setIsPaletteOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const lowStockProducts = useMemo(() => {
     return products.filter(p => p.quantity <= (p.minStock || 5))
@@ -83,6 +118,33 @@ export default function Layout() {
   const activePage = nav.find((item) => matchesRoute(location.pathname, item.to)) || nav[0]
   const isPosRoute = location.pathname.startsWith('/pos')
   const allowedNav = nav.filter((item) => !item.adminOnly || currentUser?.role === 'admin')
+
+  // Filtered results for command palette
+  const paletteResults = useMemo(() => {
+    if (!paletteSearch.trim()) return []
+    const query = paletteSearch.toLowerCase()
+    
+    const matchedPages = allowedNav
+      .filter(p => p.label.toLowerCase().includes(query))
+      .map(p => ({ type: 'page', label: p.label, to: p.to, icon: p.icon }))
+
+    const matchedProducts = products
+      .filter(p => p.name.toLowerCase().includes(query) || String(p.sku || '').toLowerCase().includes(query))
+      .slice(0, 5)
+      .map(p => ({ type: 'product', label: p.name, to: '/products', subtitle: `مخزون: ${p.quantity} | SKU: ${p.sku || '-'}` }))
+
+    const matchedCustomers = customers
+      .filter(c => c.name.toLowerCase().includes(query) || String(c.phone || '').includes(query))
+      .slice(0, 5)
+      .map(c => ({ type: 'customer', label: c.name, to: '/customers', subtitle: `هاتف: ${c.phone || '-'}` }))
+
+    const matchedInvoices = invoices
+      .filter(i => String(i.number).includes(query) || i.customerData?.name?.toLowerCase().includes(query))
+      .slice(0, 5)
+      .map(i => ({ type: 'invoice', label: `فاتورة #${i.number}`, to: '/invoices', subtitle: `عميل: ${i.customerData?.name || 'نقدي'} | إجمالي: ${i.total} ج.م` }))
+
+    return [...matchedPages, ...matchedProducts, ...matchedCustomers, ...matchedInvoices]
+  }, [paletteSearch, allowedNav, products, customers, invoices])
   const roleLabel = currentUser?.role === 'admin' ? 'مدير النظام' : 'كاشير'
 
   const mobileNavTargets =
@@ -104,6 +166,20 @@ export default function Layout() {
   const handleLogout = async () => {
     setIsSidebarOpen(false)
     await logout()
+  }
+
+  const handleEditName = async () => {
+    const newName = window.prompt('تعديل اسمك في النظام:', currentUser?.name || '')
+    if (newName && newName.trim()) {
+      try {
+        const { doc, updateDoc } = await import('firebase/firestore')
+        const { db } = await import('../../firebase/config')
+        await updateDoc(doc(db, 'users', currentUser.uid), { name: newName.trim() })
+        window.location.reload()
+      } catch (e) {
+        alert('حدث خطأ أثناء حفظ الاسم')
+      }
+    }
   }
 
   return (
@@ -213,9 +289,9 @@ export default function Layout() {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#153d65_0%,#225c97_100%)] text-white shadow-[0_12px_30px_rgba(34,92,151,0.22)]">
                 <UserIcon size={18} />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-right text-sm font-black text-white">
-                  {currentUser?.name}
+              <div className="min-w-0 flex-1 cursor-pointer group/name" onClick={handleEditName} title="تعديل الاسم">
+                <p className="truncate text-right text-sm font-black text-white group-hover/name:text-primary-300 transition-colors">
+                  {currentUser?.name} <span className="opacity-40 text-xs">✏️</span>
                 </p>
                 <p className="mt-1 text-right text-[10px] font-black uppercase leading-none tracking-[0.2em] text-primary-200">
                   {roleLabel}
@@ -298,18 +374,16 @@ export default function Layout() {
               </div>
             </div>
 
-            <div className="group hidden items-center gap-3 rounded-[1.35rem] border border-primary-100 bg-slate-50/80 px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition-all focus-within:border-primary-300 focus-within:bg-white focus-within:shadow-[0_16px_35px_rgba(34,92,151,0.08)] xl:flex">
+            <div onClick={() => setIsPaletteOpen(true)} className="group hidden cursor-pointer items-center gap-3 rounded-[1.35rem] border border-primary-100 bg-slate-50/80 px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition-all hover:border-primary-300 hover:bg-white xl:flex">
               <Search
                 size={18}
-                className="text-slate-400 transition-colors group-focus-within:text-primary-500"
+                className="text-slate-400"
               />
-              <input
-                type="text"
-                placeholder="بحث سريع عن منتج، عميل أو فاتورة..."
-                className="min-w-[16rem] flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
-              />
+              <span className="min-w-[16rem] flex-1 text-right text-sm font-semibold text-slate-400 select-none">
+                بحث سريع عن منتج، عميل أو فاتورة... (Ctrl + K)
+              </span>
               <span className="rounded-lg bg-primary-50 px-2 py-1 text-[10px] font-black text-primary-600">
-                SKU
+                Ctrl+K
               </span>
             </div>
           </div>
@@ -432,6 +506,17 @@ export default function Layout() {
               </AnimatePresence>
             </div>
 
+            {/* Theme Toggle Button */}
+            <div className="hidden items-center gap-2 sm:flex">
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary-100 bg-white text-slate-500 transition-all hover:bg-primary-50 hover:text-primary-600"
+                title={theme === 'dark' ? 'الوضع المضيء' : 'الوضع الداكن'}
+              >
+                {theme === 'dark' ? <Sun size={20} className="text-amber-500" /> : <Moon size={20} className="text-slate-600" />}
+              </button>
+            </div>
+
             <div className="hidden items-center gap-2 sm:flex">
               <button className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary-100 bg-white text-slate-500 transition-all hover:bg-primary-50 hover:text-primary-600">
                 <Settings size={20} />
@@ -439,9 +524,9 @@ export default function Layout() {
             </div>
 
             <div className="hidden items-center gap-3 rounded-[1.4rem] border border-primary-100 bg-primary-50/60 px-3 py-2 md:flex">
-              <div className="text-left">
-                <p className="text-sm font-black leading-tight text-slate-900">
-                  {currentUser?.name}
+              <div className="text-left cursor-pointer group/name" onClick={handleEditName} title="تعديل الاسم">
+                <p className="text-sm font-black leading-tight text-slate-900 group-hover/name:text-primary-600 transition-colors">
+                  {currentUser?.name} <span className="opacity-40 text-xs">✏️</span>
                 </p>
                 <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.22em] text-primary-600">
                   {roleLabel}
@@ -504,6 +589,86 @@ export default function Layout() {
             className="fixed inset-0 z-[70] bg-slate-950/55 backdrop-blur-sm lg:hidden"
             onClick={handleCloseSidebar}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Command Palette Overlay */}
+      <AnimatePresence>
+        {isPaletteOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] bg-slate-950/60 backdrop-blur-sm"
+              onClick={() => setIsPaletteOpen(false)}
+            />
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-x-4 top-20 z-[101] mx-auto max-w-2xl overflow-hidden rounded-[2rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-[0_32px_80px_rgba(0,0,0,0.4)]"
+            >
+              {/* Search Header */}
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 px-6 py-4">
+                <Search size={20} className="text-slate-400" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={paletteSearch}
+                  onChange={(e) => setPaletteSearch(e.target.value)}
+                  placeholder="ابحث عن منتج، عميل، فاتورة أو صفحة..."
+                  className="flex-1 bg-transparent text-right text-base font-semibold text-slate-800 dark:text-slate-100 outline-none placeholder:text-slate-400"
+                />
+                <button
+                  onClick={() => setIsPaletteOpen(false)}
+                  className="rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-black text-slate-500 hover:bg-slate-200"
+                >
+                  ESC
+                </button>
+              </div>
+
+              {/* Search Results */}
+              <div className="max-h-[60vh] overflow-y-auto p-4 space-y-1.5 custom-scrollbar text-right">
+                {paletteResults.length === 0 ? (
+                  <p className="text-center py-10 text-sm text-slate-400 font-bold">
+                    {paletteSearch ? 'لا توجد نتائج مطابقة' : 'ابدأ الكتابة للبحث في النظام...'}
+                  </p>
+                ) : (
+                  paletteResults.map((item, idx) => {
+                    const ItemIcon = item.icon || Search
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setIsPaletteOpen(false)
+                          setPaletteSearch('')
+                          navigate(item.to)
+                        }}
+                        className="group flex cursor-pointer items-center gap-4 rounded-2xl p-3.5 transition-colors hover:bg-primary-50 dark:hover:bg-slate-900 border border-transparent hover:border-primary-100 dark:hover:border-slate-800"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-500 group-hover:bg-primary-100 group-hover:text-primary-600 transition-colors">
+                          <ItemIcon size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-black text-slate-900 dark:text-slate-100 text-sm">{item.label}</p>
+                          {item.subtitle && (
+                            <p className="text-xs text-slate-400 font-bold mt-1">{item.subtitle}</p>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-900 text-slate-400 group-hover:bg-primary-200 group-hover:text-primary-700 px-2 py-0.5 rounded-full transition-colors">
+                          {item.type === 'page' ? 'صفحة' : item.type === 'product' ? 'منتج' : item.type === 'customer' ? 'عميل' : 'فاتورة'}
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

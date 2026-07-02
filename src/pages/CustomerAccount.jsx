@@ -5,7 +5,6 @@ import toast from 'react-hot-toast'
 import {
   ArrowUpLeft,
   CalendarCheck2,
-  Clock,
   History,
   MapPin,
   Navigation,

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Volume2, VolumeX, Terminal, Cpu, Sparkles } from 'lucide-react'
+import { Volume2, VolumeX, Terminal, Cpu } from 'lucide-react'
 
 export default function IntroScreen({ onFinished }) {
   const [videoLoaded, setVideoLoaded] = useState(false)
@@ -25,10 +25,10 @@ export default function IntroScreen({ onFinished }) {
   // Simulated tech bootup sequence logs
   useEffect(() => {
     const timers = [
-      setTimeout(() => setBootStep(1), 300),
-      setTimeout(() => setBootStep(2), 700),
-      setTimeout(() => setBootStep(3), 1100),
-      setTimeout(() => setBootStep(4), 1600),
+      setTimeout(() => setBootStep(1), 100),
+      setTimeout(() => setBootStep(2), 250),
+      setTimeout(() => setBootStep(3), 400),
+      setTimeout(() => setBootStep(4), 550),
     ]
     return () => timers.forEach(clearTimeout)
   }, [])
@@ -71,7 +71,7 @@ export default function IntroScreen({ onFinished }) {
     setIsExiting(true)
     setTimeout(() => {
       onFinished?.()
-    }, 850)
+    }, 400)
   }
 
   const toggleMute = () => {
@@ -90,10 +90,10 @@ export default function IntroScreen({ onFinished }) {
           initial={{ opacity: 1 }}
           exit={{ 
             opacity: 0,
-            scale: 1.15,
-            filter: 'blur(25px) brightness(1.8)'
+            scale: 1.05,
+            filter: 'blur(10px) brightness(1.2)'
           }}
-          transition={{ duration: 0.85, ease: [0.76, 0, 0.24, 1] }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
           onMouseMove={handleMouseMove}
           className="fixed inset-0 z-[99999] flex flex-col items-center justify-center overflow-hidden bg-[#02050c] select-none text-right font-display"
           dir="rtl"

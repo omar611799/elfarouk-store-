@@ -11,7 +11,10 @@ import {
 describe('customer account review helpers', () => {
   it('treats verified user or active account as allowed into customer flow', () => {
     expect(
-      isCustomerPhoneVerified(CUSTOMER_PHONE_VERIFICATION_STATUSES.VERIFIED, null)
+      isCustomerPhoneVerified(
+        CUSTOMER_PHONE_VERIFICATION_STATUSES.VERIFIED,
+        null
+      )
     ).toBe(true)
     expect(
       isCustomerPhoneVerified('pending', CUSTOMER_ACCOUNT_STATUSES.ACTIVE)
@@ -70,6 +73,7 @@ describe('customer account review helpers', () => {
         CUSTOMER_PHONE_VERIFICATION_STATUSES.VERIFIED,
         CUSTOMER_ACCOUNT_STATUSES.SUSPENDED
       )
+
     ).toBe(true)
   })
 })

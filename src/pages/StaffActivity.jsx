@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
 import { motion } from 'framer-motion'
-import { Activity, Users, TrendingUp, FileText, Calendar, Search, Award, Clock } from 'lucide-react'
+import { Activity, Users, TrendingUp, FileText, Search, Award, Clock } from 'lucide-react'
 
 export default function StaffActivity() {
   const { invoices = [] } = useStore()

@@ -6,7 +6,7 @@ import { Car, History, Wrench, AlertCircle, Phone, MapPin, CreditCard } from 'lu
 import { motion } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import { fetchPublicCustomerPortal } from '../services/publicRecordsApi'
-import { normalizeCustomerPhone, normalizeCustomerDigits, toDateValue } from '../utils/customerAuth'
+import { normalizeCustomerPhone, toDateValue } from '../utils/customerAuth'
 
 function isNotFoundError(error) {
   return /not found/i.test(String(error?.message || ''))

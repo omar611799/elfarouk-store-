@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, Wrench, Clock, User, Car } from 'lucide-react'
 
 const MONTHS_AR = [

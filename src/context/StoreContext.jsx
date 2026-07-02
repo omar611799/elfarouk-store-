@@ -142,7 +142,7 @@ export function StoreProvider({ children }) {
       unsubs.push(
         listenCol(COLS.CUSTOMERS, (data) => dispatch({ type: 'SET', key: 'customers', data }))
       )
-    }, 1000)
+    }, 1500)
 
     const stage3Timer = setTimeout(() => {
       if (isAdminUser) {
@@ -181,26 +181,6 @@ export function StoreProvider({ children }) {
             dispatch({ type: 'SET', key: 'serviceBookings', data: sortByCreatedAtDesc(data) })
           , 100)
         )
-        unsubs.push(
-          listenColLimited(COLS.SERVICE_MESSAGES, (data) =>
-            dispatch({ type: 'SET', key: 'serviceMessages', data: sortByCreatedAtDesc(data) })
-          , 300)
-        )
-        unsubs.push(
-          listenColLimited(COLS.NOTIFICATIONS, (data) =>
-            dispatch({ type: 'SET', key: 'notifications', data: sortByCreatedAtDesc(data) })
-          , 300)
-        )
-        unsubs.push(
-          listenColLimited(COLS.CUSTOMER_WALLETS, (data) =>
-            dispatch({ type: 'SET', key: 'customerWallets', data })
-          , 300)
-        )
-        unsubs.push(
-          listenColLimited(COLS.CUSTOMER_ACCOUNTS, (data) =>
-            dispatch({ type: 'SET', key: 'customerAccounts', data: sortByCreatedAtDesc(data) })
-          , 300)
-        )
       } else if (isCashierUser) {
         unsubs.push(
           listenColLimited(COLS.INVOICES, (data) =>
@@ -236,10 +216,36 @@ export function StoreProvider({ children }) {
       }
     }, 2500)
 
+    // Stage 4: Low-priority admin data (notifications, messages, wallets)
+    const stage4Timer = setTimeout(() => {
+      if (!isAdminUser) return
+      unsubs.push(
+        listenColLimited(COLS.SERVICE_MESSAGES, (data) =>
+          dispatch({ type: 'SET', key: 'serviceMessages', data: sortByCreatedAtDesc(data) })
+        , 300)
+      )
+      unsubs.push(
+        listenColLimited(COLS.NOTIFICATIONS, (data) =>
+          dispatch({ type: 'SET', key: 'notifications', data: sortByCreatedAtDesc(data) })
+        , 300)
+      )
+      unsubs.push(
+        listenColLimited(COLS.CUSTOMER_WALLETS, (data) =>
+          dispatch({ type: 'SET', key: 'customerWallets', data })
+        , 300)
+      )
+      unsubs.push(
+        listenColLimited(COLS.CUSTOMER_ACCOUNTS, (data) =>
+          dispatch({ type: 'SET', key: 'customerAccounts', data: sortByCreatedAtDesc(data) })
+        , 300)
+      )
+    }, 4500)
+
     return () => {
       unsubs.forEach((unsub) => typeof unsub === 'function' && unsub())
       clearTimeout(stage2Timer)
       clearTimeout(stage3Timer)
+      clearTimeout(stage4Timer)
     }
   }, [currentUser?.role, currentUser?.uid, isAdminUser, isCashierUser, isStaffUser])
 

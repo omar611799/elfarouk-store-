@@ -6,7 +6,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import toast from 'react-hot-toast'
 import * as XLSX from 'xlsx'
 
-const EMPTY = { name: '', category: '', price: '', cost: '', quantity: '', minStock: '5', sku: '', supplier: '' }
+const EMPTY = { name: '', category: '', price: '', cost: '', quantity: '', minStock: '5', sku: '', supplier: '', image: '' }
 
 export default function Products() {
   const { products, categories, suppliers, addProduct, updateProduct, deleteProduct, importProductsBatch } = useStore()
@@ -17,7 +17,6 @@ export default function Products() {
   const [form, setForm] = useState(EMPTY)
   const [qrModal, setQrModal] = useState(null)
   const fileInputRef = useRef(null)
-  const [viewMode, setViewMode] = useState('grid') // UX: Toggle between grid and list
 
   const filtered = products.filter(p =>
     (!search    || p.name?.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase())) &&
@@ -169,6 +168,11 @@ export default function Products() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] font-black text-slate-600 bg-slate-200 px-2.5 py-1 rounded-md border border-slate-300">{p.sku || '–'}</span>
                         {p.category && <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-3 py-1 rounded-md border border-primary-100">{p.category}</span>}
+                        {p.image && p.image.length > 100000 && (
+                          <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded-md border border-rose-100 animate-pulse">
+                            ⚠️ حجم الصورة كبير (يرجى تعديلها لضغطها)
+                          </span>
+                        )}
                       </div>
                     </div>
                     </div>
@@ -286,6 +290,71 @@ export default function Products() {
                     <option value="">بدون مورد</option>
                     {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                   </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="label-text">صورة المنتج</label>
+                  <div className="mt-1 flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                      {form.image ? (
+                        <img src={form.image} className="w-full h-full object-cover" />
+                      ) : (
+                        <Package size={20} className="text-slate-300" />
+                      )}
+                    </div>
+                    <label className="btn-ghost text-xs cursor-pointer flex items-center gap-2">
+                      <UploadCloud size={14} />
+                      رفع صورة المنتج
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            const reader = new FileReader()
+                            reader.onload = (evt) => {
+                              const img = new Image()
+                              img.src = evt.target.result
+                              img.onload = () => {
+                                const canvas = document.createElement('canvas')
+                                const MAX_WIDTH = 300
+                                const MAX_HEIGHT = 300
+                                let width = img.width
+                                let height = img.height
+                                if (width > height) {
+                                  if (width > MAX_WIDTH) {
+                                    height *= MAX_WIDTH / width
+                                    width = MAX_WIDTH
+                                  }
+                                } else {
+                                  if (height > MAX_HEIGHT) {
+                                    width *= MAX_HEIGHT / height
+                                    height = MAX_HEIGHT
+                                  }
+                                }
+                                canvas.width = width
+                                canvas.height = height
+                                const ctx = canvas.getContext('2d')
+                                ctx.drawImage(img, 0, 0, width, height)
+                                const dataUrl = canvas.toDataURL('image/jpeg', 0.6)
+                                setForm(p => ({ ...p, image: dataUrl }))
+                              }
+                            }
+                            reader.readAsDataURL(file)
+                          }
+                        }}
+                      />
+                    </label>
+                    {form.image && (
+                      <button
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, image: '' }))}
+                        className="text-xs text-rose-600 font-bold hover:underline"
+                      >
+                        إزالة الصورة
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

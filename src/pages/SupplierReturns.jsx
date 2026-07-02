@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Truck, RotateCcw, Search, CheckCircle2, Trash2, PackageX, FileText } from 'lucide-react'
+import { Truck, RotateCcw, Search, CheckCircle2, PackageX, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function SupplierReturns() {
@@ -90,7 +90,7 @@ export default function SupplierReturns() {
       toast.success('تم تسجيل مرتجع المورد وتحديث الحسابات بنجاح')
       setStep(1)
       setSelectedSupplierId('')
-      setSelectedPurchase(null)
+      setSelectedPurchaseId('')
       setReturnItems([])
       setNote('')
     } finally {
@@ -347,7 +347,7 @@ export default function SupplierReturns() {
 
           {/* Submit */}
           <div className="flex gap-3">
-            <button onClick={() => { setStep(1); setSelectedSupplierId(''); setSelectedPurchase(null); setReturnItems([]) }}
+            <button onClick={() => { setStep(1); setSelectedSupplierId(''); setSelectedPurchaseId(''); setReturnItems([]) }}
               className="btn-ghost !px-6 !py-3 text-[10px] font-black uppercase tracking-widest !rounded-xl"
             >
               إلغاء

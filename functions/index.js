@@ -37,7 +37,7 @@ exports.sendMaintenanceReminders = onSchedule(
     secrets: [WHATSAPP_TOKEN, WHATSAPP_PHONE_ID],
     region: "europe-west1",
   },
-  async (event) => {
+  async (_event) => {
     console.log("🔔 بدء إرسال تذكيرات الصيانة...");
 
     try {

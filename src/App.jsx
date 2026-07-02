@@ -77,10 +77,8 @@ function AppRouter() {
               <Navigate to="/dashboard" replace />
             ) : isCashierUser ? (
               <Navigate to="/pos" replace />
-            ) : currentUser ? (
-              <Navigate to="/customer/account" replace />
             ) : (
-              <Launchpad />
+              <Navigate to="/admin-login" replace />
             )
           }
         />
@@ -89,7 +87,7 @@ function AppRouter() {
           element={
             currentUser ? (
               <Navigate
-                to={isAdminUser ? '/dashboard' : isCashierUser ? '/pos' : '/customer/account'}
+                to={isAdminUser ? '/dashboard' : '/pos'}
                 replace
               />
             ) : (
@@ -97,46 +95,14 @@ function AppRouter() {
             )
           }
         />
-        <Route path="/customer-login" element={<Navigate to="/customer/login" replace />} />
-        <Route
-          path="/customer/login"
-          element={
-            currentUser ? (
-              <Navigate
-                to={isAdminUser ? '/dashboard' : isCashierUser ? '/pos' : '/customer/account'}
-                replace
-              />
-            ) : (
-              <CustomerLogin />
-            )
-          }
-        />
-        <Route
-          path="/customer/account"
-          element={
-            currentUser?.role === 'customer' ? (
-              <CustomerAccount />
-            ) : currentUser ? (
-              <Navigate to={isAdminUser ? '/dashboard' : '/pos'} replace />
-            ) : (
-              <Navigate to="/customer/login" replace />
-            )
-          }
-        />
-        <Route
-          path="/service-booking"
-          element={
-            isStaffUser ? (
-              <Navigate to={isAdminUser ? '/dashboard' : '/pos'} replace />
-            ) : (
-              <ServiceBooking />
-            )
-          }
-        />
-        <Route path="/customer/booking" element={<Navigate to="/service-booking" replace />} />
+        <Route path="/customer-login" element={<Navigate to="/admin-login" replace />} />
+        <Route path="/customer/login" element={<Navigate to="/admin-login" replace />} />
+        <Route path="/customer/account" element={<Navigate to="/admin-login" replace />} />
+        <Route path="/service-booking" element={<Navigate to="/admin-login" replace />} />
+        <Route path="/customer/booking" element={<Navigate to="/admin-login" replace />} />
         <Route path="/receipt/:id" element={<Receipt />} />
         <Route path="/print-quote/:id" element={<QuotePrint />} />
-        <Route path="/portal/:phone" element={<CustomerPortalGuard />} />
+        <Route path="/portal/:phone" element={<Navigate to="/" replace />} />
 
         {!currentUser && <Route path="*" element={<Navigate to="/" replace />} />}
         {isStaffUser && (
@@ -219,11 +185,23 @@ function CustomerPortalGuard() {
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(() => {
-    return !sessionStorage.getItem('elfarouk_intro_played')
+    const path = window.location.pathname
+    const isSpecialRoute = path.includes('/receipt/') || 
+                           path.includes('/print-quote/') || 
+                           path.includes('/portal/')
+    if (isSpecialRoute) return false
+    return !localStorage.getItem('elfarouk_intro_played')
   })
 
   if (showIntro) {
-    return <IntroScreen onFinished={() => setShowIntro(false)} />
+    return (
+      <IntroScreen
+        onFinished={() => {
+          localStorage.setItem('elfarouk_intro_played', 'true')
+          setShowIntro(false)
+        }}
+      />
+    )
   }
 
   return (

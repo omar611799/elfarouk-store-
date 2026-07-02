@@ -3,7 +3,7 @@ import { useStore } from '../context/StoreContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, MessageCircle, Search, Trash2, AlertTriangle,
-  CornerUpLeft, Plus, Minus, ChevronDown, CheckCircle2, MoreVertical,
+  CornerUpLeft, Plus, Minus, ChevronDown, CheckCircle2,
   Clock, XCircle, Eye, Filter, Download, TrendingUp
 } from 'lucide-react'
 
@@ -98,7 +98,7 @@ export default function Invoices() {
             </span>
             الفواتير والمرتجعات
           </h1>
-          <p className="text-slate-400 text-xs font-bold mt-1 mr-13">إجمالي العمليات: <span className="text-primary-600 font-black">{invoices.length}</span></p>
+          <p className="text-slate-400 text-xs font-bold mt-1 mr-12">إجمالي العمليات: <span className="text-primary-600 font-black">{invoices.length}</span></p>
         </div>
         <button className="btn-ghost flex items-center gap-2 text-xs">
           <Download size={15} /> تصدير
