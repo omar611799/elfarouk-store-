@@ -152,9 +152,42 @@ export default function Customers() {
       })
   }, [historyCustomer, invoices])
 
+  // ✅ Fix #3: Export Customer vehicle & service history to Excel
+  const exportCustomerHistoryToExcel = () => {
+    if (!historyCustomer || customerHistory.length === 0) return
+    const data = []
+    customerHistory.forEach(inv => {
+      const invDate = inv.createdAt?.toDate ? inv.createdAt.toDate() : new Date(inv.createdAt)
+      inv.items?.forEach(item => {
+        data.push({
+          'التاريخ': invDate.toLocaleDateString('ar-EG'),
+          'رقم الفاتورة': inv.number,
+          'العميل': historyCustomer.name,
+          'الهاتف': historyCustomer.phone || '',
+          'السيارة': historyCustomer.carModel || '',
+          'اللوحة': historyCustomer.licensePlate || '',
+          'اسم القطعة / الخدمة': item.name,
+          'الكمية المشتراة': item.qty,
+          'المرتجع': item.returnedQty || 0,
+          'سعر الواحدة': item.price,
+          'الإجمالي': item.price * item.qty
+        })
+      })
+    })
+    const worksheet = XLSX.utils.json_to_sheet(data)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'سجل صيانة سيارة العميل')
+    XLSX.writeFile(workbook, `سجل_صيانة_${historyCustomer.name.replace(/\s+/g, '_')}.xlsx`)
+  }
+
   const filtered = customers.filter(c =>
-    !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search)
+    !search || 
+    c.name?.toLowerCase().includes(search.toLowerCase()) || 
+    c.phone?.includes(search) ||
+    c.licensePlate?.toLowerCase().includes(search.toLowerCase()) ||
+    c.carModel?.toLowerCase().includes(search.toLowerCase())
   )
+
 
   const pendingCustomerAccounts = useMemo(
     () =>
@@ -832,9 +865,14 @@ export default function Customers() {
                 )}
               </div>
               
-              <div className="p-6 sm:p-8 border-t border-slate-100 bg-slate-50/95 absolute bottom-0 left-0 right-0 backdrop-blur-md">
-                <button onClick={() => setHistoryCustomer(null)} className="btn-ghost w-full py-3.5 text-[10px] font-black uppercase tracking-widest !rounded-xl !border-slate-250 hover:!bg-slate-100 pb-safe">إغلاق السجل</button>
+              <div className="p-6 sm:p-8 border-t border-slate-100 bg-slate-50/95 absolute bottom-0 left-0 right-0 backdrop-blur-md flex gap-3">
+                <button onClick={() => setHistoryCustomer(null)} className="btn-ghost flex-1 py-3.5 text-[10px] font-black uppercase tracking-widest !rounded-xl !border-slate-250 hover:!bg-slate-100 pb-safe">إغلاق</button>
+                <button onClick={exportCustomerHistoryToExcel} disabled={customerHistory.length === 0}
+                  className="btn-primary flex-[2] py-3.5 text-[10px] font-black uppercase tracking-widest !rounded-xl flex items-center justify-center gap-2 disabled:opacity-30 pb-safe">
+                  <Download size={14} /> تصدير السجل لـ Excel
+                </button>
               </div>
+
             </motion.div>
           </motion.div>
         )}

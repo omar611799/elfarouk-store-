@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud, QrCode, Printer, X, Filter } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud, QrCode, Printer, X, Filter, Sparkles, Download } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import toast from 'react-hot-toast'
@@ -16,6 +16,7 @@ export default function Products() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [qrModal, setQrModal] = useState(null)
+  const [reorderModal, setReorderModal] = useState(false)
   const fileInputRef = useRef(null)
 
   const filtered = products.filter(p =>
@@ -24,6 +25,39 @@ export default function Products() {
   )
 
   const lowStockCount = products.filter(p => p.quantity <= (p.minStock || 5)).length
+
+  // ✅ Fix #5: Generate reorder suggestions based on minStock
+  const reorderSuggestions = useMemo(() => {
+    return products
+      .filter(p => p.quantity <= (p.minStock || 5))
+      .map(p => {
+        const deficit = Math.max(0, (p.minStock || 5) * 2 - p.quantity)
+        const suggestedQty = deficit > 0 ? deficit : 10 // الاقتراح الافتراضي
+        const estimatedCost = suggestedQty * (p.cost || 0)
+        return { ...p, suggestedQty, estimatedCost }
+      })
+  }, [products])
+
+  const totalEstimatedReorderCost = reorderSuggestions.reduce((acc, curr) => acc + curr.estimatedCost, 0)
+
+  const exportReorderToExcel = () => {
+    if (reorderSuggestions.length === 0) return
+    const data = reorderSuggestions.map(s => ({
+      'اسم القطعة': s.name,
+      'كود SKU': s.sku || '',
+      'الفئة': s.category || '',
+      'المخزون الحالي': s.quantity,
+      'الحد الأدنى': s.minStock || 5,
+      'الكمية المقترحة للشراء': s.suggestedQty,
+      'سعر التكلفة للواحدة': s.cost || 0,
+      'التكلفة الإجمالية المتوقعة': s.estimatedCost,
+      'المورد المحتمل': s.supplier || ''
+    }))
+    const worksheet = XLSX.utils.json_to_sheet(data)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'اقتراحات الشراء')
+    XLSX.writeFile(workbook, `طلبات_الشراء_المقترحة_${new Date().toLocaleDateString('en-GB')}.xlsx`)
+  }
 
   const openAdd  = () => { setEditing(null); setForm(EMPTY); setModal(true) }
   const openEdit = (p) => { setEditing(p.id); setForm({ ...EMPTY, ...p }); setModal(true) }
@@ -42,6 +76,7 @@ export default function Products() {
     else         await addProduct(data)
     close()
   }
+
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0]
@@ -95,13 +130,15 @@ export default function Products() {
             className="btn-ghost flex items-center gap-2 text-xs">
             <UploadCloud size={15} className="text-emerald-500" /> استيراد Excel
           </button>
-          <button onClick={() => { const p = prompt('زيادة أو نقص الأسعار بنسبة % ؟ (مثلاً: 5)'); if(p) alert('سيتم تحديث الأسعار')}} className="btn-ghost text-xs text-amber-600">
-             تحديث أسعار %
+          <button onClick={() => setReorderModal(true)}
+            className="btn-ghost flex items-center gap-2 text-xs text-violet-600 border border-violet-200 bg-violet-50/50 hover:bg-violet-100">
+            <Sparkles size={14} /> اقتراحات الشراء الذكية
           </button>
           <button onClick={openAdd} className="btn-primary">
             <Plus size={16} /> إضافة منتج
           </button>
         </div>
+
       </div>
 
       {/* ── Summary Mini Cards ── */}
@@ -399,6 +436,87 @@ export default function Products() {
             </motion.div>
           </motion.div>
         )}
+
+        {/* Smart Reorder suggestions modal */}
+        {reorderModal && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6"
+            onClick={() => setReorderModal(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="bg-white w-full max-w-2xl border-t sm:border border-slate-200 shadow-2xl overflow-hidden rounded-t-[2rem] sm:rounded-[2rem] text-right"
+              dir="rtl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6 sm:p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center border border-violet-100">
+                    <Sparkles size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-800">اقتراحات الشراء الذكية</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">تجنب نفاد قطع الغيار الهامة</p>
+                  </div>
+                </div>
+                <button onClick={() => setReorderModal(false)} className="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 p-2 rounded-xl transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-6 sm:p-8 space-y-6 max-h-[55vh] overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-2 gap-4 bg-violet-50/50 p-4 rounded-2xl border border-violet-100">
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">عدد الأصناف المقترحة</p>
+                    <p className="text-xl font-black text-violet-700">{reorderSuggestions.length} صنف</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">التكلفة التقريبية المقدرة</p>
+                    <p className="text-xl font-black text-emerald-600">{totalEstimatedReorderCost.toLocaleString()} ج.م</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {reorderSuggestions.length === 0 ? (
+                    <div className="text-center py-10 opacity-40">
+                      <p className="text-slate-400 text-xs font-bold">جميع المنتجات بمخزون كافٍ وممتاز! 👍</p>
+                    </div>
+                  ) : (
+                    reorderSuggestions.map(item => (
+                      <div key={item.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                        <div className="space-y-1">
+                          <p className="font-black text-slate-800 text-sm">{item.name}</p>
+                          <div className="flex gap-2 text-[10px] text-slate-400 font-bold">
+                            <span>المخزون الحالي: <strong className="text-rose-500">{item.quantity}</strong></span>
+                            <span>الحد الأدنى: <strong>{item.minStock || 5}</strong></span>
+                            {item.supplier && <span>المورد: <strong>{item.supplier}</strong></span>}
+                          </div>
+                        </div>
+                        <div className="text-left">
+                          <span className="text-[9px] font-black text-violet-700 bg-violet-100 border border-violet-200 px-2.5 py-1 rounded-lg">
+                            اقتراح طلب: {item.suggestedQty} قطة
+                          </span>
+                          <p className="text-[10px] text-slate-400 font-bold mt-1">التكلفة: {(item.suggestedQty * (item.cost || 0)).toLocaleString()} ج</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="p-6 sm:p-8 border-t border-slate-100 bg-slate-50/80 flex gap-3">
+                <button onClick={() => setReorderModal(false)} className="btn-ghost flex-1 py-3">إغلاق</button>
+                <button onClick={exportReorderToExcel} disabled={reorderSuggestions.length === 0}
+                  className="btn-primary flex-[2] py-3 flex items-center justify-center gap-2 !bg-violet-600 hover:!bg-violet-750 disabled:opacity-30">
+                  <Download size={14} /> تصدير الاقتراحات لـ Excel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
       </AnimatePresence>
 
       {/* Global label style helper */}

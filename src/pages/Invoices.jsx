@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, MessageCircle, Search, Trash2, AlertTriangle,
   CornerUpLeft, Plus, Minus, ChevronDown, CheckCircle2,
-  Clock, XCircle, Eye, Filter, Download, TrendingUp
+  Clock, XCircle, Eye, Filter, Download, TrendingUp, Sparkles
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 const WHATSAPP = import.meta.env.VITE_WHATSAPP_NUMBER || '201115329887'
 
@@ -19,6 +20,11 @@ export default function Invoices() {
   const { invoices, deleteInvoice, returnInvoiceItems } = useStore()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [minPrice, setMinPrice] = useState('')
+  const [maxPrice, setMaxPrice] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  
   const [selected, setSelected] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -30,17 +36,28 @@ export default function Invoices() {
   const filtered = useMemo(() => {
     return invoices.filter(i => {
       const matchSearch = !search ||
-        i.customerData?.name?.includes(search) ||
-        String(i.number)?.includes(search)
+        i.customerData?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        String(i.number)?.includes(search) ||
+        i.items?.some(it => it.name?.toLowerCase().includes(search.toLowerCase()))
+
       const matchStatus = !statusFilter || i.paymentStatus === statusFilter
-      return matchSearch && matchStatus
+      
+      const price = Number(i.total || 0)
+      const matchMinPrice = !minPrice || price >= Number(minPrice)
+      const matchMaxPrice = !maxPrice || price <= Number(maxPrice)
+
+      const invDate = i.createdAt?.toDate ? i.createdAt.toDate() : new Date(i.createdAt)
+      const matchStart = !startDate || invDate >= new Date(startDate + 'T00:00:00')
+      const matchEnd = !endDate || invDate <= new Date(endDate + 'T23:59:59')
+
+      return matchSearch && matchStatus && matchMinPrice && matchMaxPrice && matchStart && matchEnd
     })
-  }, [invoices, search, statusFilter])
+  }, [invoices, search, statusFilter, minPrice, maxPrice, startDate, endDate])
 
   // Summary stats
-  const totalRevenue = invoices.reduce((s, i) => s + (i.total || 0), 0)
-  const paidCount = invoices.filter(i => i.paymentStatus === 'paid').length
-  const pendingCount = invoices.filter(i => i.paymentStatus !== 'paid').length
+  const totalRevenue = filtered.reduce((s, i) => s + (i.total || 0), 0)
+  const paidCount = filtered.filter(i => i.paymentStatus === 'paid').length
+  const pendingCount = filtered.filter(i => i.paymentStatus !== 'paid').length
 
   const sendWhatsApp = (inv) => {
     const items = inv.items?.map(i => {
@@ -58,6 +75,38 @@ export default function Invoices() {
       `شكراً لتعاملكم معنا 🙏`
     const phone = inv.customerData?.phone?.replace(/^0/, '20') || WHATSAPP
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+  }
+
+  // ✅ Fix #11: Request feedback via WhatsApp
+  const sendFeedbackRequest = (inv) => {
+    const customerName = inv.customerData?.name || 'عميلنا العزيز'
+    const msg = `السلام عليكم أ/ ${customerName} 👋\n\nنسعد دائماً بخدمتكم في *الفاروق ستور*. نود معرفة رأيكم في مستوى الخدمة والقطع التي تم شراؤها (فاتورة رقم ${inv.number}).\n\nيرجى الضغط على الرابط التالي لتقييم تجربتكم وإرسال ملاحظاتكم لمساعدتنا في تقديم الأفضل دائماً:\n🔗 [رابط التقييم ورضا العملاء]\n\nشكراً لوقتكم ونتمنى لكم يوماً سعيداً! 🚗`
+    const phone = inv.customerData?.phone?.replace(/^0/, '20') || WHATSAPP
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+  }
+
+  // ✅ Fix #9: Export invoices to Excel
+  const exportToExcel = () => {
+    if (filtered.length === 0) return
+    const data = filtered.map(i => {
+      const invDate = i.createdAt?.toDate ? i.createdAt.toDate() : new Date(i.createdAt)
+      return {
+        'رقم الفاتورة': i.number,
+        'تاريخ الفاتورة': invDate.toLocaleDateString('ar-EG'),
+        'العميل': i.customerData?.name || 'عميل نقدي',
+        'الهاتف': i.customerData?.phone || '',
+        'موديل السيارة': i.customerData?.carModel || '',
+        'رقم اللوحة': i.customerData?.licensePlate || '',
+        'الإجمالي': i.total,
+        'المدفوع': i.paidAmount,
+        'المتبقي': i.dueAmount,
+        'حالة الدفع': i.paymentStatus === 'paid' ? 'مدفوعة' : i.paymentStatus === 'partial' ? 'جزئي' : 'غير مدفوع'
+      }
+    })
+    const worksheet = XLSX.utils.json_to_sheet(data)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'الفواتير')
+    XLSX.writeFile(workbook, `الفواتير_${new Date().toLocaleDateString('en-GB')}.xlsx`)
   }
 
   const handleReturnQtyChange = (itemId, delta, maxAvailable) => {
@@ -98,36 +147,57 @@ export default function Invoices() {
             </span>
             الفواتير والمرتجعات
           </h1>
-          <p className="text-slate-400 text-xs font-bold mt-1 mr-12">إجمالي العمليات: <span className="text-primary-600 font-black">{invoices.length}</span></p>
+          <p className="text-slate-400 text-xs font-bold mt-1 mr-12">إجمالي العمليات المصفاة: <span className="text-primary-600 font-black">{filtered.length}</span></p>
         </div>
-        <button className="btn-ghost flex items-center gap-2 text-xs">
-          <Download size={15} /> تصدير
+        <button onClick={exportToExcel} disabled={filtered.length === 0} className="btn-ghost flex items-center gap-2 text-xs disabled:opacity-30">
+          <Download size={15} /> تصدير الفواتير لـ Excel
         </button>
       </div>
 
       {/* ── Summary Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard label="إجمالي الإيرادات" value={`${Math.round(totalRevenue).toLocaleString()} ج.م`} color="primary" icon={TrendingUp} />
+        <SummaryCard label="إجمالي إيرادات التصفية" value={`${Math.round(totalRevenue).toLocaleString()} ج.م`} color="primary" icon={TrendingUp} />
         <SummaryCard label="فواتير مكتملة" value={paidCount} color="emerald" icon={CheckCircle2} />
         <SummaryCard label="فواتير معلقة" value={pendingCount} color="rose" icon={Clock} />
       </div>
 
-      {/* ── Filters ── */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 group">
-          <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="بحث بالاسم أو رقم الفاتورة..." className="input pr-11 !rounded-2xl" />
+      {/* ── Advanced Filters ── */}
+      <div className="card space-y-4 !p-5">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1 group">
+            <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="بحث بالعميل، رقم الفاتورة، أو اسم المنتج..." className="input pr-11 !rounded-2xl" />
+          </div>
+          <div className="relative sm:w-48">
+            <Filter size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+              className="input pr-10 !rounded-2xl appearance-none text-sm">
+              <option value="">كل الحالات</option>
+              <option value="paid">مدفوعة</option>
+              <option value="partial">جزئية</option>
+              <option value="unpaid">غير مدفوعة</option>
+            </select>
+          </div>
         </div>
-        <div className="relative sm:w-48">
-          <Filter size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="input pr-10 !rounded-2xl appearance-none text-sm">
-            <option value="">كل الحالات</option>
-            <option value="paid">مدفوعة</option>
-            <option value="partial">جزئية</option>
-            <option value="unpaid">غير مدفوعة</option>
-          </select>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-right" dir="rtl">
+          <div>
+            <label className="text-[10px] text-slate-400 font-bold block mb-1">من تاريخ</label>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="input !py-2 !rounded-xl text-xs" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-400 font-bold block mb-1">إلى تاريخ</label>
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="input !py-2 !rounded-xl text-xs" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-400 font-bold block mb-1">أقل سعر</label>
+            <input type="number" placeholder="0" value={minPrice} onChange={e => setMinPrice(e.target.value)} className="input !py-2 !rounded-xl text-xs text-center" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-400 font-bold block mb-1">أعلى سعر</label>
+            <input type="number" placeholder="لا يوجد حد" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} className="input !py-2 !rounded-xl text-xs text-center" />
+          </div>
         </div>
       </div>
 
@@ -225,25 +295,34 @@ export default function Invoices() {
 
                         {/* Action Buttons */}
                         {!isReturningMode && !isDeletingMode && (
-                          <div className="flex gap-2">
-                            <button onClick={() => sendWhatsApp(inv)}
-                              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all">
-                              <MessageCircle size={14} /> واتساب
-                            </button>
-                            <button onClick={() => window.open(`/receipt/${inv.id}`, '_blank')}
-                              className="flex-1 bg-primary-50 hover:bg-primary-100 text-primary-600 text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all border border-primary-200">
-                              <Eye size={14} /> إيصال
-                            </button>
-                            <button onClick={() => { setReturnMode(inv.id); setReturnQtys({}) }}
-                              className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-600 text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all border border-amber-200">
-                              <CornerUpLeft size={14} /> مرتجع
-                            </button>
-                            <button onClick={() => setDeleteConfirm(inv.id)}
-                              className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all border border-rose-200">
-                              <Trash2 size={14} /> حذف
-                            </button>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex gap-2">
+                              <button onClick={() => sendWhatsApp(inv)}
+                                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all">
+                                <MessageCircle size={14} /> واتساب
+                              </button>
+                              <button onClick={() => window.open(`/receipt/${inv.id}`, '_blank')}
+                                className="flex-1 bg-primary-50 hover:bg-primary-100 text-primary-600 text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all border border-primary-200">
+                                <Eye size={14} /> إيصال
+                              </button>
+                              <button onClick={() => { setReturnMode(inv.id); setReturnQtys({}) }}
+                                className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-600 text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all border border-amber-200">
+                                <CornerUpLeft size={14} /> مرتجع
+                              </button>
+                              <button onClick={() => setDeleteConfirm(inv.id)}
+                                className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all border border-rose-200">
+                                <Trash2 size={14} /> حذف
+                              </button>
+                            </div>
+                            {inv.customerData?.phone && (
+                              <button onClick={() => sendFeedbackRequest(inv)}
+                                className="w-full bg-violet-600 hover:bg-violet-750 text-white text-[10px] py-3 rounded-xl flex items-center justify-center gap-2 font-black transition-all shadow-md shadow-violet-600/10">
+                                <Sparkles size={14} /> إرسال طلب تقييم رضا العملاء (واتساب)
+                              </button>
+                            )}
                           </div>
                         )}
+
 
                         {/* Return Panel */}
                         {isReturningMode && (
