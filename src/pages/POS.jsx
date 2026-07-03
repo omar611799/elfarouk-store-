@@ -1261,66 +1261,7 @@ export default function POS() {
     toast.success('تم حذف العملية المعلقة')
   }, [])
 
-  /* ─── AI Plate OCR Simulator ─── */
-  const startPlateScan = useCallback((customPlate = null) => {
-    setScanningState('scanning')
-    setScanProgress(0)
-    setScanningLogs([])
 
-    const logs = [
-      '🤖 تم تشغيل نظام فحص لوحات الترخيص الذكي...',
-      '📸 جاري الاتصال بالكاميرا وتأطير الصورة...',
-      '⚡ جاري استخراج الحقول النصية (OCR)...',
-      '🔍 جاري مطابقة الأحرف والأرقام مع الصيغة المصرية الموحدة...',
-      '✨ تم فك التشفير بنجاح وقراءة بيانات المركبة!'
-    ]
-
-    let step = 0
-    const interval = setInterval(() => {
-      if (step < logs.length) {
-        setScanningLogs(prev => [...prev, logs[step]])
-        setScanProgress((step + 1) * 20)
-        step++
-      } else {
-        clearInterval(interval)
-        const plate = customPlate || SAMPLE_PLATES[Math.floor(Math.random() * SAMPLE_PLATES.length)].plate
-        setScannedPlate(plate)
-        setScanningState('success')
-
-        setTimeout(() => {
-          // Find customer by plate
-          const existingCust = customers.find(c => c.licensePlate === plate)
-          if (existingCust) {
-            setCustomer({
-              name: existingCust.name,
-              phone: existingCust.phone || '',
-              carModel: existingCust.carModel || '',
-              licensePlate: existingCust.licensePlate || '',
-              nationalId: existingCust.nationalId || ''
-            })
-            toast.success(`✨ تم العثور على العميل وتحديث السلة: أ/ ${existingCust.name}`)
-          } else {
-            const sample = SAMPLE_PLATES.find(sp => sp.plate === plate)
-            if (sample) {
-              setCustomer({
-                name: sample.name,
-                phone: sample.phone,
-                carModel: sample.car,
-                licensePlate: sample.plate,
-                nationalId: ''
-              })
-              toast.success(`✨ تم العثور على عميل مسجل: أ/ ${sample.name}`)
-            } else {
-              setCustomer(prev => ({ ...prev, licensePlate: plate }))
-              toast.success(`📋 تم التعرف على اللوحة الجديدة: ${plate}`)
-            }
-          }
-          setShowPlateScanner(false)
-          setScanningState('idle')
-        }, 1500)
-      }
-    }, 500)
-  }, [customers, SAMPLE_PLATES])
 
   /* ─── Cart props memo ─── */
   const cartProps = useMemo(() => ({
@@ -1330,17 +1271,16 @@ export default function POS() {
     saving, handleSale, setIsCartOpen,
     invoices,
     // suspended features
-    suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended,
-    setShowPlateScanner
+    suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended
   }), [
     cart, cartTotal, cartClear, cartQty, cartRemove,
     customer, setCustomer, suggestedCustomers,
     payments, setPayments, isAdmin,
     saving, handleSale, setIsCartOpen,
     invoices,
-    suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended,
-    setShowPlateScanner
+    suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended
   ])
+
 
   /* ═══ MAIN POS LAYOUT ═══ */
   return (
