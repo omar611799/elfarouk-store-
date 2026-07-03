@@ -187,31 +187,9 @@ service cloud.firestore {
     }
 
     match /users/{id} {
-      allow create: if isAdmin()
-        || (
-          userOwnsDoc(id)
-          && userDocKeysAllowed()
-          && request.resource.data.role == 'customer'
-        );
-
-      allow read: if isAdmin() || userOwnsDoc(id);
-
-      allow update: if isAdmin()
-        || (
-          userOwnsDoc(id)
-          && userDocKeysAllowed()
-          && resource.data.role == 'customer'
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'name',
-            'phone',
-            'email',
-            'updatedAt'
-          ])
-        );
-
-      allow delete: if isAdmin();
+      allow create, read, update, delete: if signedIn();
     }
+
 
     match /stockLogs/{id} {
       allow create: if isStaff();
