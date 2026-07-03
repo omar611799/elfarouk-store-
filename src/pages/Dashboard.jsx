@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
 import {
   Package, Users, TrendingUp, AlertTriangle,
@@ -14,7 +14,6 @@ import {
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import CashierAccountCard from '../components/CashierAccountCard'
-import { doc, setDoc, getFirestore, serverTimestamp } from 'firebase/firestore'
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } }
 const item = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } } }
@@ -28,26 +27,6 @@ export default function Dashboard() {
   const [stockPage, setStockPage] = useState(0)
   const STOCK_PER_PAGE = 3
 
-  // ✅ Auto upgrade role to admin if currentUser is omarabdelhamead611@gmail.com
-  useEffect(() => {
-    const upgradeRole = async () => {
-      if (currentUser && currentUser.email === 'omarabdelhamead611@gmail.com' && currentUser.role !== 'admin') {
-        try {
-          const db = getFirestore()
-          const userRef = doc(db, 'users', currentUser.uid)
-          await setDoc(userRef, {
-            role: 'admin',
-            email: currentUser.email,
-            updatedAt: serverTimestamp()
-          }, { merge: true })
-          console.log("🎉 Upgraded to Admin successfully!")
-        } catch (e) {
-          console.error("Failed upgrading:", e)
-        }
-      }
-    }
-    upgradeRole()
-  }, [currentUser])
 
 
   // ─── Calculations ─────────────────────────────────────────────────────────
