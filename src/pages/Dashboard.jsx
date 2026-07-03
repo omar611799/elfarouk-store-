@@ -164,49 +164,49 @@ export default function Dashboard() {
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 pb-24 sm:space-y-8" dir="rtl">
 
-      <motion.div variants={item} className="overflow-hidden rounded-[2rem] border border-primary-100 bg-white shadow-[0_24px_70px_rgba(15,34,56,0.08)]">
+      <motion.div variants={item} className="overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-[0_15px_50px_rgba(0,0,0,0.02)]">
         <div className="grid gap-0 lg:grid-cols-[1.25fr,0.95fr]">
-          <div className="relative overflow-hidden bg-[linear-gradient(135deg,#0f2238_0%,#164c7e_58%,#225c97_100%)] p-5 text-white sm:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.1),transparent_32%)]" />
-            <div className="relative flex flex-col gap-5">
+          <div className="relative overflow-hidden bg-[linear-gradient(135deg,#002d9c_0%,#0f62fe_58%,#93c0ff_100%)] p-5 text-white sm:p-8">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.1),transparent_35%)]" />
+            <div className="relative flex flex-col gap-6">
               <div className="flex items-center gap-4">
-                <div className="rounded-[1.6rem] bg-white p-2.5 shadow-[0_20px_50px_rgba(8,17,28,0.24)]">
+                <div className="rounded-[1.75rem] bg-white p-2.5 shadow-md">
                   <img src="/brand-logo.png" alt="ELFAROUK Service" className="h-16 w-16 object-contain sm:h-20 sm:w-20" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.32em] text-primary-100/90 sm:text-[11px]">ELFAROUK SERVICE</p>
-                  <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">لوحة التشغيل اليومية</h1>
+                  <p className="text-[10px] font-black uppercase tracking-[0.32em] text-blue-100 sm:text-[11px]">ELFAROUK SERVICE</p>
+                  <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl font-display">لوحة التشغيل اليومية</h1>
                 </div>
               </div>
-              <p className="max-w-2xl text-sm leading-7 text-primary-50/90 sm:text-base">
+              <p className="max-w-2xl text-xs sm:text-sm leading-relaxed text-blue-50 font-bold">
                 متابعة واضحة للمبيعات والمخزون والعملاء مع هوية بصرية متناسقة على الديسكتوب والموبايل.
               </p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <div className="rounded-[1.35rem] border border-white/20 bg-white/10 p-3 backdrop-blur-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-100">مبيعات اليوم</p>
-                  <p className="mt-2 text-xl font-black">
-                    {isAdmin ? `${Math.round(totalSales).toLocaleString()} ج.م` : 'مؤمن'}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-3.5 backdrop-blur-md">
+                  <p className="text-[9px] font-black uppercase tracking-[0.1em] text-blue-100">مبيعات اليوم</p>
+                  <p className="mt-1.5 text-base sm:text-lg font-black font-display">
+                    {isAdmin ? `${Math.round(totalSales).toLocaleString()} ج` : 'مؤمن'}
                   </p>
                 </div>
-                <div className="rounded-[1.35rem] border border-white/20 bg-white/10 p-3 backdrop-blur-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-100">عملاء نشطون</p>
-                  <p className="mt-2 text-xl font-black">{customers.length}</p>
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-3.5 backdrop-blur-md">
+                  <p className="text-[9px] font-black uppercase tracking-[0.1em] text-blue-100">عملاء نشطون</p>
+                  <p className="mt-1.5 text-base sm:text-lg font-black font-display">{customers.length}</p>
                 </div>
-                <div className="col-span-2 rounded-[1.35rem] border border-white/20 bg-white/10 p-3 backdrop-blur-sm sm:col-span-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-100">تنبيهات المخزون</p>
-                  <p className="mt-2 text-xl font-black">{lowStock.length}</p>
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-3.5 backdrop-blur-md">
+                  <p className="text-[9px] font-black uppercase tracking-[0.1em] text-blue-100">تنبيهات المخزون</p>
+                  <p className="mt-1.5 text-base sm:text-lg font-black font-display">{lowStock.length}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col justify-between gap-5 bg-slate-50/80 p-5 sm:p-8">
+          <div className="flex flex-col justify-between gap-6 bg-slate-50/60 p-5 sm:p-8">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-primary-600">جاهزية اليوم</p>
-              <h2 className="mt-2 text-xl font-black text-slate-900">
-                {lowStock.length > 0 ? 'فيه عناصر تحتاج متابعة' : 'الوضع مستقر ومهيأ للبيع'}
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#0f62fe]">جاهزية اليوم</p>
+              <h2 className="mt-2 text-xl font-black text-slate-800">
+                {lowStock.length > 0 ? 'نواقص في المخزون تحتاج متابعة' : 'الوضع مستقر ومهيأ للبيع'}
               </h2>
-              <p className="mt-3 text-sm leading-7 text-slate-500">
+              <p className="mt-3 text-xs leading-relaxed text-slate-400 font-bold">
                 استخدم الاختصارات السريعة للوصول إلى الكاشير أو المخزن أو مراجعة التقارير من نفس الواجهة.
               </p>
             </div>
@@ -217,6 +217,7 @@ export default function Dashboard() {
           </div>
         </div>
       </motion.div>
+
 
       {/* ── Row 1: Stats Bar ─────────────────────────────────────── */}
       <motion.div variants={item}>
