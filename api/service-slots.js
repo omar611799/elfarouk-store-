@@ -1,6 +1,8 @@
 import { getAdminDb } from './_lib/firebaseAdmin.js'
-
-const SERVICE_SLOTS = ['المكان 1', 'المكان 2', 'المكان 3']
+import {
+  formatSlotAvailability,
+  getReservedSlotsForDay,
+} from './_lib/serviceSlots.js'
 
 function isValidDay(day) {
   return /^\d{4}-\d{2}-\d{2}$/.test(day)
@@ -18,35 +20,8 @@ export default async function handler(req, res) {
 
   try {
     const db = getAdminDb()
-    const [lockSnap, bookingSnap] = await Promise.all([
-      db.collection('serviceSlotLocks').where('day', '==', day).get(),
-      db.collection('serviceBookings').where('day', '==', day).get(),
-    ])
-
-    const reserved = new Set()
-
-    lockSnap.forEach((docSnap) => {
-      const data = docSnap.data()
-      if (SERVICE_SLOTS.includes(data.slot)) {
-        reserved.add(data.slot)
-      }
-    })
-
-    bookingSnap.forEach((docSnap) => {
-      const data = docSnap.data()
-      if (data.status !== 'cancelled' && SERVICE_SLOTS.includes(data.slot)) {
-        reserved.add(data.slot)
-      }
-    })
-
-    const reservedSlots = SERVICE_SLOTS.filter((slot) => reserved.has(slot))
-    const availableSlots = SERVICE_SLOTS.filter((slot) => !reserved.has(slot))
-
-    return res.status(200).json({
-      day,
-      reservedSlots,
-      availableSlots,
-    })
+    const reserved = await getReservedSlotsForDay(db, day)
+    return res.status(200).json(formatSlotAvailability(day, reserved))
   } catch (error) {
     return res.status(500).json({ error: error.message || 'Failed to load slots' })
   }

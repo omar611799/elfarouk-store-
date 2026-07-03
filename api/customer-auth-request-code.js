@@ -1,11 +1,16 @@
 import { createHash } from 'node:crypto'
 import { getAdminAuth, getAdminDb, adminTimestamp } from './_lib/firebaseAdmin.js'
 import { isMailerConfigured, sendCustomerVerificationEmail } from './_lib/mailer.js'
+import { checkRateLimit, getClientIp } from './_lib/rateLimit.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const VERIFICATION_COLLECTION = 'customerEmailVerifications'
 const CODE_TTL_MS = 10 * 60 * 1000
 const RESEND_COOLDOWN_MS = 60 * 1000
+const IP_REQUEST_LIMIT = 10
+const IP_REQUEST_WINDOW_MS = 60 * 60 * 1000
+const EMAIL_HOURLY_LIMIT = 5
+const EMAIL_HOURLY_WINDOW_MS = 60 * 60 * 1000
 
 function normalizeText(value, maxLength = 160) {
   return String(value || '').trim().slice(0, maxLength)
@@ -84,6 +89,33 @@ export default async function handler(req, res) {
 
     if (phone.length < 10) {
       return res.status(400).json({ error: 'رقم الهاتف غير صحيح' })
+    }
+
+    const clientIp = getClientIp(req)
+    const ipLimit = await checkRateLimit({
+      scope: 'customer_auth_request_ip',
+      identifier: clientIp,
+      maxAttempts: IP_REQUEST_LIMIT,
+      windowMs: IP_REQUEST_WINDOW_MS,
+    })
+
+    if (!ipLimit.allowed) {
+      return res.status(429).json({
+        error: `تجاوزت عدد طلبات التحقق. حاول بعد ${ipLimit.retryAfterSeconds} ثانية`,
+      })
+    }
+
+    const emailLimit = await checkRateLimit({
+      scope: 'customer_auth_request_email',
+      identifier: email,
+      maxAttempts: EMAIL_HOURLY_LIMIT,
+      windowMs: EMAIL_HOURLY_WINDOW_MS,
+    })
+
+    if (!emailLimit.allowed) {
+      return res.status(429).json({
+        error: `تجاوزت عدد طلبات هذا البريد. حاول بعد ${emailLimit.retryAfterSeconds} ثانية`,
+      })
     }
 
     const auth = getAdminAuth()

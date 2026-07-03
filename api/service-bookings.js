@@ -1,6 +1,12 @@
 import { getAdminAuth, getAdminDb, adminTimestamp } from './_lib/firebaseAdmin.js'
+import {
+  SERVICE_SLOTS,
+  getReservedSlotsForDay,
+  getSlotLockId,
+  isBookingStatusActive,
+  isSlotReserved,
+} from './_lib/serviceSlots.js'
 
-const SERVICE_SLOTS = ['المكان 1', 'المكان 2', 'المكان 3']
 const SLOT_PRICE = 50
 const PAYMENT_LINK = 'https://ipn.eg/01115329887'
 
@@ -22,14 +28,6 @@ function normalizePhone(value) {
 
 function isValidDay(day) {
   return /^\d{4}-\d{2}-\d{2}$/.test(day)
-}
-
-function getSlotLockId(day, slot) {
-  return `${day}__${slot}`
-}
-
-function isActiveStatus(status) {
-  return status !== 'cancelled'
 }
 
 export default async function handler(req, res) {
@@ -74,7 +72,7 @@ export default async function handler(req, res) {
 
     const existingActive = existingSnap.docs
       .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-      .find((booking) => isActiveStatus(booking.status))
+      .find((booking) => isBookingStatusActive(booking.status))
 
     if (existingActive) {
       return res.status(200).json({
@@ -83,24 +81,33 @@ export default async function handler(req, res) {
       })
     }
 
-    const sameDaySnap = await db.collection('serviceBookings').where('day', '==', day).get()
-    const slotTaken = sameDaySnap.docs.some((docSnap) => {
-      const booking = docSnap.data()
-      return booking.slot === slot && isActiveStatus(booking.status)
-    })
+    const customerLockRef = db.collection('customerServiceLocks').doc(decoded.uid)
+    const customerLockSnap = await customerLockRef.get()
+    if (customerLockSnap.exists) {
+      return res.status(409).json({ error: 'يوجد حجز نشط بالفعل على حسابك' })
+    }
 
-    if (slotTaken) {
+    const reserved = await getReservedSlotsForDay(db, day)
+    if (isSlotReserved(reserved, slot)) {
       return res.status(409).json({ error: 'هذا الموعد تم حجزه بالفعل' })
     }
 
     const bookingRef = db.collection('serviceBookings').doc()
     const messageRef = db.collection('serviceMessages').doc()
     const notificationRef = db.collection('notifications').doc()
-    const lockRef = db.collection('serviceSlotLocks').doc(getSlotLockId(day, slot))
+    const slotLockRef = db.collection('serviceSlotLocks').doc(getSlotLockId(day, slot))
 
     await db.runTransaction(async (transaction) => {
-      const lockSnap = await transaction.get(lockRef)
-      if (lockSnap.exists) {
+      const [slotLockSnap, customerLockInTx] = await Promise.all([
+        transaction.get(slotLockRef),
+        transaction.get(customerLockRef),
+      ])
+
+      if (customerLockInTx.exists) {
+        throw new Error('ACTIVE_BOOKING_EXISTS')
+      }
+
+      if (slotLockSnap.exists) {
         throw new Error('SLOT_ALREADY_RESERVED')
       }
 
@@ -120,9 +127,16 @@ export default async function handler(req, res) {
         updatedAt: adminTimestamp(),
       })
 
-      transaction.set(lockRef, {
+      transaction.set(slotLockRef, {
         bookingId: bookingRef.id,
-        customerAuthUid: decoded.uid,
+        day,
+        slot,
+        createdAt: adminTimestamp(),
+        updatedAt: adminTimestamp(),
+      })
+
+      transaction.set(customerLockRef, {
+        bookingId: bookingRef.id,
         day,
         slot,
         createdAt: adminTimestamp(),
@@ -158,6 +172,10 @@ export default async function handler(req, res) {
   } catch (error) {
     if (error.message === 'SLOT_ALREADY_RESERVED') {
       return res.status(409).json({ error: 'هذا الموعد تم حجزه بالفعل' })
+    }
+
+    if (error.message === 'ACTIVE_BOOKING_EXISTS') {
+      return res.status(409).json({ error: 'يوجد حجز نشط بالفعل على حسابك' })
     }
 
     return res.status(500).json({ error: error.message || 'Failed to create booking' })

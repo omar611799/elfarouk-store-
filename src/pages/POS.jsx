@@ -877,7 +877,6 @@ export default function POS() {
   const [doneInvoice, setDoneInvoice] = useState(null)
   const [showScanner, setShowScanner] = useState(false)
   const [scannerError, setScannerError] = useState(null)
-  const [isListening, setIsListening] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [reminders, setReminders] = useState({})
   const [itemWeights, setItemWeightsState] = useState({})
@@ -891,16 +890,11 @@ export default function POS() {
   // Visual Search State
   const [showVisionScanner, setShowVisionScanner] = useState(false)
   const [isVisionScanning, setIsVisionScanning] = useState(false)
-  const [geminiApiKey, setGeminiApiKey] = useState(() => {
-    return window.localStorage.getItem('geminiApiKey') || import.meta.env.VITE_GEMINI_API_KEY || ''
-  })
+  // Gemini API key: يفضّل env variable، والمستخدم يمكنه تجاوزه مؤقتاً
+  const [geminiApiKey, setGeminiApiKey] = useState(
+    () => import.meta.env.VITE_GEMINI_API_KEY || window.localStorage.getItem('geminiApiKey') || ''
+  )
   const videoRef = useRef(null)
-  useEffect(() => {
-    const stored = window.localStorage.getItem('geminiApiKey')
-    if (!stored) {
-      setGeminiApiKey(import.meta.env.VITE_GEMINI_API_KEY || '')
-    }
-  }, [])
 
   const startVisionCamera = async () => {
     try {
@@ -939,24 +933,21 @@ export default function POS() {
       toast.error('الكاميرا غير جاهزة بعد!')
       return
     }
+    if (!geminiApiKey) {
+      toast.error('مفتاح Gemini API غير مدخل!')
+      return
+    }
     setIsVisionScanning(true)
-    const providerName = aiProvider === 'gemini' ? 'Gemini' : 'Ollama'
-    const t = toast.loading(`جاري إرسال الصورة للتعرف البصري عبر ${providerName}...`, { id: 'ollama-vision' })
+    const t = toast.loading('جاري إرسال الصورة للتعرف البصري عبر Gemini...', { id: 'gemini-vision' })
     try {
       const canvas = document.createElement('canvas')
       const MAX_DIM = 400
       let w = video.videoWidth
       let h = video.videoHeight
       if (w > h) {
-        if (w > MAX_DIM) {
-          h *= MAX_DIM / w
-          w = MAX_DIM
-        }
+        if (w > MAX_DIM) { h *= MAX_DIM / w; w = MAX_DIM }
       } else {
-        if (h > MAX_DIM) {
-          w *= MAX_DIM / h
-          h = MAX_DIM
-        }
+        if (h > MAX_DIM) { w *= MAX_DIM / h; h = MAX_DIM }
       }
       canvas.width = w
       canvas.height = h
@@ -969,94 +960,42 @@ export default function POS() {
       const productList = products.map(p => `- ${p.name}`).join('\n')
       const promptText = `Analyze this image and match it to exactly one product from this list. Respond with ONLY the exact product name, nothing else. If none match, respond with 'NONE'.\nList of products:\n${productList}`
 
-      let matchedName = ''
-
-      if (aiProvider === 'gemini') {
-        if (!geminiApiKey) {
-          throw new Error('مفتاح Gemini API غير مدخل! يرجى إدخال المفتاح في الإعدادات بالأسفل.')
-        }
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: promptText },
-                  {
-                    inlineData: {
-                      mimeType: 'image/jpeg',
-                      data: base64Data
-                    }
-                  }
-                ]
-              }
-            ]
-          })
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: 'image/jpeg', data: base64Data } }] }]
         })
+      })
 
-        if (!response.ok) {
-          const errText = await response.text()
-          console.error('Gemini error response:', errText)
-          throw new Error(`فشل الاتصال بـ Gemini API (${response.status}): ${errText.slice(0, 200)}`)
-        }
-
-        const resData = await response.json()
-        matchedName = String(resData.candidates?.[0]?.content?.parts?.[0]?.text || '').trim()
-      } else {
-        let fetchUrl = `${ollamaHost.replace(/\/$/, '')}/api/chat`
-        // If we are on HTTPS (e.g. secure local host) and trying to access local Ollama, route through Vite proxy to bypass Mixed Content block
-        if (window.location.protocol === 'https:' && 
-            (ollamaHost.includes('localhost') || 
-             ollamaHost.includes('127.0.0.1') || 
-             ollamaHost.includes('192.168.'))) {
-          fetchUrl = '/api/ollama/api/chat'
-        }
-
-        const response = await fetch(fetchUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: ollamaModel,
-            messages: [
-              {
-                role: 'user',
-                content: promptText,
-                images: [base64Data]
-              }
-            ],
-            stream: false
-          })
-        })
-
-        if (!response.ok) throw new Error('Ollama connection failed')
-        const resData = await response.json()
-        matchedName = String(resData.message?.content || '').trim()
+      if (!response.ok) {
+        const errText = await response.text()
+        throw new Error(`فشل الاتصال بـ Gemini API (${response.status}): ${errText.slice(0, 200)}`)
       }
 
-      console.log(`${providerName} vision result:`, matchedName)
+      const resData = await response.json()
+      const matchedName = String(resData.candidates?.[0]?.content?.parts?.[0]?.text || '').trim()
 
-      const matchedProduct = products.find(p => p.name.trim().toLowerCase() === matchedName.toLowerCase() || matchedName.toLowerCase().includes(p.name.trim().toLowerCase()))
+      const matchedProduct = products.find(p =>
+        p.name.trim().toLowerCase() === matchedName.toLowerCase() ||
+        matchedName.toLowerCase().includes(p.name.trim().toLowerCase())
+      )
       if (matchedProduct) {
         handleCartAdd(matchedProduct)
-        toast.success(`✨ تم التعرف وإضافة: ${matchedProduct.name}`, { id: 'ollama-vision' })
+        toast.success(`✨ تم التعرف وإضافة: ${matchedProduct.name}`, { id: 'gemini-vision' })
         setShowVisionScanner(false)
       } else {
-        toast.error(`لم يتم التعرف على منتج مطابق. رد النموذج: ${matchedName}`, { id: 'ollama-vision' })
+        toast.error(`لم يتم التعرف على منتج مطابق. رد النموذج: ${matchedName}`, { id: 'gemini-vision' })
       }
     } catch (err) {
-      console.error(err)
-      toast.error(err.message || `حدث خطأ أثناء الاتصال بـ ${providerName}!`, { id: 'ollama-vision', duration: 6000 })
+      toast.error(err.message || 'حدث خطأ أثناء الاتصال بـ Gemini!', { id: 'gemini-vision', duration: 6000 })
     } finally {
       setIsVisionScanning(false)
     }
   }
 
-  const SAMPLE_PLATES = useMemo(() => [
-    { plate: 'أ ب ج 123', name: 'محمد علي', car: 'تويوتا كورولا 2018', phone: '01115329887' },
-    { plate: 'ط ر ب 456', name: 'أحمد السيد', car: 'هيونداي إلنترا 2015', phone: '01099238812' },
-    { plate: 'س ص ع 789', name: 'محمود مصطفى', car: 'لانسر شارك 2016', phone: '01223456789' }
-  ], [])
+
+
 
   const setItemWeight = useCallback((itemId, kg) => {
     setItemWeightsState(prev => ({ ...prev, [itemId]: kg }))
@@ -1134,7 +1073,20 @@ export default function POS() {
     try {
       const totalPaid = Number(payments.cash || 0) + Number(payments.visa || 0) + Number(payments.instapay || 0)
       const discount = Number(payments.discount || 0)
-      const finalTotal = cartTotal - discount
+
+      // ✅ Fix: Validate discount bounds
+      if (discount < 0) {
+        toast.error('الخصم لا يمكن أن يكون بقيمة سالبة')
+        setSaving(false)
+        return
+      }
+      if (discount > cartTotal) {
+        toast.error('الخصم أكبر من إجمالي الفاتورة!')
+        setSaving(false)
+        return
+      }
+
+      const finalTotal = Math.max(0, cartTotal - discount)
       const dueAmount = finalTotal - totalPaid
 
       const { id: invId, number: invNum } = await completeSale({
@@ -1165,20 +1117,26 @@ export default function POS() {
       if (customer.phone) {
         toast.loading('جاري إرسال الفاتورة على واتساب...', { id: 'wa-send' })
         try {
+          // ✅ Get Firebase Auth token for API authentication
+          const { getAuth } = await import('firebase/auth')
+          const fbUser = getAuth().currentUser
+          const idToken = fbUser ? await fbUser.getIdToken() : null
+
           const waRes = await fetch('/api/send-invoice-whatsapp', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+            },
             body: JSON.stringify({ id: invId }),
           })
           if (waRes.ok) {
             toast.success('✅ تم إرسال الفاتورة للعميل على واتساب!', { id: 'wa-send', duration: 4000 })
           } else {
             const err = await waRes.json().catch(() => ({}))
-            console.warn('WhatsApp send failed:', err)
             toast.error(`⚠️ لم يُرسل الواتساب: ${err?.error || 'خطأ غير معروف'}`, { id: 'wa-send', duration: 5000 })
           }
-        } catch (waErr) {
-          console.warn('WhatsApp send error:', waErr)
+        } catch {
           toast.error('⚠️ تعذّر الاتصال بخدمة الواتساب', { id: 'wa-send', duration: 5000 })
         }
       }
@@ -1187,8 +1145,7 @@ export default function POS() {
       setPayments({ cash: '', visa: '', instapay: '' })
       setReminders({})
     } catch (e) {
-      console.error(e)
-      toast.error('حدث خطأ أثناء حفظ الفاتورة!')
+      toast.error(e?.message || 'حدث خطأ أثناء حفظ الفاتورة!')
     } finally {
       setSaving(false)
     }

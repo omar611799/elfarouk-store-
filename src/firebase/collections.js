@@ -15,6 +15,7 @@ import {
   getDocs,
   limit,
   deleteField,
+  runTransaction,
 } from 'firebase/firestore'
 import { db } from './config'
 import { buildCustomerAccountReviewState } from '../utils/customerAccounts'
@@ -182,106 +183,67 @@ export const addExpense = (d) => addDoc_(COLS.EXPENSES, d)
 export const deleteExpense = (id) => deleteDoc_(COLS.EXPENSES, id)
 
 // ── Complete Sale (atomic) ──
+const INVOICE_COUNTER_DOC = 'invoices'
+
+async function ensureInvoiceCounterSeeded() {
+  const counterRef = doc(db, 'counters', INVOICE_COUNTER_DOC)
+  const counterSnap = await getDoc(counterRef)
+
+  if (counterSnap.exists() && Number(counterSnap.data()?.lastNumber || 0) > 0) {
+    return
+  }
+
+  const q = query(collection(db, COLS.INVOICES), orderBy('number', 'desc'), limit(1))
+  const snap = await getDocs(q)
+  let lastNum = 0
+
+  if (!snap.empty) {
+    lastNum = parseInt(String(snap.docs[0].data().number).replace(/^\D+/g, ''), 10) || 0
+  }
+
+  await setDoc(
+    counterRef,
+    {
+      lastNumber: lastNum,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  )
+}
+
 export async function completeSale({ items, cartItems, customerData, total, invoiceNumber, paidAmount: paidAmountParam, payments: paymentsParam }) {
-  const finalItems = items || cartItems || [];
-  let finalInvoiceNumber = invoiceNumber;
+  const finalItems = items || cartItems || []
 
-  // Auto-generate invoice number if missing
-  if (!finalInvoiceNumber) {
-    const q = query(collection(db, COLS.INVOICES), orderBy('number', 'desc'), limit(1));
-    const snap = await getDocs(q);
-    let lastNum = 0;
-    if (!snap.empty) {
-      const lastData = snap.docs[0].data();
-      lastNum = parseInt(String(lastData.number).replace(/^\D+/g, '')) || 0;
-    }
-    finalInvoiceNumber = String(lastNum + 1).padStart(5, '0');
+  if (!finalItems.length) {
+    throw new Error('لا توجد أصناف في الفاتورة')
   }
 
-  let paidAmount = 0;
-  let paymentsBreakdown = {};
+  let paidAmount = 0
+  let paymentsBreakdown = {}
 
-  // Priority: top-level payments param → customerData.payments → customerData.paidAmount → full total
   if (paymentsParam && typeof paymentsParam === 'object') {
-    paymentsBreakdown = paymentsParam;
-    paidAmount = Number(paymentsParam.cash || 0) + Number(paymentsParam.visa || 0) + Number(paymentsParam.instapay || 0);
+    paymentsBreakdown = paymentsParam
+    paidAmount =
+      Number(paymentsParam.cash || 0) +
+      Number(paymentsParam.visa || 0) +
+      Number(paymentsParam.instapay || 0)
   } else if (customerData.payments) {
-    paymentsBreakdown = customerData.payments;
-    paidAmount = Number(paymentsBreakdown.cash || 0) + Number(paymentsBreakdown.visa || 0) + Number(paymentsBreakdown.instapay || 0);
+    paymentsBreakdown = customerData.payments
+    paidAmount =
+      Number(paymentsBreakdown.cash || 0) +
+      Number(paymentsBreakdown.visa || 0) +
+      Number(paymentsBreakdown.instapay || 0)
   } else if (paidAmountParam !== undefined) {
-    paidAmount = Number(paidAmountParam);
-    paymentsBreakdown = { cash: paidAmount };
+    paidAmount = Number(paidAmountParam)
+    paymentsBreakdown = { cash: paidAmount }
   } else {
-    paidAmount = Number(customerData.paidAmount ?? total);
-    paymentsBreakdown = { cash: paidAmount };
+    paidAmount = Number(customerData.paidAmount ?? total)
+    paymentsBreakdown = { cash: paidAmount }
   }
 
-  const dueAmount  = Math.max(0, total - paidAmount)
+  const dueAmount = Math.max(0, total - paidAmount)
   const paymentStatus = dueAmount === 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid'
 
-  const batch = writeBatch(db)
-  const invRef = doc(collection(db, COLS.INVOICES))
-
-  // Deduct stock and Log
-  for (const item of finalItems) {
-    const p = await getDoc_(COLS.PRODUCTS, item.id)
-    const newQty = Math.max(0, (p?.quantity || 0) - Number(item.qty))
-    batch.update(doc(db, COLS.PRODUCTS, item.id), {
-      quantity: newQty,
-      updatedAt: serverTimestamp(),
-    })
-    
-    // Internal Stock Log
-    const logRef = doc(collection(db, COLS.STOCK_LOGS))
-    batch.set(logRef, {
-      productId: item.id,
-      productName: item.name,
-      type: 'sale',
-      delta: -item.qty,
-      newQty,
-      refId: invRef.id,
-      note: `فاتورة رقم ${finalInvoiceNumber}`,
-      createdAt: serverTimestamp()
-    })
-  }
-
-  // Save invoice (Enrich items with current cost for profit calculation)
-  const enrichedItems = finalItems.map(item => ({
-    ...item,
-    cost: item.cost || 0 // cost should be passed from POS
-  }))
-
-  const cashierData = customerData._cashier || {}
-  batch.set(invRef, {
-    number: finalInvoiceNumber,
-    items: enrichedItems,
-    total,
-    customerData,
-    paidAmount,
-    payments: paymentsBreakdown,
-    dueAmount,
-    paymentStatus,
-    cashierUid: cashierData.uid || '',
-    cashierName: cashierData.name || '',
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-
-  // Save transaction
-  const txRef = doc(collection(db, COLS.TRANSACTIONS))
-  batch.set(txRef, {
-    type: 'sale',
-    refId: invRef.id,
-    details: `فاتورة ${finalInvoiceNumber} - ${customerData.name}`,
-    amount: total,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-
-  await batch.commit()
-
-  // ── Update or create customer ──
-  // Build clean customer fields (exclude payment-related internal fields)
   const customerFields = {
     name: customerData.name || '',
     phone: customerData.phone || '',
@@ -290,52 +252,158 @@ export async function completeSale({ items, cartItems, customerData, total, invo
     nationalId: customerData.nationalId || '',
   }
 
-  if (customerFields.phone) {
-    // Has phone: look up by phone and update or create
-    const existing = await findCustomerByPhone(customerFields.phone)
-    if (existing) {
-      const mergedFields = {
-        name: customerFields.name?.trim() || existing.name || '',
-        phone: customerFields.phone?.trim() || existing.phone || '',
-        carModel: customerFields.carModel?.trim() || existing.carModel || '',
-        licensePlate: customerFields.licensePlate?.trim() || existing.licensePlate || '',
-        nationalId: customerFields.nationalId?.trim() || existing.nationalId || '',
+  const cashierData = customerData._cashier || {}
+  const enrichedItems = finalItems.map((item) => ({
+    ...item,
+    cost: item.cost || 0,
+  }))
+
+  let finalInvoiceNumber = invoiceNumber
+  if (!finalInvoiceNumber) {
+    const counterRef = doc(db, 'counters', 'invoices');
+    let attempts = 0;
+    while (!finalInvoiceNumber && attempts < 5) {
+      try {
+        const result = await runTransaction(db, async (transaction) => {
+          const counterSnap = await transaction.get(counterRef);
+          const lastNum = counterSnap.exists() ? (counterSnap.data().lastNumber || 0) : 0;
+          const nextNum = lastNum + 1;
+          transaction.set(counterRef, { lastNumber: nextNum, updatedAt: serverTimestamp() }, { merge: true });
+          return nextNum;
+        });
+        finalInvoiceNumber = String(result).padStart(5, '0');
+      } catch (e) {
+        attempts++;
+        if (attempts >= 5) throw new Error('فشل إنشاء رقم الفاتورة. يرجى المحاولة مرة أخرى.');
       }
-      await updateCustomer(existing.id, {
-        ...mergedFields,
-        totalSpent:   (existing.totalSpent || 0) + total,
-        invoiceCount: (existing.invoiceCount || 0) + 1,
-        debtTotal:    Math.max(0, (existing.debtTotal || 0) + dueAmount),
-        paidTotal:    (existing.paidTotal || 0) + paidAmount,
+    }
+  }
+
+  const saleResult = await runTransaction(db, async (transaction) => {
+    const invRef = doc(collection(db, COLS.INVOICES))
+
+    for (const item of finalItems) {
+      const productRef = doc(db, COLS.PRODUCTS, item.id)
+      const productSnap = await transaction.get(productRef)
+
+      if (!productSnap.exists()) {
+        throw new Error(`المنتج "${item.name}" غير موجود`)
+      }
+
+      const currentQty = Number(productSnap.data()?.quantity || 0)
+      const requestedQty = Number(item.qty)
+
+      if (!Number.isFinite(requestedQty) || requestedQty <= 0) {
+        throw new Error(`كمية غير صحيحة للمنتج "${item.name}"`)
+      }
+
+      if (currentQty < requestedQty) {
+        throw new Error(
+          `الكمية غير كافية للمنتج "${item.name}" (متاح: ${currentQty})`
+        )
+      }
+
+      const newQty = currentQty - requestedQty
+
+      transaction.update(productRef, {
+        quantity: newQty,
+        updatedAt: serverTimestamp(),
       })
-    } else {
-      await addCustomer({
+
+      const logRef = doc(collection(db, COLS.STOCK_LOGS))
+      transaction.set(logRef, {
+        productId: item.id,
+        productName: item.name,
+        type: 'sale',
+        delta: -requestedQty,
+        newQty,
+        refId: invRef.id,
+        note: `فاتورة رقم ${finalInvoiceNumber}`,
+        createdAt: serverTimestamp(),
+      })
+    }
+
+    transaction.set(invRef, {
+      number: finalInvoiceNumber,
+      items: enrichedItems,
+      total,
+      customerData,
+      paidAmount,
+      payments: paymentsBreakdown,
+      dueAmount,
+      paymentStatus,
+      cashierUid: cashierData.uid || '',
+      cashierName: cashierData.name || '',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+
+    const txRef = doc(collection(db, COLS.TRANSACTIONS))
+    transaction.set(txRef, {
+      type: 'sale',
+      refId: invRef.id,
+      details: `فاتورة ${finalInvoiceNumber} - ${customerData.name}`,
+      amount: total,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+
+    if (customerFields.phone) {
+      const customerQuery = query(
+        collection(db, COLS.CUSTOMERS),
+        where('phone', '==', customerFields.phone),
+        limit(1)
+      )
+      const customerSnap = await transaction.get(customerQuery)
+
+      if (!customerSnap.empty) {
+        const existingDoc = customerSnap.docs[0]
+        const existing = existingDoc.data()
+        transaction.update(existingDoc.ref, {
+          name: customerFields.name?.trim() || existing.name || '',
+          phone: customerFields.phone?.trim() || existing.phone || '',
+          carModel: customerFields.carModel?.trim() || existing.carModel || '',
+          licensePlate: customerFields.licensePlate?.trim() || existing.licensePlate || '',
+          nationalId: customerFields.nationalId?.trim() || existing.nationalId || '',
+          totalSpent: (existing.totalSpent || 0) + total,
+          invoiceCount: (existing.invoiceCount || 0) + 1,
+          debtTotal: Math.max(0, (existing.debtTotal || 0) + dueAmount),
+          paidTotal: (existing.paidTotal || 0) + paidAmount,
+          updatedAt: serverTimestamp(),
+        })
+      } else {
+        const newCustomerRef = doc(collection(db, COLS.CUSTOMERS))
+        transaction.set(newCustomerRef, {
+          ...customerFields,
+          totalSpent: total,
+          invoiceCount: 1,
+          paidTotal: paidAmount,
+          debtTotal: dueAmount,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+      }
+    } else if (customerFields.name) {
+      const newCustomerRef = doc(collection(db, COLS.CUSTOMERS))
+      transaction.set(newCustomerRef, {
         ...customerFields,
         totalSpent: total,
         invoiceCount: 1,
         paidTotal: paidAmount,
         debtTotal: dueAmount,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       })
     }
-  } else if (customerFields.name) {
-    // No phone but has name: always add as new customer entry
-    await addCustomer({
-      ...customerFields,
-      totalSpent: total,
-      invoiceCount: 1,
-      paidTotal: paidAmount,
-      debtTotal: dueAmount,
-    })
-  }
-  
-  // إرسال الفاتورة تلقائياً للعميل عبر الواتساب في الخلفية دون تعطيل الواجهة
+
+    return { id: invRef.id, number: finalInvoiceNumber }
+  })
+
   if (customerFields.phone) {
-    fetch(`/api/send-invoice-whatsapp?id=${invRef.id}`).catch((err) => {
-      console.error('❌ WhatsApp auto-send error:', err);
-    });
+    fetch(`/api/send-invoice-whatsapp?id=${saleResult.id}`).catch(() => {})
   }
 
-  return { id: invRef.id, number: finalInvoiceNumber }
+  return saleResult
 }
 
 

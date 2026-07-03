@@ -1,12 +1,10 @@
-import { getAdminDb } from './_lib/firebaseAdmin.js'
+import { getAdminDb, getAdminAuth } from './_lib/firebaseAdmin.js'
 
 function normalizePhone(phone) {
   let cleaned = String(phone || '').replace(/\D/g, '');
-  // إذا كان الرقم مصري يبدأ بـ 01، أضف كود الدولة 20
   if (cleaned.startsWith('01') && cleaned.length === 11) {
     cleaned = '2' + cleaned;
   }
-  // إذا كان يبدأ بـ +، أزل العلامة (تمت بالفعل بـ \D)
   return cleaned;
 }
 
@@ -14,10 +12,29 @@ export default async function handler(req, res) {
   // تفعيل CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // ✅ Fix: Verify Firebase Auth token — staff only
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!idToken) {
+    return res.status(401).json({ error: 'Unauthorized: missing token' });
+  }
+  try {
+    const adminAuth = getAdminAuth();
+    const decoded = await adminAuth.verifyIdToken(idToken);
+    const db = getAdminDb();
+    const userSnap = await db.collection('users').doc(decoded.uid).get();
+    const role = userSnap.exists ? userSnap.data().role : null;
+    if (!['admin', 'cashier'].includes(role)) {
+      return res.status(403).json({ error: 'Forbidden: staff only' });
+    }
+  } catch {
+    return res.status(401).json({ error: 'Unauthorized: invalid token' });
   }
 
   const id = req.query?.id || req.body?.id;

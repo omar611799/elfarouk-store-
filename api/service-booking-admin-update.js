@@ -1,4 +1,5 @@
 import { getAdminAuth, getAdminDb, adminTimestamp } from './_lib/firebaseAdmin.js'
+import { getSlotLockId, isBookingStatusActive } from './_lib/serviceSlots.js'
 
 const ALLOWED_STATUSES = new Set(['new', 'confirmed', 'cancelled', 'completed'])
 const ALLOWED_PAYMENT_STATUSES = new Set([
@@ -16,10 +17,6 @@ function getBearerToken(req) {
 
 function normalizeText(value, maxLength = 160) {
   return String(value || '').trim().slice(0, maxLength)
-}
-
-function getSlotLockId(day, slot) {
-  return `${day}__${slot}`
 }
 
 export default async function handler(req, res) {
@@ -96,24 +93,45 @@ export default async function handler(req, res) {
       }
     }
 
-    const lockRef = db.collection('serviceSlotLocks').doc(getSlotLockId(booking.day, booking.slot))
+    const slotLockRef = db.collection('serviceSlotLocks').doc(getSlotLockId(booking.day, booking.slot))
+    const customerLockRef = booking.customerAuthUid
+      ? db.collection('customerServiceLocks').doc(booking.customerAuthUid)
+      : null
+
     const batch = db.batch()
     batch.update(bookingRef, updates)
 
     if (nextStatus === 'cancelled') {
-      batch.delete(lockRef)
-    } else if (nextStatus && booking.day && booking.slot) {
+      batch.delete(slotLockRef)
+      if (customerLockRef) {
+        batch.delete(customerLockRef)
+      }
+    } else if (nextStatus && isBookingStatusActive(nextStatus)) {
       batch.set(
-        lockRef,
+        slotLockRef,
         {
           bookingId,
-          customerAuthUid: booking.customerAuthUid || null,
           day: booking.day,
           slot: booking.slot,
           updatedAt: adminTimestamp(),
         },
         { merge: true }
       )
+
+      if (customerLockRef) {
+        batch.set(
+          customerLockRef,
+          {
+            bookingId,
+            day: booking.day,
+            slot: booking.slot,
+            updatedAt: adminTimestamp(),
+          },
+          { merge: true }
+        )
+      }
+    } else if (nextStatus && customerLockRef) {
+      batch.delete(customerLockRef)
     }
 
     if (booking.customerAuthUid && (nextStatus || nextPaymentStatus)) {

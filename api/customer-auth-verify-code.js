@@ -1,9 +1,12 @@
 import { createHash } from 'node:crypto'
 import { getAdminAuth, getAdminDb, adminTimestamp } from './_lib/firebaseAdmin.js'
+import { checkRateLimit, getClientIp } from './_lib/rateLimit.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const VERIFICATION_COLLECTION = 'customerEmailVerifications'
 const MAX_ATTEMPTS = 5
+const IP_VERIFY_LIMIT = 20
+const IP_VERIFY_WINDOW_MS = 60 * 60 * 1000
 
 function normalizeText(value, maxLength = 160) {
   return String(value || '').trim().slice(0, maxLength)
@@ -71,6 +74,19 @@ export default async function handler(req, res) {
 
     if (password.length < 6) {
       return res.status(400).json({ error: 'كلمة المرور يجب ألا تقل عن 6 أحرف' })
+    }
+
+    const ipLimit = await checkRateLimit({
+      scope: 'customer_auth_verify_ip',
+      identifier: getClientIp(req),
+      maxAttempts: IP_VERIFY_LIMIT,
+      windowMs: IP_VERIFY_WINDOW_MS,
+    })
+
+    if (!ipLimit.allowed) {
+      return res.status(429).json({
+        error: `تجاوزت عدد محاولات التحقق. حاول بعد ${ipLimit.retryAfterSeconds} ثانية`,
+      })
     }
 
     const auth = getAdminAuth()

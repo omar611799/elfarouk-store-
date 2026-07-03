@@ -40,6 +40,7 @@ import {
   reviewCustomerAccount,
 } from '../firebase/collections'
 import { createServiceBooking, updateServiceBookingAdmin } from '../services/serviceBookingApi'
+import { sendCustomerAdminNotification } from '../services/customerNotificationApi'
 import { useAuth } from './AuthContext'
 
 const StoreContext = createContext(null)
@@ -560,15 +561,28 @@ export function StoreProvider({ children }) {
         customerAuthUid,
       })
 
-      await addNotification({
+      const notificationPayload = {
         type: 'new_message',
-        audience: data.sender === 'admin' ? 'customer' : 'admin',
         bookingId: data.bookingId,
         customerAuthUid,
         title: data.sender === 'admin' ? 'رسالة جديدة من الإدارة' : 'رسالة جديدة من العميل',
         body: data.text?.slice(0, 120) || '',
         read: false,
-      })
+      }
+
+      if (data.sender === 'admin') {
+        await addNotification({
+          ...notificationPayload,
+          audience: 'customer',
+        })
+      } else {
+        await sendCustomerAdminNotification({
+          type: notificationPayload.type,
+          bookingId: notificationPayload.bookingId,
+          title: notificationPayload.title,
+          body: notificationPayload.body,
+        })
+      }
     } catch (error) {
       toast.error(error.message)
       throw error

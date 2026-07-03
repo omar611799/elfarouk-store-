@@ -298,7 +298,7 @@ service cloud.firestore {
     }
 
     match /serviceSlotLocks/{id} {
-      allow read: if signedIn();
+      allow read: if isAdmin();
 
       allow create: if isAdmin()
         || (
@@ -360,6 +360,7 @@ service cloud.firestore {
           && request.resource.data.audience == 'admin'
           && request.resource.data.customerAuthUid == request.auth.uid
           && request.resource.data.read == false
+          && request.resource.data.type == 'booking_created'
         );
 
       allow read: if isAdmin()
@@ -391,6 +392,10 @@ service cloud.firestore {
     match /maintenance/{id} {
       allow read, write: if isAdmin();
       allow read: if isStaff();
+    }
+
+    match /counters/{id} {
+      allow read, write: if isStaff();
     }
 
     match /{document=**} {

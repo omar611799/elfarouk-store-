@@ -101,23 +101,17 @@ export async function fetchServiceSlotAvailability(day) {
 
   await getSignedInUser()
 
-  const snap = await getDocs(
-    query(collection(db, COLS.SERVICE_SLOT_LOCKS), where('day', '==', normalizedDay))
-  )
-
-  const reserved = new Set()
-  snap.forEach((docSnap) => {
-    const slot = docSnap.data()?.slot
-    if (SERVICE_SLOTS.includes(slot)) {
-      reserved.add(slot)
-    }
+  const params = new URLSearchParams({ day: normalizedDay })
+  const response = await fetch(`/api/service-slots?${params.toString()}`, {
+    headers: { Accept: 'application/json' },
   })
 
-  return {
-    day: normalizedDay,
-    reservedSlots: SERVICE_SLOTS.filter((slot) => reserved.has(slot)),
-    availableSlots: SERVICE_SLOTS.filter((slot) => !reserved.has(slot)),
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(payload?.error || 'تعذر تحميل المواعيد')
   }
+
+  return payload
 }
 
 export async function createServiceBooking(payload) {
@@ -140,6 +134,11 @@ export async function createServiceBooking(payload) {
   if (phone.length < 10) throw new Error('رقم الهاتف غير صحيح')
   if (!isValidDay(day)) throw new Error('اليوم غير صحيح')
   if (!SERVICE_SLOTS.includes(slot)) throw new Error('الموعد غير صحيح')
+
+  const availability = await fetchServiceSlotAvailability(day)
+  if (availability.reservedSlots.includes(slot)) {
+    throw new Error(SLOT_RESERVED_MESSAGE)
+  }
 
   const bookingRef = doc(collection(db, COLS.SERVICE_BOOKINGS))
   const notificationRef = doc(collection(db, COLS.NOTIFICATIONS))
