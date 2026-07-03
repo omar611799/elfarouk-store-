@@ -64,79 +64,80 @@
 }
 
 @layer components {
-  /* Premium Solid Minimalist Card: Solid White, ultra-soft gray border, floating drop shadow */
+  /* Neo-Sleek Flat Card: Borderless, soft background contrast, extremely lightweight drop shadow */
   .card {
-    @apply rounded-[2.25rem] border p-6 transition-all duration-300;
+    @apply rounded-3xl p-5 transition-all duration-300;
     background: #ffffff;
-    border-color: #f1f5f9;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.02);
+    border: none;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.015);
   }
   .card:hover {
-    border-color: #e2e8f0;
-    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 10px 35px rgba(59, 130, 246, 0.04);
+    transform: translateY(-2px);
   }
 
   .stat-card {
-    @apply rounded-[2rem] border p-6 transition-all duration-300;
+    @apply rounded-3xl p-5 transition-all duration-300;
     background: #ffffff;
-    border-color: #f1f5f9;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.015);
+    border: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.01);
   }
   .stat-card:hover {
-    border-color: #e2e8f0;
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 8px 30px rgba(59, 130, 246, 0.03);
+    transform: translateY(-1px);
   }
 
-  /* Royal Premium Buttons */
+  /* Compact Sleek Indigo/Blue Buttons */
   .btn-primary {
-    @apply text-white font-extrabold px-6 py-3.5 rounded-2xl transition-all duration-300 active:scale-[0.97] flex items-center justify-center gap-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed;
-    background: #1a56db;
-    box-shadow: 0 4px 14px rgba(26, 86, 219, 0.15);
+    @apply text-white font-extrabold px-5 py-3 rounded-2xl transition-all duration-300 active:scale-[0.97] flex items-center justify-center gap-2 text-xs sm:text-sm disabled:opacity-40 disabled:cursor-not-allowed;
+    background: #2563eb;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
   }
   .btn-primary:hover {
-    background: #1e40af;
-    box-shadow: 0 6px 20px rgba(26, 86, 219, 0.25);
+    background: #1d4ed8;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.2);
   }
 
   .btn-ghost {
-    @apply font-extrabold px-5 py-3.5 rounded-2xl transition-all duration-300 active:scale-[0.97] text-sm;
+    @apply font-extrabold px-4 py-3 rounded-2xl transition-all duration-300 active:scale-[0.97] text-xs sm:text-sm;
     background: #f1f5f9;
     color: #1e3a8a;
   }
   .btn-ghost:hover {
     background: #e2e8f0;
-    color: #1d4ed8;
+    color: #2563eb;
   }
 
   .btn-outline {
-    @apply bg-transparent border text-sm font-extrabold px-5 py-3.5 rounded-2xl transition-all duration-300 active:scale-[0.97];
+    @apply bg-transparent border text-xs sm:text-sm font-extrabold px-4 py-3 rounded-2xl transition-all duration-300 active:scale-[0.97];
     border-color: #e2e8f0;
     color: #4b5563;
   }
   .btn-outline:hover {
-    border-color: #1a56db;
-    color: #1a56db;
+    border-color: #2563eb;
+    color: #2563eb;
     background: #f8fafc;
   }
 
-  /* Soft solid minimalist input fields */
+  /* Lightweight sleek input fields */
   .input {
-    @apply border text-slate-800 rounded-2xl px-5 py-3.5 w-full transition-all duration-300 placeholder-slate-400 text-sm font-semibold;
+    @apply border text-slate-800 rounded-2xl px-4 py-3 w-full transition-all duration-300 placeholder-slate-400 text-xs sm:text-sm font-semibold;
     background: #f8fafc;
     border-color: #e2e8f0;
   }
   .input:focus {
     outline: none;
     background: #ffffff;
-    border-color: #1a56db;
-    box-shadow: 0 0 0 4px rgba(26, 86, 219, 0.08);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
   }
 
   .glass-card {
-    @apply rounded-[2.5rem] border shadow-[0_20px_50px_rgba(0,0,0,0.02)];
+    @apply rounded-3xl shadow-[0_15px_40px_rgba(0,0,0,0.015)];
     background: #ffffff;
-    border-color: #f1f5f9;
+    border: none;
   }
+
 
 
 
