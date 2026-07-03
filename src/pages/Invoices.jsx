@@ -6,7 +6,7 @@ import {
   CornerUpLeft, Plus, Minus, ChevronDown, CheckCircle2,
   Clock, XCircle, Eye, Filter, Download, TrendingUp, Sparkles
 } from 'lucide-react'
-import * as XLSX from 'xlsx'
+
 
 const WHATSAPP = import.meta.env.VITE_WHATSAPP_NUMBER || '201115329887'
 
@@ -85,29 +85,37 @@ export default function Invoices() {
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
-  // ✅ Fix #9: Export invoices to Excel
-  const exportToExcel = () => {
+  // ✅ Fix: Lazily import xlsx to speed up initial page load
+  const exportToExcel = async () => {
     if (filtered.length === 0) return
-    const data = filtered.map(i => {
-      const invDate = i.createdAt?.toDate ? i.createdAt.toDate() : new Date(i.createdAt)
-      return {
-        'رقم الفاتورة': i.number,
-        'تاريخ الفاتورة': invDate.toLocaleDateString('ar-EG'),
-        'العميل': i.customerData?.name || 'عميل نقدي',
-        'الهاتف': i.customerData?.phone || '',
-        'موديل السيارة': i.customerData?.carModel || '',
-        'رقم اللوحة': i.customerData?.licensePlate || '',
-        'الإجمالي': i.total,
-        'المدفوع': i.paidAmount,
-        'المتبقي': i.dueAmount,
-        'حالة الدفع': i.paymentStatus === 'paid' ? 'مدفوعة' : i.paymentStatus === 'partial' ? 'جزئي' : 'غير مدفوع'
-      }
-    })
-    const worksheet = XLSX.utils.json_to_sheet(data)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'الفواتير')
-    XLSX.writeFile(workbook, `الفواتير_${new Date().toLocaleDateString('en-GB')}.xlsx`)
+    const toastId = toast.loading('جاري تجهيز وتصدير ملف الاكسيل...')
+    try {
+      const XLSX = await import('xlsx')
+      const data = filtered.map(i => {
+        const invDate = i.createdAt?.toDate ? i.createdAt.toDate() : new Date(i.createdAt)
+        return {
+          'رقم الفاتورة': i.number,
+          'تاريخ الفاتورة': invDate.toLocaleDateString('ar-EG'),
+          'العميل': i.customerData?.name || 'عميل نقدي',
+          'الهاتف': i.customerData?.phone || '',
+          'موديل السيارة': i.customerData?.carModel || '',
+          'رقم اللوحة': i.customerData?.licensePlate || '',
+          'الإجمالي': i.total,
+          'المدفوع': i.paidAmount,
+          'المتبقي': i.dueAmount,
+          'حالة الدفع': i.paymentStatus === 'paid' ? 'مدفوعة' : i.paymentStatus === 'partial' ? 'جزئي' : 'غير مدفوع'
+        }
+      })
+      const worksheet = XLSX.utils.json_to_sheet(data)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'الفواتير')
+      XLSX.writeFile(workbook, `الفواتير_${new Date().toLocaleDateString('en-GB')}.xlsx`)
+      toast.success('تم التصدير بنجاح!', { id: toastId })
+    } catch {
+      toast.error('فشل التصدير!', { id: toastId })
+    }
   }
+
 
   const handleReturnQtyChange = (itemId, delta, maxAvailable) => {
     setReturnQtys(prev => {

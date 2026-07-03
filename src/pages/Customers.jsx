@@ -153,32 +153,40 @@ export default function Customers() {
   }, [historyCustomer, invoices])
 
   // ✅ Fix #3: Export Customer vehicle & service history to Excel
-  const exportCustomerHistoryToExcel = () => {
+  const exportCustomerHistoryToExcel = async () => {
     if (!historyCustomer || customerHistory.length === 0) return
-    const data = []
-    customerHistory.forEach(inv => {
-      const invDate = inv.createdAt?.toDate ? inv.createdAt.toDate() : new Date(inv.createdAt)
-      inv.items?.forEach(item => {
-        data.push({
-          'التاريخ': invDate.toLocaleDateString('ar-EG'),
-          'رقم الفاتورة': inv.number,
-          'العميل': historyCustomer.name,
-          'الهاتف': historyCustomer.phone || '',
-          'السيارة': historyCustomer.carModel || '',
-          'اللوحة': historyCustomer.licensePlate || '',
-          'اسم القطعة / الخدمة': item.name,
-          'الكمية المشتراة': item.qty,
-          'المرتجع': item.returnedQty || 0,
-          'سعر الواحدة': item.price,
-          'الإجمالي': item.price * item.qty
+    const toastId = toast.loading('جاري تجهيز وتصدير سجل السيارة...')
+    try {
+      const XLSX = await import('xlsx')
+      const data = []
+      customerHistory.forEach(inv => {
+        const invDate = inv.createdAt?.toDate ? inv.createdAt.toDate() : new Date(inv.createdAt)
+        inv.items?.forEach(item => {
+          data.push({
+            'التاريخ': invDate.toLocaleDateString('ar-EG'),
+            'رقم الفاتورة': inv.number,
+            'العميل': historyCustomer.name,
+            'الهاتف': historyCustomer.phone || '',
+            'السيارة': historyCustomer.carModel || '',
+            'اللوحة': historyCustomer.licensePlate || '',
+            'اسم القطعة / الخدمة': item.name,
+            'الكمية المشتراة': item.qty,
+            'المرتجع': item.returnedQty || 0,
+            'سعر الواحدة': item.price,
+            'الإجمالي': item.price * item.qty
+          })
         })
       })
-    })
-    const worksheet = XLSX.utils.json_to_sheet(data)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'سجل صيانة سيارة العميل')
-    XLSX.writeFile(workbook, `سجل_صيانة_${historyCustomer.name.replace(/\s+/g, '_')}.xlsx`)
+      const worksheet = XLSX.utils.json_to_sheet(data)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'سجل صيانة سيارة العميل')
+      XLSX.writeFile(workbook, `سجل_صيانة_${historyCustomer.name.replace(/\s+/g, '_')}.xlsx`)
+      toast.success('تم التصدير بنجاح!', { id: toastId })
+    } catch {
+      toast.error('فشل تصدير السجل!', { id: toastId })
+    }
   }
+
 
   const filtered = customers.filter(c =>
     !search || 

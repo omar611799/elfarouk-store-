@@ -4,7 +4,7 @@ import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud, QrCod
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import toast from 'react-hot-toast'
-import * as XLSX from 'xlsx'
+
 
 const EMPTY = { name: '', category: '', price: '', cost: '', quantity: '', minStock: '5', sku: '', supplier: '', image: '' }
 
@@ -40,23 +40,30 @@ export default function Products() {
 
   const totalEstimatedReorderCost = reorderSuggestions.reduce((acc, curr) => acc + curr.estimatedCost, 0)
 
-  const exportReorderToExcel = () => {
+  const exportReorderToExcel = async () => {
     if (reorderSuggestions.length === 0) return
-    const data = reorderSuggestions.map(s => ({
-      'اسم القطعة': s.name,
-      'كود SKU': s.sku || '',
-      'الفئة': s.category || '',
-      'المخزون الحالي': s.quantity,
-      'الحد الأدنى': s.minStock || 5,
-      'الكمية المقترحة للشراء': s.suggestedQty,
-      'سعر التكلفة للواحدة': s.cost || 0,
-      'التكلفة الإجمالية المتوقعة': s.estimatedCost,
-      'المورد المحتمل': s.supplier || ''
-    }))
-    const worksheet = XLSX.utils.json_to_sheet(data)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'اقتراحات الشراء')
-    XLSX.writeFile(workbook, `طلبات_الشراء_المقترحة_${new Date().toLocaleDateString('en-GB')}.xlsx`)
+    const toastId = toast.loading('جاري تصدير اقتراحات الشراء...')
+    try {
+      const XLSX = await import('xlsx')
+      const data = reorderSuggestions.map(s => ({
+        'اسم القطعة': s.name,
+        'كود SKU': s.sku || '',
+        'الفئة': s.category || '',
+        'المخزون الحالي': s.quantity,
+        'الحد الأدنى': s.minStock || 5,
+        'الكمية المقترحة للشراء': s.suggestedQty,
+        'سعر التكلفة للواحدة': s.cost || 0,
+        'التكلفة الإجمالية المتوقعة': s.estimatedCost,
+        'المورد المحتمل': s.supplier || ''
+      }))
+      const worksheet = XLSX.utils.json_to_sheet(data)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'اقتراحات الشراء')
+      XLSX.writeFile(workbook, `طلبات_الشراء_المقترحة_${new Date().toLocaleDateString('en-GB')}.xlsx`)
+      toast.success('تم التصدير بنجاح!', { id: toastId })
+    } catch {
+      toast.error('فشل التصدير!', { id: toastId })
+    }
   }
 
   const openAdd  = () => { setEditing(null); setForm(EMPTY); setModal(true) }
@@ -83,7 +90,9 @@ export default function Products() {
     if (!file) return
     const reader = new FileReader()
     reader.onload = async (evt) => {
+      const toastId = toast.loading('جاري فحص واستيراد الملف...')
       try {
+        const XLSX = await import('xlsx')
         const wb  = XLSX.read(evt.target.result, { type: 'binary' })
         const ws  = wb.Sheets[wb.SheetNames[0]]
         const data = XLSX.utils.sheet_to_json(ws)
@@ -95,17 +104,24 @@ export default function Products() {
           category: row['الفئة']   || row['category'] || '',
           sku:      String(row['الكود']    || row['sku']      || Date.now().toString().slice(-6)),
         })).filter(item => item.name && item.price > 0)
-        if (formatted.length === 0) { toast.error('لم يتم العثور على بيانات صالحة'); return }
-        if (window.confirm(`استيراد ${formatted.length} منتج؟`)) {
-          const t = toast.loading('جاري الاستيراد...')
-          await importProductsBatch(formatted)
-          toast.dismiss(t)
+        if (formatted.length === 0) {
+          toast.error('لم يتم العثور على بيانات صالحة', { id: toastId })
+          return
         }
-      } catch { toast.error('خطأ في الملف') }
+        if (window.confirm(`استيراد ${formatted.length} منتج؟`)) {
+          await importProductsBatch(formatted)
+          toast.success('تم الاستيراد بنجاح!', { id: toastId })
+        } else {
+          toast.dismiss(toastId)
+        }
+      } catch {
+        toast.error('خطأ في قراءة ملف الاكسيل!', { id: toastId })
+      }
       e.target.value = null
     }
     reader.readAsBinaryString(file)
   }
+
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-7 pb-20">
