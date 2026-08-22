@@ -190,18 +190,19 @@ export default function Layout() {
       <aside
         className={`
           fixed inset-y-0 right-0 z-[80] flex w-[19rem] max-w-[88vw] flex-col overflow-hidden
-          border-l border-white/10 bg-[linear-gradient(180deg,#08111c_0%,#10243b_45%,#0f1c2d_100%)]
-          text-slate-200 shadow-[0_25px_80px_rgba(8,17,28,0.28)] transition-transform duration-300
+          border-l border-white/5 bg-[#0b0f19]
+          text-slate-200 shadow-[0_25px_80px_rgba(0,0,0,0.4)] transition-transform duration-300
           ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
           lg:relative lg:translate-x-0
         `}
       >
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top,rgba(143,180,216,0.28),transparent_58%)]" />
-          <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-primary-500/10 blur-3xl" />
+          <div className="absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.15),transparent_60%)]" />
+          <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-blue-500/5 blur-3xl" />
         </div>
 
-        <div className="relative flex items-start gap-4 border-b border-white/10 p-5 sm:p-7">
+        <div className="relative flex items-start gap-4 border-b border-white/5 p-5 sm:p-7">
+
           <div className="shrink-0 overflow-hidden rounded-[1.4rem] bg-white/95 p-2 shadow-[0_18px_44px_rgba(8,17,28,0.22)]">
             <img
               src="/brand-logo.png"
@@ -291,7 +292,7 @@ export default function Layout() {
               </div>
               <div className="min-w-0 flex-1 cursor-pointer group/name" onClick={handleEditName} title="تعديل الاسم">
                 <p className="truncate text-right text-sm font-black text-white group-hover/name:text-primary-300 transition-colors">
-                  {currentUser?.name} <span className="opacity-40 text-xs">✏️</span>
+                  {currentUser?.name && !/[\uFFFD]/.test(currentUser.name) ? currentUser.name : 'مدير النظام'}
                 </p>
                 <p className="mt-1 text-right text-[10px] font-black uppercase leading-none tracking-[0.2em] text-primary-200">
                   {roleLabel}
@@ -526,7 +527,7 @@ export default function Layout() {
             <div className="hidden items-center gap-3 rounded-[1.4rem] border border-primary-100 bg-primary-50/60 px-3 py-2 md:flex">
               <div className="text-left cursor-pointer group/name" onClick={handleEditName} title="تعديل الاسم">
                 <p className="text-sm font-black leading-tight text-slate-900 group-hover/name:text-primary-600 transition-colors">
-                  {currentUser?.name} <span className="opacity-40 text-xs">✏️</span>
+                  {currentUser?.name && !/[\uFFFD]/.test(currentUser.name) ? currentUser.name : 'مدير النظام'}
                 </p>
                 <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.22em] text-primary-600">
                   {roleLabel}

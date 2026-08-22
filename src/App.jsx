@@ -1,5 +1,5 @@
 import { Suspense, lazy, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { StoreProvider, useStore } from './context/StoreContext'
 import LoadingScreen from './components/LoadingScreen'
@@ -24,13 +24,8 @@ const Quotes = lazy(() => import('./pages/Quotes'))
 const QuotePrint = lazy(() => import('./pages/QuotePrint'))
 const Reminders = lazy(() => import('./pages/Reminders'))
 const Purchases = lazy(() => import('./pages/Purchases'))
-const CustomerPortal = lazy(() => import('./pages/CustomerPortal'))
 const StockHistory = lazy(() => import('./pages/StockHistory'))
-const ServiceBooking = lazy(() => import('./pages/ServiceBooking'))
 const ServiceBookingsAdmin = lazy(() => import('./pages/ServiceBookingsAdmin'))
-const CustomerLogin = lazy(() => import('./pages/CustomerLogin'))
-const CustomerAccount = lazy(() => import('./pages/CustomerAccount'))
-const Launchpad = lazy(() => import('./pages/Launchpad'))
 const Login = lazy(() => import('./pages/Login'))
 const SupplierReturns = lazy(() => import('./pages/SupplierReturns'))
 const SalesReturns = lazy(() => import('./pages/SalesReturns'))
@@ -39,13 +34,6 @@ const ServiceCalendar = lazy(() => import('./pages/ServiceCalendar'))
 
 function isStaffRole(role) {
   return role === 'admin' || role === 'cashier'
-}
-
-function normalizePhone(value) {
-  return String(value || '')
-    .replace(/[\u0660-\u0669]/g, (digit) => String(digit.charCodeAt(0) - 1632))
-    .replace(/\D/g, '')
-    .slice(0, 15)
 }
 
 function AppRouter() {
@@ -70,6 +58,28 @@ function AppRouter() {
         }}
       />
       <Routes>
+        {/* صفحة تسجيل الدخول */}
+        <Route
+          path="/login"
+          element={
+            currentUser && isStaffUser ? (
+              <Navigate to={isAdminUser ? '/dashboard' : '/pos'} replace />
+            ) : (
+              <Login />
+            )
+          }
+        />
+        <Route path="/admin-login" element={<Navigate to="/login" replace />} />
+        <Route path="/customer-login" element={<Navigate to="/login" replace />} />
+        <Route path="/customer/*" element={<Navigate to="/login" replace />} />
+        <Route path="/portal/*" element={<Navigate to="/login" replace />} />
+        <Route path="/service-booking" element={<Navigate to="/login" replace />} />
+
+        {/* روابط الفواتير وعروض الأسعار للطباعة ومعاينة العميل */}
+        <Route path="/receipt/:id" element={<Receipt />} />
+        <Route path="/print-quote/:id" element={<QuotePrint />} />
+
+        {/* توجيه المسار الرئيسي */}
         <Route
           path="/"
           element={
@@ -78,34 +88,13 @@ function AppRouter() {
             ) : isCashierUser ? (
               <Navigate to="/pos" replace />
             ) : (
-              <Navigate to="/admin-login" replace />
+              <Navigate to="/login" replace />
             )
           }
         />
-        <Route
-          path="/admin-login"
-          element={
-            currentUser ? (
-              <Navigate
-                to={isAdminUser ? '/dashboard' : '/pos'}
-                replace
-              />
-            ) : (
-              <Login />
-            )
-          }
-        />
-        <Route path="/customer-login" element={<Navigate to="/admin-login" replace />} />
-        <Route path="/customer/login" element={<Navigate to="/admin-login" replace />} />
-        <Route path="/customer/account" element={<Navigate to="/admin-login" replace />} />
-        <Route path="/service-booking" element={<Navigate to="/admin-login" replace />} />
-        <Route path="/customer/booking" element={<Navigate to="/admin-login" replace />} />
-        <Route path="/receipt/:id" element={<Receipt />} />
-        <Route path="/print-quote/:id" element={<QuotePrint />} />
-        <Route path="/portal/:phone" element={<Navigate to="/" replace />} />
 
-        {!currentUser && <Route path="*" element={<Navigate to="/" replace />} />}
-        {isStaffUser && (
+        {/* لوحة تحكم الموظفين والمديرين */}
+        {isStaffUser ? (
           <Route element={<Layout />}>
             <Route
               path="dashboard"
@@ -115,7 +104,7 @@ function AppRouter() {
             <Route path="products" element={<Products />} />
             <Route path="customers" element={<Customers />} />
 
-            {isAdminUser ? (
+            {isAdminUser && (
               <>
                 <Route path="categories" element={<Categories />} />
                 <Route path="suppliers" element={<Suppliers />} />
@@ -134,62 +123,36 @@ function AppRouter() {
                 <Route path="service-bookings" element={<ServiceBookingsAdmin />} />
                 <Route path="service-calendar" element={<ServiceCalendar />} />
               </>
-            ) : null}
+            )}
 
             <Route
               path="*"
               element={<Navigate to={isAdminUser ? '/dashboard' : '/pos'} replace />}
             />
           </Route>
-        )}
-
-        {currentUser && !isStaffUser && (
-          <Route path="*" element={<Navigate to="/customer/account" replace />} />
+        ) : (
+          <Route path="*" element={<Navigate to="/login" replace />} />
         )}
       </Routes>
     </BrowserRouter>
   )
 }
 
-function CustomerPortalGuard() {
-  const { currentUser, loading } = useAuth()
-  const { phone } = useParams()
-  const routePhone = normalizePhone(phone)
-  const userPhone = normalizePhone(currentUser?.phone)
-
-  if (loading) {
-    return <LoadingScreen />
-  }
-
-  if (!currentUser) {
-    const redirect = encodeURIComponent(`/portal/${routePhone}`)
-    return <Navigate to={`/customer/login?mode=login&redirect=${redirect}`} replace />
-  }
-
-  if (currentUser.role === 'customer') {
-    if (!userPhone) {
-      return <Navigate to="/customer/account" replace />
-    }
-
-    if (routePhone !== userPhone) {
-      return <Navigate to={`/portal/${userPhone}`} replace />
-    }
-  }
-
-  if (currentUser.role === 'cashier') {
-    return <Navigate to="/pos" replace />
-  }
-
-  return <CustomerPortal />
-}
-
 export default function App() {
   const [showIntro, setShowIntro] = useState(() => {
+    // 1. Skip intro completely on mobile for maximum performance and no lag
+    const isMobile =
+      window.innerWidth < 768 ||
+      /Mobi|Android|iP(hone|ad|od)|IEMobile|BlackBerry|Kindle|Opera Mini/i.test(navigator.userAgent)
+    if (isMobile) return false
+
+    // 2. Skip intro on special routes (like printing a receipt)
     const path = window.location.pathname
-    const isSpecialRoute = path.includes('/receipt/') || 
-                           path.includes('/print-quote/') || 
-                           path.includes('/portal/')
+    const isSpecialRoute =
+      path.includes('/receipt/') || path.includes('/print-quote/')
     if (isSpecialRoute) return false
+
+    // 3. Otherwise, play intro once per device/browser
     return !localStorage.getItem('elfarouk_intro_played')
   })
 

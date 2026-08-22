@@ -257,34 +257,7 @@ export default function Login() {
                 </motion.button>
               </form>
 
-              <div className="customer-card-light mt-5 p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary-600">
-                      Quick Switch
-                    </p>
-                    <h3 className="mt-2 text-lg font-black text-slate-950">بدّل المسار بسرعة</h3>
-                  </div>
-                  <div className="rounded-2xl bg-primary-50 p-3 text-primary-700">
-                    <Sparkles size={18} />
-                  </div>
-                </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Link
-                    to="/customer/login?mode=login"
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-black text-slate-700 transition-all hover:border-primary-200 hover:text-primary-700"
-                  >
-                    فتح دخول العميل
-                  </Link>
-                  <Link
-                    to="/customer/login?mode=register"
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-black text-slate-700 transition-all hover:border-primary-200 hover:text-primary-700"
-                  >
-                    تسجيل عميل جديد
-                  </Link>
-                </div>
-              </div>
             </div>
           </motion.section>
         </div>

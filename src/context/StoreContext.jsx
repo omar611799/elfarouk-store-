@@ -122,10 +122,10 @@ export function StoreProvider({ children }) {
 
     if (isStaffUser) {
       const primarySubs = [
-        listenCol(COLS.PRODUCTS, (data) => {
+        listenColLimited(COLS.PRODUCTS, (data) => {
           dispatch({ type: 'SET', key: 'products', data })
           setTimeout(() => dispatch({ type: 'LOADING', value: false }), 100)
-        }),
+        }, 300),
         listenCol(COLS.CATEGORIES, (data) =>
           dispatch({ type: 'SET', key: 'categories', data })
         ),
@@ -141,7 +141,7 @@ export function StoreProvider({ children }) {
         listenCol(COLS.SUPPLIERS, (data) => dispatch({ type: 'SET', key: 'suppliers', data }))
       )
       unsubs.push(
-        listenCol(COLS.CUSTOMERS, (data) => dispatch({ type: 'SET', key: 'customers', data }))
+        listenColLimited(COLS.CUSTOMERS, (data) => dispatch({ type: 'SET', key: 'customers', data }), 200)
       )
     }, 1500)
 

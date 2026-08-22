@@ -22,22 +22,31 @@ export default function IntroScreen({ onFinished }) {
     setMousePos({ x, y })
   }
 
-  // Simulated tech bootup sequence logs
+  // Simulated tech bootup sequence logs with fail-safe auto-skip if video hangs
   useEffect(() => {
     const timers = [
-      setTimeout(() => setBootStep(1), 100),
-      setTimeout(() => setBootStep(2), 250),
-      setTimeout(() => setBootStep(3), 400),
-      setTimeout(() => setBootStep(4), 550),
+      setTimeout(() => setBootStep(1), 50),
+      setTimeout(() => setBootStep(2), 100),
+      setTimeout(() => setBootStep(3), 150),
+      setTimeout(() => setBootStep(4), 200),
     ]
-    return () => timers.forEach(clearTimeout)
-  }, [])
+
+    // Bulletproof Fail-safe Timeout: If video doesn't fire load event in 1.5s, auto-skip to ensure app never hangs.
+    const failSafeTimeout = setTimeout(() => {
+      console.log("Failsafe triggered: skipping intro screen due to load timeout")
+      onFinished?.()
+    }, 1500)
+
+    return () => {
+      timers.forEach(clearTimeout)
+      clearTimeout(failSafeTimeout)
+    }
+  }, [onFinished])
 
   // Bulletproof HTML5 Video Autoplay trigger for modern browsers & mobile
   useEffect(() => {
     const video = videoRef.current
     if (video) {
-      // Force programmatic muted state before play attempt (required by Chrome/Safari/iOS)
       video.defaultMuted = true
       video.muted = true
       
@@ -48,14 +57,12 @@ export default function IntroScreen({ onFinished }) {
           })
           .catch((err) => {
             console.warn("Autoplay was blocked or failed, waiting for interaction:", err)
-            // Still set loaded to true so the fallback image/elements show up beautifully
             setVideoLoaded(true)
           })
       }
 
       attemptPlay()
 
-      // Synchronize state on video events
       const handlePlayEvent = () => setVideoLoaded(true)
       video.addEventListener('canplay', handlePlayEvent)
       video.addEventListener('playing', handlePlayEvent)
@@ -64,6 +71,8 @@ export default function IntroScreen({ onFinished }) {
         video.removeEventListener('canplay', handlePlayEvent)
         video.removeEventListener('playing', handlePlayEvent)
       }
+    } else {
+      setVideoLoaded(true)
     }
   }, [])
 
@@ -71,7 +80,7 @@ export default function IntroScreen({ onFinished }) {
     setIsExiting(true)
     setTimeout(() => {
       onFinished?.()
-    }, 400)
+    }, 150)
   }
 
   const toggleMute = () => {
@@ -91,7 +100,7 @@ export default function IntroScreen({ onFinished }) {
           exit={{ 
             opacity: 0,
             scale: 1.05,
-            filter: 'blur(10px) brightness(1.2)'
+            filter: window.innerWidth >= 768 ? 'blur(10px) brightness(1.2)' : 'none'
           }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
           onMouseMove={handleMouseMove}
@@ -111,23 +120,24 @@ export default function IntroScreen({ onFinished }) {
               }}
             />
 
-            {/* Background Video with Programmatic Autoplay & Scale Zoom */}
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover transition-all duration-[2s] ease-out"
-              style={{
-                opacity: videoLoaded ? (isHovered ? 0.8 : 0.65) : 0,
-                transform: isHovered ? 'scale(1.08)' : 'scale(1)',
-                filter: isHovered ? 'contrast(1.1) brightness(0.95)' : 'contrast(1) brightness(0.85)',
-              }}
-            >
-              <source src="/loading-motor.mp4" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+            {/* Background Video (Desktop Only) to prevent mobile OOM crashes */}
+            {window.innerWidth >= 768 && (
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover transition-all duration-[2s] ease-out"
+                style={{
+                  opacity: videoLoaded ? (isHovered ? 0.8 : 0.65) : 0,
+                  transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+                  filter: isHovered ? 'contrast(1.1) brightness(0.95)' : 'contrast(1) brightness(0.85)',
+                }}
+              >
+                <source src="/loading-motor.mp4" type="video/mp4" />
+              </video>
+            )}
 
             {/* Futuristic Tech Grid Overlay */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(14,165,233,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(14,165,233,0.04)_1px,transparent_1px)] bg-[size:40px_40px] opacity-70" />

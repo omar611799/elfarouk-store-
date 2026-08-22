@@ -880,6 +880,7 @@ export default function POS() {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [reminders, setReminders] = useState({})
   const [itemWeights, setItemWeightsState] = useState({})
+  const [unitSelectProduct, setUnitSelectProduct] = useState(null) // for box/piece selection
 
   // Suspended Carts state
   const [suspendedCarts, setSuspendedCarts] = useState(() => {
@@ -960,7 +961,7 @@ export default function POS() {
       const productList = products.map(p => `- ${p.name}`).join('\n')
       const promptText = `Analyze this image and match it to exactly one product from this list. Respond with ONLY the exact product name, nothing else. If none match, respond with 'NONE'.\nList of products:\n${productList}`
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1205,7 +1206,42 @@ export default function POS() {
   }
 
   const handleCartAdd = (p) => {
+    if (p.hasSubUnits) {
+      // Show unit selection popup
+      setUnitSelectProduct(p)
+      return
+    }
     cartAdd(p)
+    if (window.navigator?.vibrate) window.navigator.vibrate(15)
+  }
+
+  const handleCartAddWithUnit = (p, unit) => {
+    // unit: 'piece' or 'box'
+    const piecesPerBox = Number(p.piecesPerBox || 1)
+    if (unit === 'piece') {
+      const pieceItem = {
+        ...p,
+        id: p.id + '_piece',
+        name: p.name + ' (قطعة)',
+        price: Number(p.piecePrice || p.price),
+        _originalId: p.id,
+        _unit: 'piece',
+        _piecesPerBox: 1,
+      }
+      cartAdd(pieceItem)
+    } else {
+      const boxItem = {
+        ...p,
+        id: p.id + '_box',
+        name: p.name + ' (علبة - ' + piecesPerBox + ' قطعة)',
+        price: Number(p.price),
+        _originalId: p.id,
+        _unit: 'box',
+        _piecesPerBox: piecesPerBox,
+      }
+      cartAdd(boxItem)
+    }
+    setUnitSelectProduct(null)
     if (window.navigator?.vibrate) window.navigator.vibrate(15)
   }
 
@@ -1285,6 +1321,51 @@ export default function POS() {
   /* ═══ MAIN POS LAYOUT ═══ */
   return (
     <div className="flex min-h-full flex-col overflow-hidden bg-[#f1f5f9] font-display xl:h-full xl:flex-row" dir="rtl">
+
+      {/* ===== Unit Selection Modal (Box / Piece) ===== */}
+      <AnimatePresence>
+        {unitSelectProduct && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-end sm:items-center justify-center p-4"
+            onClick={() => setUnitSelectProduct(null)}
+          >
+            <motion.div
+              initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-10 h-1.5 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
+              <h3 className="text-lg font-black text-slate-800 text-center mb-1">{unitSelectProduct.name}</h3>
+              <p className="text-xs text-slate-500 text-center mb-6">اختر وحدة البيع</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleCartAddWithUnit(unitSelectProduct, 'piece')}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 active:scale-95 transition-all"
+                >
+                  <span className="text-3xl">🔩</span>
+                  <span className="font-black text-blue-700 text-sm">قطعة</span>
+                  <span className="text-xs font-bold text-blue-500">{Number(unitSelectProduct.piecePrice || unitSelectProduct.price).toLocaleString()} ج.م</span>
+                </button>
+                <button
+                  onClick={() => handleCartAddWithUnit(unitSelectProduct, 'box')}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 active:scale-95 transition-all"
+                >
+                  <span className="text-3xl">📦</span>
+                  <span className="font-black text-amber-700 text-sm">علبة ({unitSelectProduct.piecesPerBox} قطعة)</span>
+                  <span className="text-xs font-bold text-amber-500">{Number(unitSelectProduct.price).toLocaleString()} ج.م</span>
+                </button>
+              </div>
+              <button
+                onClick={() => setUnitSelectProduct(null)}
+                className="mt-4 w-full text-xs text-slate-400 font-bold py-2 hover:text-slate-600 transition-colors"
+              >إلغاء</button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Search & Grid Area */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="custom-scrollbar flex-1 min-w-0 overflow-y-auto p-3 sm:p-5 xl:p-6">
         {/* Header */}

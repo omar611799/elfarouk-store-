@@ -5,7 +5,8 @@ import {
   ShoppingCart, ArrowUpRight, ArrowDownRight, Bell,
   Star, Download, ChevronDown,
   ExternalLink, Activity, RefreshCw,
-  CheckCircle2, Wallet, BarChart2, TrendingDown, PhoneCall
+  CheckCircle2, Wallet, BarChart2, TrendingDown, PhoneCall,
+  Car, Wrench
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -161,62 +162,84 @@ export default function Dashboard() {
   const stockList = products.slice(stockPage * STOCK_PER_PAGE, (stockPage + 1) * STOCK_PER_PAGE)
   const totalStockPages = Math.ceil(products.length / STOCK_PER_PAGE)
 
+  // Last registered client / vehicle invoice helper for the green card
+  const lastInvoice = invoices[0] || null
+
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 pb-24 sm:space-y-8" dir="rtl">
 
-      <motion.div variants={item} className="overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-[0_15px_50px_rgba(0,0,0,0.02)]">
-        <div className="grid gap-0 lg:grid-cols-[1.25fr,0.95fr]">
-          <div className="relative overflow-hidden bg-[linear-gradient(135deg,#002d9c_0%,#0f62fe_58%,#93c0ff_100%)] p-5 text-white sm:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.1),transparent_35%)]" />
-            <div className="relative flex flex-col gap-6">
-              <div className="flex items-center gap-4">
-                <div className="rounded-[1.75rem] bg-white p-2.5 shadow-md">
-                  <img src="/brand-logo.png" alt="ELFAROUK Service" className="h-16 w-16 object-contain sm:h-20 sm:w-20" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.32em] text-blue-100 sm:text-[11px]">ELFAROUK SERVICE</p>
-                  <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl font-display">لوحة التشغيل اليومية</h1>
-                </div>
-              </div>
-              <p className="max-w-2xl text-xs sm:text-sm leading-relaxed text-blue-50 font-bold">
-                متابعة واضحة للمبيعات والمخزون والعملاء مع هوية بصرية متناسقة على الديسكتوب والموبايل.
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-white/10 bg-white/10 p-3.5 backdrop-blur-md">
-                  <p className="text-[9px] font-black uppercase tracking-[0.1em] text-blue-100">مبيعات اليوم</p>
-                  <p className="mt-1.5 text-base sm:text-lg font-black font-display">
-                    {isAdmin ? `${Math.round(totalSales).toLocaleString()} ج` : 'مؤمن'}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/10 p-3.5 backdrop-blur-md">
-                  <p className="text-[9px] font-black uppercase tracking-[0.1em] text-blue-100">عملاء نشطون</p>
-                  <p className="mt-1.5 text-base sm:text-lg font-black font-display">{customers.length}</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/10 p-3.5 backdrop-blur-md">
-                  <p className="text-[9px] font-black uppercase tracking-[0.1em] text-blue-100">تنبيهات المخزون</p>
-                  <p className="mt-1.5 text-base sm:text-lg font-black font-display">{lowStock.length}</p>
-                </div>
-              </div>
+      {/* Premium Samsung / Dribbble Top Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Left Side: Neon Green Visa-like Car Card */}
+        <motion.div variants={item} className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#a3e635] to-[#84cc16] p-6 text-slate-900 shadow-[0_20px_50px_rgba(132,204,22,0.15)] flex flex-col justify-between min-h-[220px]">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-white/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">السيارة الأخيرة بالمركز</p>
+              <h3 className="text-xl font-black mt-1 font-display">
+                {lastInvoice?.customerData?.carPlate || 'لوحة قـيد الفحص'}
+              </h3>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-white/30 backdrop-blur-md flex items-center justify-center">
+              <Car size={20} className="text-slate-900" />
             </div>
           </div>
 
-          <div className="flex flex-col justify-between gap-6 bg-slate-50/60 p-5 sm:p-8">
+          <div className="mt-8">
+            <p className="text-[10px] font-black opacity-70">نوع السيارة والموديل</p>
+            <p className="text-sm font-black mt-0.5">
+              {lastInvoice?.customerData?.carModel || 'صيانة عامة'}
+            </p>
+          </div>
+
+          <div className="flex justify-between items-end mt-4 pt-4 border-t border-slate-900/10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#0f62fe]">جاهزية اليوم</p>
-              <h2 className="mt-2 text-xl font-black text-slate-800">
-                {lowStock.length > 0 ? 'نواقص في المخزون تحتاج متابعة' : 'الوضع مستقر ومهيأ للبيع'}
-              </h2>
-              <p className="mt-3 text-xs leading-relaxed text-slate-400 font-bold">
-                استخدم الاختصارات السريعة للوصول إلى الكاشير أو المخزن أو مراجعة التقارير من نفس الواجهة.
+              <p className="text-[9px] font-black opacity-60">العميل الحالي</p>
+              <p className="text-xs font-black">{lastInvoice?.customerData?.name || 'عميل نقدي'}</p>
+            </div>
+            <span className="text-[10px] font-black bg-slate-900 text-[#a3e635] px-3 py-1 rounded-full">
+              {lastInvoice?.paymentStatus === 'paid' ? 'مكتملة الدفع' : 'معلقة'}
+            </span>
+          </div>
+        </motion.div>
+
+        {/* Right Side: Welcome & Statistics (2 Columns) */}
+        <motion.div variants={item} className="lg:col-span-2 overflow-hidden rounded-[2rem] border border-slate-100 bg-white p-6 sm:p-8 shadow-[0_15px_50px_rgba(0,0,0,0.02)] flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-primary-500">
+                <span className="h-2 w-2 rounded-full bg-primary-500 animate-pulse" />
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]">لوحة التحكم الموحدة</p>
+              </div>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-800 font-display">مرحباً بك في مركز الفاروق للسيارات</h1>
+            </div>
+            <img src="/brand-logo.png" alt="Logo" className="h-10 w-10 object-contain" />
+          </div>
+
+          <p className="text-xs leading-relaxed text-slate-400 font-bold mt-4">
+            استعرض حالة المبيعات اليومية لقطع الغيار والصيانة، ومتابعة مديونيات العملاء بشكل فوري وآمن.
+          </p>
+
+          <div className="grid grid-cols-3 gap-3 mt-6">
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <p className="text-[10px] font-black text-slate-400">إجمالي المبيعات</p>
+              <p className="text-base sm:text-lg font-black text-slate-800 mt-1 font-display">
+                {isAdmin ? `${Math.round(totalSales).toLocaleString()} ج` : 'مؤمن'}
               </p>
             </div>
-            <div className="grid gap-3">
-              <QuickAction label="الدخول إلى نقطة البيع" icon={ShoppingCart} primary href="/pos" />
-              <QuickAction label="فتح صفحة التقارير" icon={ExternalLink} href="/reports" />
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <p className="text-[10px] font-black text-slate-400">السيارات</p>
+              <p className="text-base sm:text-lg font-black text-slate-800 mt-1 font-display">{customers.length}</p>
+            </div>
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <p className="text-[10px] font-black text-slate-400">نواقص قطع الغيار</p>
+              <p className="text-base sm:text-lg font-black text-rose-500 mt-1 font-display">{lowStock.length}</p>
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+
+      </div>
 
 
       {/* ── Row 1: Stats Bar ─────────────────────────────────────── */}
@@ -225,22 +248,18 @@ export default function Dashboard() {
       </motion.div>
 
       <motion.div variants={item} className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <StatCard label="إجمالي المنتجات" value={totalProducts.toLocaleString()} icon={Package}
+        <StatCard label="السيارات المسجلة" value={customers.length.toLocaleString()} icon={Car}
           trend="+12%" trendUp color="primary" sparkline={[20,35,28,50,40,60,55]} />
-        <StatCard label="نواقص المخزون" value={lowStock.length} icon={AlertTriangle}
+        <StatCard label="قطع الغيار والزيوت" value={totalProducts.toLocaleString()} icon={Package}
+          trend="المخزن" trendUp color="emerald" sparkline={[30,40,35,45,38,50,48]} />
+        <StatCard label="نواقص قطع الغيار" value={lowStock.length} icon={AlertTriangle}
           trend={lowStock.length > 0 ? "تنبيه" : "مستقر"} trendUp={false} color="amber" sparkline={[50,40,60,30,45,20,15]} />
-        <StatCard label="مبيعات اليوم" value={isAdmin ? `${Math.round(todaySales).toLocaleString()} ج.م` : 'مؤمن'} icon={TrendingUp}
+        <StatCard label="مبيعات الصيانة اليومية" value={isAdmin ? `${Math.round(todaySales).toLocaleString()} ج` : 'مؤمن'} icon={TrendingUp}
           trend={isAdmin ? "+8.5%" : ""} trendUp color="primary" sparkline={isAdmin ? [10,30,20,50,40,70,90] : [0,0,0,0,0,0,0]} />
         {isAdmin && (
-          <StatCard label="صافي الأرباح" value={`${Math.round(netProfit).toLocaleString()} ج.م`} icon={Star}
-            trend="+10.2%" trendUp color="emerald" sparkline={salesHistory.map(h => h.profit)} />
+          <StatCard label="إجمالي المديونيات المعلقة" value={`${Math.round(totalDebt).toLocaleString()} ج`} icon={Wallet}
+            trend={totalDebt > 0 ? `${topDebtors.length} عميل` : 'مستقر'} trendUp={false} color="rose" sparkline={[15,22,18,30,25,35,topDebtors.length*5]} />
         )}
-        {isAdmin && (
-          <StatCard label="إجمالي المديونيات" value={`${Math.round(totalDebt).toLocaleString()} ج.م`} icon={Wallet}
-            trend={totalDebt > 0 ? `${topDebtors.length} عميل` : 'صفر'} trendUp={false} color="rose" sparkline={[15,22,18,30,25,35,topDebtors.length*5]} />
-        )}
-        <StatCard label="طلبات معلقة" value={activeOrders} icon={ShoppingCart}
-          trend={`+${activeOrders}`} trendUp color="primary" sparkline={[5,12,8,14,10,18,16]} />
       </motion.div>
 
       {/* ── Row 2: Chart + Right Panel ──────────────────────────── */}

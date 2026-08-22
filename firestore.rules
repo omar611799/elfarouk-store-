@@ -5,10 +5,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userOwnsDoc(id) {
-      return signedIn() && request.auth.uid == id;
-    }
-
     function userPath() {
       return /databases/$(database)/documents/users/$(request.auth.uid);
     }
@@ -29,129 +25,14 @@ service cloud.firestore {
       return isAdmin() || isCashier();
     }
 
-    function isCustomer() {
-      return signedIn() && userRole() == 'customer';
-    }
-
-    function customerPhoneVerified() {
-      return isCustomer()
-        && (
-          !get(userPath()).data.keys().hasAny(['phoneVerificationStatus'])
-          || get(userPath()).data.phoneVerificationStatus == 'verified'
-        );
-    }
-
-    function userDocKeysAllowed() {
-      return request.resource.data.keys().hasOnly([
-        'role',
-        'name',
-        'phone',
-        'email',
-        'phoneVerificationStatus',
-        'phoneVerificationReason',
-        'phoneVerifiedAt',
-        'phoneVerifiedByUid',
-        'phoneVerifiedByName',
-        'accountStatusUpdatedAt',
-        'accountStatusUpdatedByUid',
-        'accountStatusUpdatedByName',
-        'createdAt',
-        'updatedAt'
-      ]);
-    }
-
-    function customerAccountKeysAllowed() {
-      return request.resource.data.keys().hasOnly([
-        'uid',
-        'name',
-        'phone',
-        'email',
-        'status',
-        'verifiedAt',
-        'verifiedByUid',
-        'verifiedByName',
-        'reviewReason',
-        'statusUpdatedAt',
-        'statusUpdatedByUid',
-        'statusUpdatedByName',
-        'createdAt',
-        'updatedAt'
-      ]);
-    }
-
-    function serviceMessageKeysAllowed() {
-      return request.resource.data.keys().hasOnly([
-        'bookingId',
-        'customerAuthUid',
-        'sender',
-        'text',
-        'paymentSenderPhone',
-        'paymentProofImage',
-        'paymentProofFileName',
-        'createdAt',
-        'updatedAt'
-      ]);
-    }
-
-    function notificationKeysAllowed() {
-      return request.resource.data.keys().hasOnly([
-        'type',
-        'audience',
-        'bookingId',
-        'customerAuthUid',
-        'title',
-        'body',
-        'read',
-        'createdAt',
-        'updatedAt'
-      ]);
-    }
-
-    function serviceBookingCreateKeysAllowed() {
-      return request.resource.data.keys().hasOnly([
-        'name',
-        'phone',
-        'carModel',
-        'notes',
-        'day',
-        'slot',
-        'customerAuthUid',
-        'slotPrice',
-        'paymentLink',
-        'paymentStatus',
-        'paymentSubmittedAt',
-        'paymentReviewedAt',
-        'paymentReviewedByUid',
-        'paymentReviewedByName',
-        'paymentReviewNote',
-        'status',
-        'createdAt',
-        'updatedAt'
-      ]);
-    }
-
-    function serviceSlotLockKeysAllowed() {
-      return request.resource.data.keys().hasOnly([
-        'bookingId',
-        'day',
-        'slot',
-        'createdAt',
-        'updatedAt'
-      ]);
-    }
-
-    function customerServiceLockKeysAllowed() {
-      return request.resource.data.keys().hasOnly([
-        'bookingId',
-        'day',
-        'slot',
-        'createdAt',
-        'updatedAt'
-      ]);
-    }
-
+    // ─── Products & Inventory ───
     match /products/{id} {
       allow read, write: if isStaff();
+    }
+
+    match /stockLogs/{id} {
+      allow create, read: if isStaff();
+      allow update, delete: if isAdmin();
     }
 
     match /categories/{id} {
@@ -159,249 +40,79 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ─── Suppliers & Purchases ───
     match /suppliers/{id} {
       allow read: if isStaff();
       allow write: if isAdmin();
-    }
-
-    match /customers/{id} {
-      allow read, write: if isStaff();
-    }
-
-    match /invoices/{id} {
-      allow create, read: if isStaff();
-      allow update, delete: if isAdmin();
-    }
-
-    match /transactions/{id} {
-      allow create: if isStaff();
-      allow read, update, delete: if isAdmin();
-    }
-
-    match /expenses/{id} {
-      allow read, write: if isAdmin();
-    }
-
-    match /quotations/{id} {
-      allow read, write: if isAdmin();
-    }
-
-    match /users/{id} {
-      allow create: if isAdmin()
-        || (
-          userOwnsDoc(id)
-          && userDocKeysAllowed()
-          && request.resource.data.role == 'customer'
-        );
-
-      allow read: if isAdmin() || userOwnsDoc(id);
-
-      allow update: if isAdmin()
-        || (
-          userOwnsDoc(id)
-          && userDocKeysAllowed()
-          && resource.data.role == 'customer'
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'name',
-            'phone',
-            'email',
-            'updatedAt'
-          ])
-        );
-
-      allow delete: if isAdmin();
-    }
-
-
-
-    match /stockLogs/{id} {
-      allow create: if isStaff();
-      allow read, update, delete: if isAdmin();
     }
 
     match /purchases/{id} {
       allow read, write: if isAdmin();
     }
 
-    match /customerAccounts/{id} {
-      allow create: if isAdmin()
-        || (
-          isCustomer()
-          && userOwnsDoc(id)
-          && customerAccountKeysAllowed()
-          && request.resource.data.uid == request.auth.uid
-          && request.resource.data.status in ['active', 'pending_phone_verification']
-        );
-
-      allow read: if isAdmin()
-        || (isCustomer() && resource.data.uid == request.auth.uid);
-
-      allow update: if isAdmin()
-        || (
-          isCustomer()
-          && resource.data.uid == request.auth.uid
-          && customerAccountKeysAllowed()
-          && request.resource.data.uid == resource.data.uid
-          && request.resource.data.email == resource.data.email
-          && request.resource.data.status == resource.data.status
-          && request.resource.data.verifiedAt == resource.data.verifiedAt
-          && request.resource.data.verifiedByUid == resource.data.verifiedByUid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'name',
-            'phone',
-            'updatedAt'
-          ])
-        );
-
-      allow delete: if isAdmin();
-    }
-
-    match /serviceBookings/{id} {
-      allow create: if isAdmin()
-        || (
-          customerPhoneVerified()
-          && serviceBookingCreateKeysAllowed()
-          && request.resource.data.customerAuthUid == request.auth.uid
-          && request.resource.data.status == 'new'
-          && request.resource.data.paymentStatus == 'pending'
-          && request.resource.data.slotPrice == 50
-          && request.resource.data.name is string
-          && request.resource.data.phone is string
-          && request.resource.data.day is string
-          && request.resource.data.slot is string
-          && !exists(/databases/$(database)/documents/customerServiceLocks/$(request.auth.uid))
-          && existsAfter(/databases/$(database)/documents/customerServiceLocks/$(request.auth.uid))
-          && getAfter(/databases/$(database)/documents/customerServiceLocks/$(request.auth.uid)).data.bookingId == id
-          && getAfter(/databases/$(database)/documents/customerServiceLocks/$(request.auth.uid)).data.day == request.resource.data.day
-          && getAfter(/databases/$(database)/documents/customerServiceLocks/$(request.auth.uid)).data.slot == request.resource.data.slot
-          && existsAfter(/databases/$(database)/documents/serviceSlotLocks/$(request.resource.data.day + '__' + request.resource.data.slot))
-          && getAfter(/databases/$(database)/documents/serviceSlotLocks/$(request.resource.data.day + '__' + request.resource.data.slot)).data.bookingId == id
-          && getAfter(/databases/$(database)/documents/serviceSlotLocks/$(request.resource.data.day + '__' + request.resource.data.slot)).data.day == request.resource.data.day
-          && getAfter(/databases/$(database)/documents/serviceSlotLocks/$(request.resource.data.day + '__' + request.resource.data.slot)).data.slot == request.resource.data.slot
-        );
-
-      allow update: if isAdmin()
-        || (
-          customerPhoneVerified()
-          && resource.data.customerAuthUid == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'paymentStatus',
-            'paymentSubmittedAt',
-            'updatedAt'
-          ])
-          && resource.data.status in ['new', 'confirmed']
-          && resource.data.paymentStatus in ['pending', 'rejected']
-          && request.resource.data.paymentStatus == 'proof_submitted'
-        );
-      allow delete: if isAdmin();
-      allow read: if isAdmin()
-        || (isCustomer() && resource.data.customerAuthUid == request.auth.uid);
-    }
-
-    match /serviceSlotLocks/{id} {
-      allow read: if isAdmin();
-
-      allow create: if isAdmin()
-        || (
-          isCustomer()
-          && serviceSlotLockKeysAllowed()
-          && id == request.resource.data.day + '__' + request.resource.data.slot
-          && request.resource.data.bookingId is string
-          && !exists(/databases/$(database)/documents/serviceSlotLocks/$(id))
-          && existsAfter(/databases/$(database)/documents/serviceBookings/$(request.resource.data.bookingId))
-          && getAfter(/databases/$(database)/documents/serviceBookings/$(request.resource.data.bookingId)).data.customerAuthUid == request.auth.uid
-          && getAfter(/databases/$(database)/documents/serviceBookings/$(request.resource.data.bookingId)).data.day == request.resource.data.day
-          && getAfter(/databases/$(database)/documents/serviceBookings/$(request.resource.data.bookingId)).data.slot == request.resource.data.slot
-        );
-
-      allow update, delete: if isAdmin();
-    }
-
-    match /customerServiceLocks/{id} {
-      allow read: if isAdmin() || (isCustomer() && id == request.auth.uid);
-
-      allow create: if isAdmin()
-        || (
-          isCustomer()
-          && id == request.auth.uid
-          && customerServiceLockKeysAllowed()
-          && request.resource.data.bookingId is string
-          && !exists(/databases/$(database)/documents/customerServiceLocks/$(id))
-          && existsAfter(/databases/$(database)/documents/serviceBookings/$(request.resource.data.bookingId))
-          && getAfter(/databases/$(database)/documents/serviceBookings/$(request.resource.data.bookingId)).data.customerAuthUid == request.auth.uid
-          && getAfter(/databases/$(database)/documents/serviceBookings/$(request.resource.data.bookingId)).data.day == request.resource.data.day
-          && getAfter(/databases/$(database)/documents/serviceBookings/$(request.resource.data.bookingId)).data.slot == request.resource.data.slot
-        );
-
-      allow update, delete: if isAdmin();
-    }
-
-    match /serviceMessages/{id} {
-      allow create: if (
-          isAdmin() && serviceMessageKeysAllowed()
-        ) || (
-          customerPhoneVerified()
-          && serviceMessageKeysAllowed()
-          && request.resource.data.customerAuthUid == request.auth.uid
-          && request.resource.data.sender == 'customer'
-        );
-
-      allow read: if isAdmin()
-        || (isCustomer() && resource.data.customerAuthUid == request.auth.uid);
-
-      allow update, delete: if isAdmin();
-    }
-
-    match /notifications/{id} {
-      allow create: if (
-          isAdmin() && notificationKeysAllowed()
-        ) || (
-          customerPhoneVerified()
-          && notificationKeysAllowed()
-          && request.resource.data.audience == 'admin'
-          && request.resource.data.customerAuthUid == request.auth.uid
-          && request.resource.data.read == false
-          && request.resource.data.type == 'booking_created'
-        );
-
-      allow read: if isAdmin()
-        || (isCustomer() && resource.data.customerAuthUid == request.auth.uid);
-
-      allow update: if isAdmin()
-        || (
-          isCustomer()
-          && resource.data.customerAuthUid == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'read',
-            'updatedAt'
-          ])
-          && request.resource.data.read is bool
-        );
-
-      allow delete: if isAdmin();
-    }
-
-    match /customerWallets/{id} {
-      allow read: if isAdmin() || (isCustomer() && id == request.auth.uid);
-      allow create, update, delete: if isAdmin();
-    }
-
-    // ====================================================
-    // مجموعة الصيانة - لإرسال تذكيرات الواتساب
-    // Cloud Functions تقرأها بصلاحيات Admin (تتجاوز Rules)
-    // ====================================================
-    match /maintenance/{id} {
+    match /supplierReturns/{id} {
       allow read, write: if isAdmin();
-      allow read: if isStaff();
     }
 
+    // ─── Customers & Invoices ───
+    match /customers/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /invoices/{id} {
+      // Allow read publicly for WhatsApp invoice links (/receipt/:id)
+      allow read: if true;
+      allow create: if isStaff();
+      allow update, delete: if isAdmin();
+    }
+
+    match /quotations/{id} {
+      // Allow read publicly for WhatsApp quote links (/print-quote/:id)
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /transactions/{id} {
+      allow create, read: if isStaff();
+      allow update, delete: if isAdmin();
+    }
+
+    match /expenses/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── System Counters & Maintenance ───
     match /counters/{id} {
       allow read, write: if isStaff();
     }
 
+    match /maintenance/{id} {
+      allow read, write: if isStaff();
+    }
+
+    // ─── User Accounts (Staff Only) ───
+    match /users/{id} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == id);
+      allow write: if isAdmin();
+    }
+
+    // ─── Service Bookings (Admin Only) ───
+    match /serviceBookings/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /serviceMessages/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /notifications/{id} {
+      allow read, write: if isStaff();
+    }
+
+    // ─── Default Deny ───
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
+

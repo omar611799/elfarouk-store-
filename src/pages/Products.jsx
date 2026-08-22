@@ -1,12 +1,13 @@
 import { useState, useRef, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud, QrCode, Printer, X, Filter, Sparkles, Download } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud, QrCode, Printer, X, Filter, Sparkles, Download, Camera } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import toast from 'react-hot-toast'
 
 
-const EMPTY = { name: '', category: '', price: '', cost: '', quantity: '', minStock: '5', sku: '', supplier: '', image: '' }
+const EMPTY = { name: '', category: '', price: '', cost: '', quantity: '', minStock: '5', sku: '', supplier: '', image: '', hasSubUnits: false, piecesPerBox: '', boxCost: '', piecePrice: '' }
 
 export default function Products() {
   const { products, categories, suppliers, addProduct, updateProduct, deleteProduct, importProductsBatch } = useStore()
@@ -18,6 +19,84 @@ export default function Products() {
   const [qrModal, setQrModal] = useState(null)
   const [reorderModal, setReorderModal] = useState(false)
   const fileInputRef = useRef(null)
+  const [scanning, setScanning] = useState(false)
+  const scannerRef = useRef(null)
+
+  const startScanner = async () => {``
+    setScanning(true)
+    setTimeout(async () => {
+      try {
+        let qrScanner = new Html5Qrcode('products-barcode-scanner')
+        scannerRef.current = qrScanner
+
+        const config = {
+          fps: 30,
+          disableFlip: false,
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODE_39,
+          ]
+        }
+
+        const onSuccess = (decodedText) => {
+          setForm(p => ({ ...p, sku: decodedText }))
+          toast.success(`تم قراءة الباركود: ${decodedText}`)
+          stopScanner(qrScanner)
+        }
+
+        try {
+          // Try with automatic flash (torch)
+          await qrScanner.start(
+            { 
+              facingMode: 'environment',
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              advanced: [{ focusMode: "continuous", torch: true }]
+            },
+            config,
+            onSuccess,
+            () => {}
+          )
+        } catch (torchErr) {
+          // Fallback: If device has no flash or rejects torch constraint, start without it
+          qrScanner = new Html5Qrcode('products-barcode-scanner')
+          scannerRef.current = qrScanner
+          await qrScanner.start(
+            { 
+              facingMode: 'environment',
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              advanced: [{ focusMode: "continuous" }]
+            },
+            config,
+            onSuccess,
+            () => {}
+          )
+        }
+      } catch (err) {
+        console.error(err)
+        toast.error('فشل في تشغيل كاميرا الهاتف. تأكد من السماح بالوصول للكاميرا.')
+        setScanning(false)
+      }
+    }, 300)
+  }
+
+  const stopScanner = async (instance = null) => {
+    const activeScanner = instance || scannerRef.current
+    if (activeScanner && activeScanner.isScanning) {
+      try {
+        await activeScanner.stop()
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    scannerRef.current = null
+    setScanning(false)
+  }
 
   const filtered = products.filter(p =>
     (!search    || p.name?.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase())) &&
@@ -72,12 +151,17 @@ export default function Products() {
 
   const handleSubmit = async () => {
     if (!form.name || !form.price) return toast.error('اسم المنتج والسعر مطلوبان')
+    if (form.hasSubUnits && !form.piecesPerBox) return toast.error('ادخل عدد القطع في العلبة')
     const data = {
       ...form,
-      price:    Number(form.price),
-      cost:     Number(form.cost || 0),
-      quantity: Number(form.quantity || 0),
-      minStock: Number(form.minStock || 5),
+      price:       Number(form.price),
+      cost:        Number(form.cost || 0),
+      quantity:    Number(form.quantity || 0),
+      minStock:    Number(form.minStock || 5),
+      hasSubUnits: !!form.hasSubUnits,
+      piecesPerBox: form.hasSubUnits ? Number(form.piecesPerBox || 1) : null,
+      boxCost:     form.hasSubUnits ? Number(form.boxCost || 0) : null,
+      piecePrice:  form.hasSubUnits ? Number(form.piecePrice || 0) : null,
     }
     if (editing) await updateProduct(editing, data)
     else         await addProduct(data)
@@ -297,10 +381,36 @@ export default function Products() {
                   <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                     className="input mt-1" placeholder="مثلاً: مساعدين أمامية تويوتا" />
                 </div>
-                <div>
-                  <label className="label-text">كود SKU</label>
-                  <input value={form.sku} onChange={e => setForm(p => ({ ...p, sku: e.target.value }))}
-                    className="input mt-1" placeholder="123-ABC" />
+                <div className="sm:col-span-2">
+                  <label className="label-text">كود SKU / الباركود</label>
+                  <div className="relative mt-1 flex gap-2">
+                    <input value={form.sku} onChange={e => setForm(p => ({ ...p, sku: e.target.value }))}
+                      className="input flex-1" placeholder="123-ABC" />
+                    <button
+                      type="button"
+                      onClick={scanning ? () => stopScanner() : startScanner}
+                      className={`px-4 rounded-2xl flex items-center justify-center border transition-all ${
+                        scanning 
+                          ? 'bg-rose-500 border-rose-500 text-white animate-pulse' 
+                          : 'bg-primary-50 border-primary-200 text-primary-600 hover:bg-primary-100'
+                      }`}
+                      title="مسح الباركود بكاميرا الهاتف"
+                    >
+                      <Camera size={18} />
+                    </button>
+                  </div>
+                  {scanning && (
+                    <div className="mt-3 relative rounded-2xl overflow-hidden border-2 border-primary-500 bg-black">
+                      <div id="products-barcode-scanner" className="w-full h-48"></div>
+                      <button
+                        type="button"
+                        onClick={() => stopScanner()}
+                        className="absolute bottom-3 left-3 bg-rose-600 text-white px-3 py-1.5 rounded-xl text-xs font-black"
+                      >
+                        إغلاق الكاميرا
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="label-text">الفئة</label>
@@ -409,6 +519,66 @@ export default function Products() {
                     )}
                   </div>
                 </div>
+
+                {/* ===== قسم البيع بالعلبة والقطعة ===== */}
+                <div className="sm:col-span-2 border border-dashed border-blue-300 bg-blue-50 rounded-2xl p-4">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <div
+                      onClick={() => setForm(p => ({ ...p, hasSubUnits: !p.hasSubUnits }))}
+                      className={`w-11 h-6 rounded-full flex items-center transition-colors duration-300 ${
+                        form.hasSubUnits ? 'bg-blue-600 justify-end' : 'bg-slate-300 justify-start'
+                      } p-0.5`}
+                    >
+                      <div className="w-5 h-5 bg-white rounded-full shadow" />
+                    </div>
+                    <span className="font-bold text-slate-700 text-sm">يُباع بالعلبة والقطعة</span>
+                  </label>
+
+                  {form.hasSubUnits && (
+                    <div className="mt-4 grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <label className="label-text">عدد القطع في العلبة الواحدة *</label>
+                        <input
+                          type="number" min="1"
+                          value={form.piecesPerBox}
+                          onChange={e => setForm(p => ({ ...p, piecesPerBox: e.target.value }))}
+                          className="input mt-1" placeholder="مثال: 12"
+                        />
+                      </div>
+                      <div>
+                        <label className="label-text">تكلفة العلبة (شراء)</label>
+                        <div className="relative mt-1">
+                          <input
+                            type="number"
+                            value={form.boxCost}
+                            onChange={e => setForm(p => ({ ...p, boxCost: e.target.value }))}
+                            className="input pr-12" placeholder="0"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">ج.م</span>
+                        </div>
+                        {form.boxCost && form.piecesPerBox && (
+                          <p className="text-xs text-slate-500 mt-1">
+                            تكلفة القطعة: <span className="font-bold text-blue-600">{(Number(form.boxCost) / Number(form.piecesPerBox)).toFixed(2)} ج.م</span>
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="label-text">سعر بيع القطعة</label>
+                        <div className="relative mt-1">
+                          <input
+                            type="number"
+                            value={form.piecePrice}
+                            onChange={e => setForm(p => ({ ...p, piecePrice: e.target.value }))}
+                            className="input pr-12" placeholder="0"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">ج.م</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">سعر بيع العلبة (الحقل أعلاه): <span className="font-bold">{form.price || '0'} ج.م</span></p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
 
               <div className="px-7 py-5 border-t border-slate-100 flex gap-3">

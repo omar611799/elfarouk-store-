@@ -48,7 +48,7 @@ export default function LoadingScreen({ onFinished }) {
     <motion.div
       key="loading-screen"
       initial={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1, filter: 'blur(10px)' }}
+      exit={{ opacity: 0, scale: 1, filter: isMobile ? 'none' : 'blur(10px)' }}
       transition={{ duration: 0.8, ease: 'easeInOut' }}
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#08111c_0%,#10243b_55%,#0f1c2d_100%)]"
     >

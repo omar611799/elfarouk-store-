@@ -16,6 +16,7 @@ import {
   limit,
   deleteField,
   runTransaction,
+  increment,
 } from 'firebase/firestore'
 import { db } from './config'
 import { buildCustomerAccountReviewState } from '../utils/customerAccounts'
@@ -211,7 +212,7 @@ async function ensureInvoiceCounterSeeded() {
   )
 }
 
-export async function completeSale({ items, cartItems, customerData, total, invoiceNumber, paidAmount: paidAmountParam, payments: paymentsParam }) {
+export async function completeSale({ items, cartItems, customerData = {}, total, invoiceNumber, paidAmount: paidAmountParam, payments: paymentsParam }) {
   const finalItems = items || cartItems || []
 
   if (!finalItems.length) {
@@ -245,11 +246,11 @@ export async function completeSale({ items, cartItems, customerData, total, invo
   const paymentStatus = dueAmount === 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid'
 
   const customerFields = {
-    name: customerData.name || '',
-    phone: customerData.phone || '',
-    carModel: customerData.carModel || '',
-    licensePlate: customerData.licensePlate || '',
-    nationalId: customerData.nationalId || '',
+    name: customerData.name?.trim() || '',
+    phone: customerData.phone?.trim() || '',
+    carModel: customerData.carModel?.trim() || '',
+    licensePlate: customerData.licensePlate?.trim() || '',
+    nationalId: customerData.nationalId?.trim() || '',
   }
 
   const cashierData = customerData._cashier || {}
@@ -258,71 +259,115 @@ export async function completeSale({ items, cartItems, customerData, total, invo
     cost: item.cost || 0,
   }))
 
+  // 1. Group items by underlying product ID to avoid duplicate deductions/race conditions
+  const productDeductions = {}
+  for (const item of finalItems) {
+    const productId = item._originalId || item.id
+    const piecesPerUnit = Number(item._piecesPerBox || 1)
+    const requestedPieces = Number(item.qty || 0) * piecesPerUnit
+
+    if (!Number.isFinite(requestedPieces) || requestedPieces <= 0) {
+      throw new Error(`كمية غير صحيحة للمنتج "${item.name}"`)
+    }
+
+    if (!productDeductions[productId]) {
+      productDeductions[productId] = {
+        totalPieces: 0,
+        names: [],
+      }
+    }
+    productDeductions[productId].totalPieces += requestedPieces
+    if (!productDeductions[productId].names.includes(item.name)) {
+      productDeductions[productId].names.push(item.name)
+    }
+  }
+
+  // 2. Generate invoice number if not provided
   let finalInvoiceNumber = invoiceNumber
   if (!finalInvoiceNumber) {
-    const counterRef = doc(db, 'counters', 'invoices');
-    let attempts = 0;
+    const counterRef = doc(db, 'counters', 'invoices')
+    let attempts = 0
     while (!finalInvoiceNumber && attempts < 5) {
       try {
         const result = await runTransaction(db, async (transaction) => {
-          const counterSnap = await transaction.get(counterRef);
-          const lastNum = counterSnap.exists() ? (counterSnap.data().lastNumber || 0) : 0;
-          const nextNum = lastNum + 1;
-          transaction.set(counterRef, { lastNumber: nextNum, updatedAt: serverTimestamp() }, { merge: true });
-          return nextNum;
-        });
-        finalInvoiceNumber = String(result).padStart(5, '0');
-      } catch (e) {
-        attempts++;
-        if (attempts >= 5) throw new Error('فشل إنشاء رقم الفاتورة. يرجى المحاولة مرة أخرى.');
+          const counterSnap = await transaction.get(counterRef)
+          const lastNum = counterSnap.exists() ? counterSnap.data().lastNumber || 0 : 0
+          const nextNum = lastNum + 1
+          transaction.set(
+            counterRef,
+            { lastNumber: nextNum, updatedAt: serverTimestamp() },
+            { merge: true }
+          )
+          return nextNum
+        })
+        finalInvoiceNumber = String(result).padStart(5, '0')
+      } catch {
+        attempts++
+        if (attempts >= 5) throw new Error('فشل إنشاء رقم الفاتورة. يرجى المحاولة مرة أخرى.')
       }
     }
   }
 
-  const saleResult = await runTransaction(db, async (transaction) => {
-    const invRef = doc(collection(db, COLS.INVOICES))
+  // 3. Pre-fetch existing customer if phone is provided
+  let existingCustomerDoc = null
+  if (customerFields.phone) {
+    existingCustomerDoc = await findCustomerByPhone(customerFields.phone)
+  }
 
-    for (const item of finalItems) {
-      const productRef = doc(db, COLS.PRODUCTS, item.id)
+  // 4. Run Transaction with ALL READS BEFORE ALL WRITES
+  const saleResult = await runTransaction(db, async (transaction) => {
+    // ─── ALL READS FIRST ───
+    const productReads = {}
+    for (const productId of Object.keys(productDeductions)) {
+      const productRef = doc(db, COLS.PRODUCTS, productId)
       const productSnap = await transaction.get(productRef)
 
       if (!productSnap.exists()) {
-        throw new Error(`المنتج "${item.name}" غير موجود`)
+        const pName = productDeductions[productId].names[0] || 'المنتج'
+        throw new Error(`المنتج "${pName}" غير موجود في قاعدة البيانات`)
       }
 
       const currentQty = Number(productSnap.data()?.quantity || 0)
-      const requestedQty = Number(item.qty)
-
-      if (!Number.isFinite(requestedQty) || requestedQty <= 0) {
-        throw new Error(`كمية غير صحيحة للمنتج "${item.name}"`)
-      }
+      const requestedQty = productDeductions[productId].totalPieces
 
       if (currentQty < requestedQty) {
+        const pName = productDeductions[productId].names[0] || 'المنتج'
         throw new Error(
-          `الكمية غير كافية للمنتج "${item.name}" (متاح: ${currentQty})`
+          `الكمية غير كافية للمنتج "${pName}" (متاح بالمخزون: ${currentQty} قطعة، والمطلوب: ${requestedQty} قطعة)`
         )
       }
 
-      const newQty = currentQty - requestedQty
+      productReads[productId] = {
+        ref: productRef,
+        currentQty,
+        newQty: currentQty - requestedQty,
+      }
+    }
 
-      transaction.update(productRef, {
-        quantity: newQty,
+    // ─── ALL WRITES AFTER ───
+    const invRef = doc(collection(db, COLS.INVOICES))
+
+    // Update product quantities and write stock logs
+    for (const [productId, readInfo] of Object.entries(productReads)) {
+      transaction.update(readInfo.ref, {
+        quantity: readInfo.newQty,
         updatedAt: serverTimestamp(),
       })
 
       const logRef = doc(collection(db, COLS.STOCK_LOGS))
       transaction.set(logRef, {
-        productId: item.id,
-        productName: item.name,
+        productId,
+        productName: productDeductions[productId].names.join(' / '),
         type: 'sale',
-        delta: -requestedQty,
-        newQty,
+        delta: -productDeductions[productId].totalPieces,
+        newQty: readInfo.newQty,
         refId: invRef.id,
         note: `فاتورة رقم ${finalInvoiceNumber}`,
         createdAt: serverTimestamp(),
       })
     }
 
+    // Create Invoice
     transaction.set(invRef, {
       number: finalInvoiceNumber,
       items: enrichedItems,
@@ -338,54 +383,35 @@ export async function completeSale({ items, cartItems, customerData, total, invo
       updatedAt: serverTimestamp(),
     })
 
+    // Create Financial Transaction
     const txRef = doc(collection(db, COLS.TRANSACTIONS))
     transaction.set(txRef, {
       type: 'sale',
       refId: invRef.id,
-      details: `فاتورة ${finalInvoiceNumber} - ${customerData.name}`,
+      details: `فاتورة ${finalInvoiceNumber} - ${customerFields.name || 'عميل نقدي'}`,
       amount: total,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
 
-    if (customerFields.phone) {
-      const customerQuery = query(
-        collection(db, COLS.CUSTOMERS),
-        where('phone', '==', customerFields.phone),
-        limit(1)
-      )
-      const customerSnap = await transaction.get(customerQuery)
-
-      if (!customerSnap.empty) {
-        const existingDoc = customerSnap.docs[0]
-        const existing = existingDoc.data()
-        transaction.update(existingDoc.ref, {
-          name: customerFields.name?.trim() || existing.name || '',
-          phone: customerFields.phone?.trim() || existing.phone || '',
-          carModel: customerFields.carModel?.trim() || existing.carModel || '',
-          licensePlate: customerFields.licensePlate?.trim() || existing.licensePlate || '',
-          nationalId: customerFields.nationalId?.trim() || existing.nationalId || '',
-          totalSpent: (existing.totalSpent || 0) + total,
-          invoiceCount: (existing.invoiceCount || 0) + 1,
-          debtTotal: Math.max(0, (existing.debtTotal || 0) + dueAmount),
-          paidTotal: (existing.paidTotal || 0) + paidAmount,
-          updatedAt: serverTimestamp(),
-        })
-      } else {
-        const newCustomerRef = doc(collection(db, COLS.CUSTOMERS))
-        transaction.set(newCustomerRef, {
-          ...customerFields,
-          totalSpent: total,
-          invoiceCount: 1,
-          paidTotal: paidAmount,
-          debtTotal: dueAmount,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        })
-      }
-    } else if (customerFields.name) {
-      const newCustomerRef = doc(collection(db, COLS.CUSTOMERS))
-      transaction.set(newCustomerRef, {
+    // Update or Create Customer record
+    if (existingCustomerDoc) {
+      const custRef = doc(db, COLS.CUSTOMERS, existingCustomerDoc.id)
+      transaction.update(custRef, {
+        name: customerFields.name || existingCustomerDoc.name || '',
+        phone: customerFields.phone || existingCustomerDoc.phone || '',
+        carModel: customerFields.carModel || existingCustomerDoc.carModel || '',
+        licensePlate: customerFields.licensePlate || existingCustomerDoc.licensePlate || '',
+        nationalId: customerFields.nationalId || existingCustomerDoc.nationalId || '',
+        totalSpent: increment(total),
+        invoiceCount: increment(1),
+        debtTotal: increment(dueAmount),
+        paidTotal: increment(paidAmount),
+        updatedAt: serverTimestamp(),
+      })
+    } else if (customerFields.name || customerFields.phone) {
+      const newCustRef = doc(collection(db, COLS.CUSTOMERS))
+      transaction.set(newCustRef, {
         ...customerFields,
         totalSpent: total,
         invoiceCount: 1,
@@ -399,89 +425,88 @@ export async function completeSale({ items, cartItems, customerData, total, invo
     return { id: invRef.id, number: finalInvoiceNumber }
   })
 
-  if (customerFields.phone) {
-    fetch(`/api/send-invoice-whatsapp?id=${saleResult.id}`).catch(() => {})
-  }
-
   return saleResult
 }
 
 
 // ── Delete Invoice (Return stock) ──
 export async function deleteInvoiceAndReturnStock(invoiceId) {
-  const inv = await getDoc_(COLS.INVOICES, invoiceId);
-  if (!inv) throw new Error('الفاتورة غير موجودة');
+  const inv = await getDoc_(COLS.INVOICES, invoiceId)
+  if (!inv) throw new Error('الفاتورة غير موجودة')
 
-  const batch = writeBatch(db);
+  const batch = writeBatch(db)
 
   // Return stock
-  for (const item of (inv.items || [])) {
-    const p = await getDoc_(COLS.PRODUCTS, item.id);
+  for (const item of inv.items || []) {
+    const productId = item._originalId || item.id
+    const piecesPerUnit = Number(item._piecesPerBox || 1)
+    const restorePieces = Number(item.qty || 0) * piecesPerUnit
+
+    const p = await getDoc_(COLS.PRODUCTS, productId)
     if (p) {
-      const newQty = (p.quantity || 0) + item.qty;
-      batch.update(doc(db, COLS.PRODUCTS, item.id), {
+      const newQty = (p.quantity || 0) + restorePieces
+      batch.update(doc(db, COLS.PRODUCTS, productId), {
         quantity: newQty,
         updatedAt: serverTimestamp(),
-      });
-      // Log reversal
+      })
       logStockChange(batch, {
-        productId: item.id,
+        productId,
         productName: item.name,
         type: 'return_deleted_invoice',
-        delta: item.qty,
+        delta: restorePieces,
         newQty,
         note: `حذف الفاتورة رقم ${inv.number}`,
-        refId: invoiceId
-      });
+        refId: invoiceId,
+      })
     }
   }
 
   // Deduct from customer if applicable
   if (inv.customerData?.phone) {
-    const existing = await findCustomerByPhone(inv.customerData.phone);
+    const existing = await findCustomerByPhone(inv.customerData.phone)
     if (existing) {
       batch.update(doc(db, COLS.CUSTOMERS, existing.id), {
-        totalSpent: Math.max(0, (existing.totalSpent || 0) - (inv.total || 0)),
-        invoiceCount: Math.max(0, (existing.invoiceCount || 0) - 1),
-        debtTotal: Math.max(0, (existing.debtTotal || 0) - (inv.dueAmount || 0)),
-        paidTotal: Math.max(0, (existing.paidTotal || 0) - (inv.paidAmount || 0)),
-      });
+        totalSpent: increment(-(inv.total || 0)),
+        invoiceCount: increment(-1),
+        debtTotal: increment(-(inv.dueAmount || 0)),
+        paidTotal: increment(-(inv.paidAmount || 0)),
+        updatedAt: serverTimestamp(),
+      })
     }
   }
 
   // Delete invoice
-  batch.delete(doc(db, COLS.INVOICES, invoiceId));
+  batch.delete(doc(db, COLS.INVOICES, invoiceId))
 
   // Add a transaction for the cancellation
-  const txRef = doc(collection(db, COLS.TRANSACTIONS));
+  const txRef = doc(collection(db, COLS.TRANSACTIONS))
   batch.set(txRef, {
     type: 'invoice_deleted',
     refId: invoiceId,
     details: `استرداد مخزون وحذف فاتورة - رقم ${inv.number}`,
     amount: -(inv.total || 0),
     createdAt: serverTimestamp(),
-  });
+  })
 
-  await batch.commit();
+  await batch.commit()
 }
 
 // ── Pay Debt ──
 export async function payInvoiceDebt(invoiceId, paymentAmount, note) {
-  const inv = await getDoc_(COLS.INVOICES, invoiceId);
-  if (!inv) throw new Error('الفاتورة غير موجودة');
+  const inv = await getDoc_(COLS.INVOICES, invoiceId)
+  if (!inv) throw new Error('الفاتورة غير موجودة')
 
-  const payment = Number(paymentAmount);
-  if (payment <= 0 || payment > inv.dueAmount) throw new Error('مبلغ السداد غير منطقي');
+  const payment = Number(paymentAmount)
+  if (payment <= 0 || payment > (inv.dueAmount || 0)) throw new Error('مبلغ السداد غير منطقي')
 
-  const newPaidAmount = (inv.paidAmount || 0) + payment;
-  const newDueAmount = Math.max(0, (inv.dueAmount || 0) - payment);
-  const paymentStatus = newDueAmount === 0 ? 'paid' : 'partial';
+  const newPaidAmount = (inv.paidAmount || 0) + payment
+  const newDueAmount = Math.max(0, (inv.dueAmount || 0) - payment)
+  const paymentStatus = newDueAmount === 0 ? 'paid' : 'partial'
 
-  const newPaymentsBreakdown = { ...(inv.payments || {}) };
-  // Add payment to cash by default representing debt collected to drawer
-  newPaymentsBreakdown.cash = (Number(newPaymentsBreakdown.cash) || 0) + payment;
+  const newPaymentsBreakdown = { ...(inv.payments || {}) }
+  newPaymentsBreakdown.cash = (Number(newPaymentsBreakdown.cash) || 0) + payment
 
-  const batch = writeBatch(db);
+  const batch = writeBatch(db)
 
   batch.update(doc(db, COLS.INVOICES, invoiceId), {
     paidAmount: newPaidAmount,
@@ -489,106 +514,128 @@ export async function payInvoiceDebt(invoiceId, paymentAmount, note) {
     paymentStatus,
     payments: newPaymentsBreakdown,
     updatedAt: serverTimestamp(),
-  });
+  })
 
   if (inv.customerData?.phone) {
-    const existing = await findCustomerByPhone(inv.customerData.phone);
+    const existing = await findCustomerByPhone(inv.customerData.phone)
     if (existing) {
       batch.update(doc(db, COLS.CUSTOMERS, existing.id), {
-        debtTotal: Math.max(0, (existing.debtTotal || 0) - payment),
-        paidTotal: (existing.paidTotal || 0) + payment,
-      });
+        debtTotal: increment(-payment),
+        paidTotal: increment(payment),
+        updatedAt: serverTimestamp(),
+      })
     }
   }
 
-  const txRef = doc(collection(db, COLS.TRANSACTIONS));
+  const txRef = doc(collection(db, COLS.TRANSACTIONS))
   batch.set(txRef, {
     type: 'debt_collection',
     refId: invoiceId,
     details: `تحصيل سداد من آجل الفاتورة ${inv.number}${note ? ' - ' + note : ''}`,
     amount: payment,
     createdAt: serverTimestamp(),
-  });
+  })
 
-  await batch.commit();
+  await batch.commit()
 }
 
 // ── Partial Return ──
 export async function returnInvoiceItems({ invoiceId, itemsToReturn }) {
-  const inv = await getDoc_(COLS.INVOICES, invoiceId);
-  if (!inv) throw new Error('الفاتورة غير موجودة');
+  const inv = await getDoc_(COLS.INVOICES, invoiceId)
+  if (!inv) throw new Error('الفاتورة غير موجودة')
 
-  const batch = writeBatch(db);
-  let refundValue = 0;
-  
-  // Create a copy of the items to modify
-  const newItems = [...(inv.items || [])];
+  const batch = writeBatch(db)
+  let refundValue = 0
+
+  const newItems = [...(inv.items || [])]
 
   // Restock products and update invoice mapped items
   for (const retItem of itemsToReturn) {
-    if (retItem.qty <= 0) continue;
+    if (retItem.qty <= 0) continue
 
-    const itemIndex = newItems.findIndex(i => i.id === retItem.id);
-    if (itemIndex === -1) continue;
+    const itemIndex = newItems.findIndex((i) => i.id === retItem.id)
+    if (itemIndex === -1) continue
 
-    const originalItem = newItems[itemIndex];
-    const availableToReturn = originalItem.qty - (originalItem.returnedQty || 0);
-    
+    const originalItem = newItems[itemIndex]
+    const availableToReturn = originalItem.qty - (originalItem.returnedQty || 0)
+
     if (retItem.qty > availableToReturn) {
-      throw new Error(`لا يمكن إرجاع كمية لـ ${originalItem.name} أكبر من المشتراة.`);
+      throw new Error(`لا يمكن إرجاع كمية لـ ${originalItem.name} أكبر من المشتراة.`)
     }
 
-    // Update item line
     newItems[itemIndex] = {
       ...originalItem,
-      returnedQty: (originalItem.returnedQty || 0) + retItem.qty
-    };
+      returnedQty: (originalItem.returnedQty || 0) + retItem.qty,
+    }
 
-    refundValue += (originalItem.price * retItem.qty);
+    refundValue += (originalItem.price || 0) * retItem.qty
 
-    // Increase product stock
-    const p = await getDoc_(COLS.PRODUCTS, retItem.id);
+    // Use original product ID for sub-units (box/piece)
+    const productId = originalItem._originalId || originalItem.id
+    const piecesPerUnit = Number(originalItem._piecesPerBox || 1)
+    const piecesToRestore = retItem.qty * piecesPerUnit
+
+    const p = await getDoc_(COLS.PRODUCTS, productId)
     if (p) {
-      batch.update(doc(db, COLS.PRODUCTS, retItem.id), {
-        quantity: Math.max(0, (p.quantity || 0) + retItem.qty),
+      const newQty = (p.quantity || 0) + piecesToRestore
+      batch.update(doc(db, COLS.PRODUCTS, productId), {
+        quantity: newQty,
         updatedAt: serverTimestamp(),
-      });
+      })
+
+      const logRef = doc(collection(db, COLS.STOCK_LOGS))
+      batch.set(logRef, {
+        productId,
+        productName: originalItem.name,
+        type: 'return',
+        delta: piecesToRestore,
+        newQty,
+        refId: invoiceId,
+        note: `مرتجع فاتورة رقم ${inv.number}`,
+        createdAt: serverTimestamp(),
+      })
     }
   }
 
-  if (refundValue === 0) return; // Nothing was actually returned
+  if (refundValue === 0) return
 
   // Financial recalculation
-  const oldDueAmount = inv.dueAmount || 0;
-  const oldPaidAmount = inv.paidAmount || 0;
-  const newTotal = Math.max(0, (inv.total || 0) - refundValue);
+  const oldDueAmount = Number(inv.dueAmount || 0)
+  const oldPaidAmount = Number(inv.paidAmount || 0)
+  const newTotal = Math.max(0, (Number(inv.total) || 0) - refundValue)
 
-  let newDueAmount = oldDueAmount;
-  let newPaidAmount = oldPaidAmount;
-  let cashRefunded = 0;
+  let newDueAmount = oldDueAmount
+  let newPaidAmount = oldPaidAmount
+  let cashRefunded = 0
 
   if (oldDueAmount > 0) {
     if (oldDueAmount >= refundValue) {
-      newDueAmount -= refundValue;
+      newDueAmount -= refundValue
     } else {
-      cashRefunded = refundValue - oldDueAmount;
-      newDueAmount = 0;
-      newPaidAmount = Math.max(0, oldPaidAmount - cashRefunded);
+      cashRefunded = refundValue - oldDueAmount
+      newDueAmount = 0
+      newPaidAmount = Math.max(0, oldPaidAmount - cashRefunded)
     }
   } else {
-    cashRefunded = refundValue;
-    newPaidAmount = Math.max(0, oldPaidAmount - cashRefunded);
+    cashRefunded = refundValue
+    newPaidAmount = Math.max(0, oldPaidAmount - cashRefunded)
   }
 
-  // Determine new payment status
-  const paymentStatus = (newTotal === 0 && newDueAmount === 0) ? 'paid' 
-                      : (newDueAmount === 0) ? 'paid' 
-                      : (newPaidAmount > 0) ? 'partial' : 'unpaid';
+  const paymentStatus =
+    newTotal === 0 && newDueAmount === 0
+      ? 'paid'
+      : newDueAmount === 0
+        ? 'paid'
+        : newPaidAmount > 0
+          ? 'partial'
+          : 'unpaid'
 
-  // Adjust invoice breakdown if cash was refunded
-  const newPaymentsBreakdown = { ...(inv.payments || {}) };
+  const newPaymentsBreakdown = { ...(inv.payments || {}) }
   if (cashRefunded > 0) {
-    newPaymentsBreakdown.cash = Math.max(0, (Number(newPaymentsBreakdown.cash) || 0) - cashRefunded);
+    newPaymentsBreakdown.cash = Math.max(
+      0,
+      (Number(newPaymentsBreakdown.cash) || 0) - cashRefunded
+    )
   }
 
   // Update Invoice
@@ -600,38 +647,39 @@ export async function returnInvoiceItems({ invoiceId, itemsToReturn }) {
     paymentStatus,
     payments: newPaymentsBreakdown,
     updatedAt: serverTimestamp(),
-  });
+  })
 
   // Calculate debt and paid drops to apply to Customer
-  const debtDrop = oldDueAmount - newDueAmount;
-  const paidDrop = oldPaidAmount - newPaidAmount;
+  const debtDrop = oldDueAmount - newDueAmount
+  const paidDrop = oldPaidAmount - newPaidAmount
 
   if (inv.customerData?.phone) {
-    const existing = await findCustomerByPhone(inv.customerData.phone);
+    const existing = await findCustomerByPhone(inv.customerData.phone)
     if (existing) {
       batch.update(doc(db, COLS.CUSTOMERS, existing.id), {
-        totalSpent: Math.max(0, (existing.totalSpent || 0) - refundValue),
-        debtTotal: Math.max(0, (existing.debtTotal || 0) - debtDrop),
-        paidTotal: Math.max(0, (existing.paidTotal || 0) - paidDrop),
-      });
+        totalSpent: increment(-refundValue),
+        debtTotal: increment(-debtDrop),
+        paidTotal: increment(-paidDrop),
+        updatedAt: serverTimestamp(),
+      })
     }
   }
 
   // Create a transaction for the return
-  let txDetails = `مرتجع جزئي للفاتورة ${inv.number}.`;
-  if (cashRefunded > 0) txDetails += ` رد نقدية: ${cashRefunded} ج.م.`;
-  if (debtDrop > 0) txDetails += ` خصم آجل: ${debtDrop} ج.م.`;
+  let txDetails = `مرتجع جزئي للفاتورة ${inv.number}.`
+  if (cashRefunded > 0) txDetails += ` رد نقدية: ${cashRefunded} ج.م.`
+  if (debtDrop > 0) txDetails += ` خصم آجل: ${debtDrop} ج.م.`
 
-  const txRef = doc(collection(db, COLS.TRANSACTIONS));
+  const txRef = doc(collection(db, COLS.TRANSACTIONS))
   batch.set(txRef, {
     type: 'return',
     refId: invoiceId,
     details: txDetails,
     amount: -refundValue,
     createdAt: serverTimestamp(),
-  });
+  })
 
-  await batch.commit();
+  await batch.commit()
 }
 
 // ── Quotations (عروض الأسعار) ──

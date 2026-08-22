@@ -97,8 +97,8 @@ export default function Customers() {
       let amountToDistribute = Number(payAmount)
       const invoicesToPay = [...customerUnpaidInvoices]
       
-      if (amountToDistribute > payCustomer.debtTotal) {
-        alert('مبلغ السداد أكبر من إجمالي مديونية العميل!')
+      if (amountToDistribute > (payCustomer.debtTotal || 0)) {
+        toast.error('مبلغ السداد أكبر من إجمالي مديونية العميل!')
         setPaying(false)
         return
       }
