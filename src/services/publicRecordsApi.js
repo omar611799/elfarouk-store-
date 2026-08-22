@@ -49,10 +49,3 @@ export async function fetchPublicQuote(id) {
   const payload = await fetchJson(`/api/public-quote?${params.toString()}`)
   return payload.quote || null
 }
-
-export async function fetchPublicCustomerPortal(phone) {
-  const params = new URLSearchParams({ phone: String(phone || '') })
-  return fetchJson(`/api/public-customer-portal?${params.toString()}`, {
-    requireAuth: true,
-  })
-}

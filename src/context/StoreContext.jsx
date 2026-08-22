@@ -40,7 +40,6 @@ import {
   reviewCustomerAccount,
 } from '../firebase/collections'
 import { createServiceBooking, updateServiceBookingAdmin } from '../services/serviceBookingApi'
-import { sendCustomerAdminNotification } from '../services/customerNotificationApi'
 import { useAuth } from './AuthContext'
 
 const StoreContext = createContext(null)
