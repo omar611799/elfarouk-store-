@@ -27,7 +27,8 @@ export default function Reports() {
     const grossProfit = invoices.reduce((s, inv) =>
       s + (inv.items || []).reduce((ss, it) => {
         const cost = Number(it.cost) || 0
-        return ss + (it.price - cost) * (it.qty || 1)
+        const effectiveQty = Math.max(0, Number(it.qty || 1) - Number(it.returnedQty || 0))
+        return ss + (it.price - cost) * effectiveQty
       }, 0), 0)
     return grossProfit - totalExpenses
   }, [invoices, totalExpenses])
@@ -84,7 +85,8 @@ export default function Reports() {
       const profit  = dayInvoices.reduce((s, inv) =>
         s + (inv.items || []).reduce((ss, it) => {
           const cost = Number(it.cost) || 0
-          return ss + (it.price - cost) * (it.qty || 1)
+          const effectiveQty = Math.max(0, Number(it.qty || 1) - Number(it.returnedQty || 0))
+          return ss + (it.price - cost) * effectiveQty
         }, 0), 0)
       return { name: label, revenue, profit }
     })
@@ -96,7 +98,8 @@ export default function Reports() {
     invoices.forEach(inv =>
       (inv.items || []).forEach(it => {
         const cat = it.category || 'أخرى'
-        map[cat] = (map[cat] || 0) + (it.price * (it.qty || 1))
+        const effectiveQty = Math.max(0, Number(it.qty || 1) - Number(it.returnedQty || 0))
+        map[cat] = (map[cat] || 0) + (it.price * effectiveQty)
       })
     )
     return Object.entries(map)
@@ -110,9 +113,11 @@ export default function Reports() {
     const map = {}
     invoices.forEach(inv =>
       (inv.items || []).forEach(it => {
+        const effectiveQty = Math.max(0, Number(it.qty || 1) - Number(it.returnedQty || 0))
+        if (effectiveQty <= 0) return
         if (!map[it.name]) map[it.name] = { name: it.name, units: 0, revenue: 0 }
-        map[it.name].units   += it.qty || 1
-        map[it.name].revenue += (it.price || 0) * (it.qty || 1)
+        map[it.name].units   += effectiveQty
+        map[it.name].revenue += (it.price || 0) * effectiveQty
       })
     )
     return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, 8)

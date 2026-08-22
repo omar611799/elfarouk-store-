@@ -1114,34 +1114,6 @@ export default function POS() {
         items: cart.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
       })
 
-      // ── إرسال الفاتورة تلقائياً عبر واتساب إذا كان للعميل رقم هاتف ──
-      if (customer.phone) {
-        toast.loading('جاري إرسال الفاتورة على واتساب...', { id: 'wa-send' })
-        try {
-          // ✅ Get Firebase Auth token for API authentication
-          const { getAuth } = await import('firebase/auth')
-          const fbUser = getAuth().currentUser
-          const idToken = fbUser ? await fbUser.getIdToken() : null
-
-          const waRes = await fetch('/api/send-invoice-whatsapp', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
-            },
-            body: JSON.stringify({ id: invId }),
-          })
-          if (waRes.ok) {
-            toast.success('✅ تم إرسال الفاتورة للعميل على واتساب!', { id: 'wa-send', duration: 4000 })
-          } else {
-            const err = await waRes.json().catch(() => ({}))
-            toast.error(`⚠️ لم يُرسل الواتساب: ${err?.error || 'خطأ غير معروف'}`, { id: 'wa-send', duration: 5000 })
-          }
-        } catch {
-          toast.error('⚠️ تعذّر الاتصال بخدمة الواتساب', { id: 'wa-send', duration: 5000 })
-        }
-      }
-
       setCustomer({ name: '', phone: '', carModel: '', licensePlate: '', nationalId: '' })
       setPayments({ cash: '', visa: '', instapay: '' })
       setReminders({})
@@ -1178,17 +1150,14 @@ export default function POS() {
           setShowScanner(false)
           toast.success(`تم العثور على باركود: ${decodedText}`)
         },
-        (errorMessage) => {
-          // ignore standard scanning noise errors
-        }
-      ).catch(err => {
-        console.error('Html5Qrcode start error:', err)
-        setScannerError('تعذر تشغيل الكاميرا: ' + err.message)
+        () => {}
+      ).catch(() => {
+        setScannerError('تعذر فتح الكاميرا. تأكد من إعطاء الصلاحية.')
       })
     }
     return () => {
       if (qrScanner && qrScanner.isScanning) {
-        qrScanner.stop().catch(err => console.error('Html5Qrcode stop error:', err))
+        qrScanner.stop().catch(() => {})
       }
     }
   }, [showScanner])

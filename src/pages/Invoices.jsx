@@ -60,6 +60,7 @@ export default function Invoices() {
   const pendingCount = filtered.filter(i => i.paymentStatus !== 'paid').length
 
   const sendWhatsApp = (inv) => {
+    const link = `${window.location.origin}/receipt/${inv.id}`
     const items = inv.items?.map(i => {
       let line = `- ${i.name} × ${i.qty}`
       if (i.returnedQty > 0) line += ` (مرتجع ${i.returnedQty})`
@@ -67,11 +68,12 @@ export default function Invoices() {
     }).join('\n') || ''
 
     const msg = `🧾 فاتورة من ELFAROUK Service\n` +
-      `رقم: ${inv.number}\nالعميل: ${inv.customerData?.name}\n` +
+      `رقم: ${inv.number}\nالعميل: ${inv.customerData?.name || 'عميل نقدي'}\n` +
       `${inv.customerData?.carModel ? `العربية: ${inv.customerData.carModel}\n` : ''}` +
       `\nالمنتجات:\n${items}\n\n` +
       `الإجمالي: ${inv.total?.toLocaleString('en-US')} ج.م\n` +
       `${inv.dueAmount > 0 ? `المتبقي: ${inv.dueAmount?.toLocaleString('en-US')} ج.م\n` : '✅ مدفوع بالكامل\n'}` +
+      `رابط الفاتورة الرقمية: ${link}\n\n` +
       `شكراً لتعاملكم معنا 🙏`
     const phone = inv.customerData?.phone?.replace(/^0/, '20') || WHATSAPP
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')

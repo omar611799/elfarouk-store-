@@ -46,8 +46,8 @@ export default function Dashboard() {
       const invProfit = (inv.items || []).reduce((itemSum, item) => {
         const cost = Number(item.cost || 0)
         const price = Number(item.price || 0)
-        const qty = Number(item.qty || 1)
-        return itemSum + (price - cost) * qty
+        const effectiveQty = Math.max(0, Number(item.qty || 1) - Number(item.returnedQty || 0))
+        return itemSum + (price - cost) * effectiveQty
       }, 0)
       return sum + invProfit
     }, 0)

@@ -750,11 +750,11 @@ export async function importProductsBatch(productsData) {
 
 // ── Purchases & Supplier Ledger ──
 export async function recordPurchase({ supplierId, items, total, paidAmount, billNumber }) {
-  const dueAmount = Math.max(0, total - paidAmount);
-  const batch = writeBatch(db);
+  const dueAmount = Math.max(0, total - paidAmount)
+  const batch = writeBatch(db)
 
   // 1. Save Purchase Record
-  const purchaseRef = doc(collection(db, COLS.PURCHASES));
+  const purchaseRef = doc(collection(db, COLS.PURCHASES))
   batch.set(purchaseRef, {
     supplierId,
     billNumber,
@@ -763,50 +763,53 @@ export async function recordPurchase({ supplierId, items, total, paidAmount, bil
     paidAmount,
     dueAmount,
     createdAt: serverTimestamp(),
-  });
+  })
 
   // 2. Update Stock and Log
   for (const item of items) {
-    const p = await getDoc_(COLS.PRODUCTS, item.id);
-    const newQty = (p?.quantity || 0) + item.qty;
-    batch.update(doc(db, COLS.PRODUCTS, item.id), {
-      quantity: newQty,
-      cost: Number(item.cost), // Update product cost to latest purchase price
-      updatedAt: serverTimestamp(),
-    });
+    const productId = item._originalId || item.id
+    const piecesPerUnit = Number(item._piecesPerBox || 1)
+    const addedPieces = Number(item.qty || 0) * piecesPerUnit
 
-    logStockChange(batch, {
-      productId: item.id,
-      productName: item.name,
-      type: 'purchase',
-      delta: item.qty,
-      newQty,
-      refId: purchaseRef.id,
-      note: `شراء من مورد - فاتورة ${billNumber}`,
-    });
+    const p = await getDoc_(COLS.PRODUCTS, productId)
+    if (p) {
+      const newQty = (p.quantity || 0) + addedPieces
+      batch.update(doc(db, COLS.PRODUCTS, productId), {
+        quantity: increment(addedPieces),
+        cost: Number(item.cost || p.cost || 0),
+        updatedAt: serverTimestamp(),
+      })
+
+      logStockChange(batch, {
+        productId,
+        productName: item.name,
+        type: 'purchase',
+        delta: addedPieces,
+        newQty,
+        refId: purchaseRef.id,
+        note: `شراء من مورد - فاتورة ${billNumber}`,
+      })
+    }
   }
 
-  // 3. Update Supplier Debt
-  const s = await getDoc_(COLS.SUPPLIERS, supplierId);
-  if (s) {
-    batch.update(doc(db, COLS.SUPPLIERS, supplierId), {
-      debtTotal: (s.debtTotal || 0) + dueAmount,
-      totalPurchases: (s.totalPurchases || 0) + total,
-      updatedAt: serverTimestamp(),
-    });
-  }
+  // 3. Update Supplier Debt and Purchases
+  batch.update(doc(db, COLS.SUPPLIERS, supplierId), {
+    debtTotal: increment(dueAmount),
+    totalPurchases: increment(total),
+    updatedAt: serverTimestamp(),
+  })
 
   // 4. Register Transaction
-  const txRef = doc(collection(db, COLS.TRANSACTIONS));
+  const txRef = doc(collection(db, COLS.TRANSACTIONS))
   batch.set(txRef, {
     type: 'purchase',
     refId: purchaseRef.id,
     details: `شراء بضاعة - فاتورة ${billNumber}`,
-    amount: -paidAmount, // Negative because money going out
+    amount: -paidAmount,
     createdAt: serverTimestamp(),
-  });
+  })
 
-  await batch.commit();
+  await batch.commit()
 }
 
 export async function paySupplierDebt(supplierId, amount, note = '') {
@@ -969,18 +972,22 @@ export async function recordSupplierReturn({ supplierId, purchaseId, items, tota
   // 2. Deduct stock for returned items
   for (const item of items) {
     if (item.qty <= 0) continue
-    const p = await getDoc_(COLS.PRODUCTS, item.id)
+    const productId = item._originalId || item.id
+    const piecesPerUnit = Number(item._piecesPerBox || 1)
+    const deductedPieces = Number(item.qty || 0) * piecesPerUnit
+
+    const p = await getDoc_(COLS.PRODUCTS, productId)
     if (p) {
-      const newQty = Math.max(0, (p.quantity || 0) - item.qty)
-      batch.update(doc(db, COLS.PRODUCTS, item.id), {
-        quantity: newQty,
+      const newQty = Math.max(0, (p.quantity || 0) - deductedPieces)
+      batch.update(doc(db, COLS.PRODUCTS, productId), {
+        quantity: increment(-deductedPieces),
         updatedAt: serverTimestamp(),
       })
       logStockChange(batch, {
-        productId: item.id,
+        productId,
         productName: item.name,
         type: 'supplier_return',
-        delta: -item.qty,
+        delta: -deductedPieces,
         newQty,
         refId: returnRef.id,
         note: `مرتجع للمورد${note ? ' - ' + note : ''}`,
@@ -988,14 +995,11 @@ export async function recordSupplierReturn({ supplierId, purchaseId, items, tota
     }
   }
 
-  // 3. Update supplier debt (reduce by return value)
-  const s = await getDoc_(COLS.SUPPLIERS, supplierId)
-  if (s) {
-    batch.update(doc(db, COLS.SUPPLIERS, supplierId), {
-      debtTotal: Math.max(0, (s.debtTotal || 0) - totalValue),
-      updatedAt: serverTimestamp(),
-    })
-  }
+  // 3. Update supplier debt atomically
+  batch.update(doc(db, COLS.SUPPLIERS, supplierId), {
+    debtTotal: increment(-totalValue),
+    updatedAt: serverTimestamp(),
+  })
 
   // 4. Register transaction
   const txRef = doc(collection(db, COLS.TRANSACTIONS))
