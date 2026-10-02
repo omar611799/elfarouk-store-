@@ -1,9 +1,8 @@
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { StoreProvider, useStore } from './context/StoreContext'
 import LoadingScreen from './components/LoadingScreen'
-import IntroScreen from './components/IntroScreen'
 import ErrorBoundary from './components/ErrorBoundary'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
@@ -143,34 +142,6 @@ function AppRouter() {
 }
 
 export default function App() {
-  const [showIntro, setShowIntro] = useState(() => {
-    // 1. Skip intro completely on mobile for maximum performance and no lag
-    const isMobile =
-      window.innerWidth < 768 ||
-      /Mobi|Android|iP(hone|ad|od)|IEMobile|BlackBerry|Kindle|Opera Mini/i.test(navigator.userAgent)
-    if (isMobile) return false
-
-    // 2. Skip intro on special routes (like printing a receipt)
-    const path = window.location.pathname
-    const isSpecialRoute =
-      path.includes('/receipt/') || path.includes('/print-quote/')
-    if (isSpecialRoute) return false
-
-    // 3. Otherwise, play intro once per device/browser
-    return !localStorage.getItem('elfarouk_intro_played')
-  })
-
-  if (showIntro) {
-    return (
-      <IntroScreen
-        onFinished={() => {
-          localStorage.setItem('elfarouk_intro_played', 'true')
-          setShowIntro(false)
-        }}
-      />
-    )
-  }
-
   return (
     <AuthProvider>
       <StoreProvider>
