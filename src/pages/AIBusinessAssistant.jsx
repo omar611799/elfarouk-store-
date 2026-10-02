@@ -48,7 +48,7 @@ const COLORS = ['#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'
 
 export default function AIBusinessAssistant() {
   const { currentUser } = useAuth()
-  const { products, invoices, purchases } = useStore()
+  const { products, invoices, purchases, suppliers = [], recordPurchase } = useStore()
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState(null)
@@ -56,6 +56,88 @@ export default function AIBusinessAssistant() {
   const [queryLoading, setQueryLoading] = useState(false)
   const [chatHistory, setChatHistory] = useState([])
   const [activeTab, setActiveTab] = useState('forecast') // forecast | insights | deadstock | qna
+  const [showPOModal, setShowPOModal] = useState(false)
+
+  // Group Low-Stock Reorder Recommendations by Supplier
+  const ordersBySupplier = useMemo(() => {
+    if (!data?.lowStockAlerts) return {}
+    const groups = {}
+    data.lowStockAlerts.forEach((item) => {
+      const fullProd = products.find((p) => p.id === item.id) || item
+      const supplierName = fullProd.supplier || 'بدون مورد محدد'
+      const matchingSupplier = suppliers.find((s) => s.name === supplierName)
+      const sKey = matchingSupplier?.id || supplierName
+
+      if (!groups[sKey]) {
+        groups[sKey] = {
+          supplierId: matchingSupplier?.id || null,
+          supplierName,
+          supplierPhone: matchingSupplier?.phone || '',
+          items: [],
+          totalCost: 0,
+        }
+      }
+
+      const orderQty = item.recommendedOrderQty || 5
+      const cost = Number(item.cost || fullProd.cost || 0)
+      const lineTotal = orderQty * cost
+
+      groups[sKey].items.push({
+        id: item.id,
+        name: item.name,
+        currentStock: item.currentStock,
+        recommendedQty: orderQty,
+        cost,
+        lineTotal,
+      })
+      groups[sKey].totalCost += lineTotal
+    })
+    return groups
+  }, [data?.lowStockAlerts, products, suppliers])
+
+  const handleCreatePO = async (group) => {
+    if (!group.items.length) return
+    const toastId = toast.loading(`جاري تسجيل فاتورة مشتريات لـ ${group.supplierName}...`)
+    try {
+      const billNumber = `AI-PO-${Date.now().toString().slice(-6)}`
+      await recordPurchase({
+        supplierId: group.supplierId || group.supplierName,
+        items: group.items.map((i) => ({
+          id: i.id,
+          name: i.name,
+          qty: i.recommendedQty,
+          cost: i.cost,
+        })),
+        total: group.totalCost,
+        paidAmount: 0,
+        billNumber,
+      })
+      toast.success(`تم إنشاء فاتورة مشتريات #${billNumber} بنجاح!`, { id: toastId })
+      fetchDashboardData()
+    } catch (err) {
+      toast.error('فشل إنشاء فاتورة المشتريات: ' + err.message, { id: toastId })
+    }
+  }
+
+  const handleSendSupplierWhatsApp = (group) => {
+    let text = `*طلب شراء وتوريد نواقص - الفاروق ستور لقطع الغيار*\n`
+    text += `المورد: ${group.supplierName}\n`
+    text += `التاريخ: ${new Date().toLocaleDateString('ar-EG')}\n`
+    text += `━━━━━━━━━━━━━━━━━━━\n`
+    group.items.forEach((item, idx) => {
+      text += `${idx + 1}. *${item.name}* — المطلوب: *${item.recommendedQty} قطعة*\n`
+    })
+    text += `━━━━━━━━━━━━━━━━━━━\n`
+    text += `إجمالي القيمة التقديرية: *${group.totalCost.toLocaleString('ar-EG')} ج.م*\n`
+    text += `يرجى تأكيد التوافر والتجهيز، شكراً لكم.`
+
+    const phone = group.supplierPhone ? group.supplierPhone.replace(/^0/, '20') : ''
+    if (!phone) {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+    } else {
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank')
+    }
+  }
 
   // Fetch Dashboard AI Metrics
   const fetchDashboardData = async () => {
@@ -303,7 +385,7 @@ export default function AIBusinessAssistant() {
 
           {/* Forecasting Table */}
           <div className="rounded-3xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-xl">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+            <div className="p-5 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-emerald-400" />
@@ -313,6 +395,16 @@ export default function AIBusinessAssistant() {
                   حسابات الذكاء الاصطناعي لمعدل الاستهلاك اليومي وتاريخ النفاد المقدر
                 </p>
               </div>
+
+              {Object.keys(ordersBySupplier).length > 0 && (
+                <button
+                  onClick={() => setShowPOModal(true)}
+                  className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-xs font-bold text-white hover:from-emerald-500 hover:to-teal-500 transition-all shadow-lg shadow-emerald-600/30 border border-emerald-400/30"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  <span>توليد أوامر الشراء للنواقص ({Object.keys(ordersBySupplier).length} مورد)</span>
+                </button>
+              )}
             </div>
 
             <div className="overflow-x-auto">
@@ -581,6 +673,111 @@ export default function AIBusinessAssistant() {
           </div>
         </div>
       )}
+
+      {/* ONE-CLICK PURCHASE ORDER GENERATOR MODAL (GROUPED BY SUPPLIER) */}
+      <AnimatePresence>
+        {showPOModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="w-full max-w-4xl max-h-[88vh] flex flex-col rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl text-slate-100 overflow-hidden"
+            >
+              <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <Truck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">
+                      توليد أوامر الشراء للنواقص (مقسمة لكل مورد)
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      بناءً على التنبؤ الإحصائي بالطلب، تم تجميع {Object.keys(ordersBySupplier).length} أمر شراء للموردين
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowPOModal(false)}
+                  className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
+                {Object.entries(ordersBySupplier).map(([sKey, group]) => (
+                  <div
+                    key={sKey}
+                    className="rounded-2xl border border-slate-800 bg-slate-800/60 p-5 space-y-4 hover:border-slate-700 transition-colors"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-700/60 pb-3">
+                      <div>
+                        <h4 className="text-sm font-black text-white flex items-center gap-2">
+                          <Truck className="h-4 w-4 text-cyan-400" />
+                          المورد: {group.supplierName}
+                        </h4>
+                        <span className="text-[11px] text-slate-400">
+                          {group.items.length} قطع مطلوبة • إجمالي القيمة: {group.totalCost.toLocaleString('ar-EG')} ج.م
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleSendSupplierWhatsApp(group)}
+                          className="flex items-center gap-1.5 rounded-xl bg-emerald-600/20 border border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/30 transition-colors"
+                        >
+                          <span>إرسال واتساب</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleCreatePO(group)}
+                          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-3.5 py-1.5 text-xs font-bold text-white hover:from-cyan-500 hover:to-blue-500 transition-all shadow-md shadow-blue-500/20"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span>اعتماد فاتورة المشتريات</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-right text-xs">
+                        <thead className="text-slate-400 font-semibold border-b border-slate-700/40 text-[11px]">
+                          <tr>
+                            <th className="pb-2">اسم القطعة</th>
+                            <th className="pb-2">المخزون الحالي</th>
+                            <th className="pb-2">الكمية المقترح شراؤها</th>
+                            <th className="pb-2">سعر التكلفة التقديري</th>
+                            <th className="pb-2">إجمالي السطر</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/30">
+                          {group.items.map((it) => (
+                            <tr key={it.id}>
+                              <td className="py-2 text-white font-medium">{it.name}</td>
+                              <td className="py-2 text-amber-400 font-bold">{it.currentStock}</td>
+                              <td className="py-2 text-cyan-400 font-black">+{it.recommendedQty}</td>
+                              <td className="py-2">{it.cost.toLocaleString('ar-EG')} ج.م</td>
+                              <td className="py-2 font-bold text-white">{it.lineTotal.toLocaleString('ar-EG')} ج.م</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

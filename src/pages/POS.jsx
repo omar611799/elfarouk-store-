@@ -1032,19 +1032,82 @@ export default function POS() {
     return [...new Set(products.map(p => p.category).filter(Boolean))]
   }, [products])
 
-  /* ─── Filtered products ─── */
+  /* ─── Smart Automotive & Commercial Truck Filtered products ─── */
   const filtered = useMemo(() => {
-    const terms = search.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0)
+    const rawSearch = (search || '').toLowerCase().trim()
+    if (!rawSearch && !catFilter) return products.filter(p => p.quantity > 0)
+
+    const norm = (str = '') =>
+      String(str)
+        .toLowerCase()
+        .replace(/[\u064B-\u065F\u0670]/g, '')
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/[ة]/g, 'ه')
+        .replace(/[ى]/g, 'ي')
+        .trim()
+
+    const q = norm(rawSearch)
+    const terms = q.split(/\s+/).filter(Boolean)
+
+    // Expand common automotive aliases for Egyptian commercial transport
+    const isDababa = q.includes('دباب') || q.includes('tfr') || q.includes('tfs') || q.includes('شفر')
+    const isJumbo = q.includes('جامبو') || q.includes('npr') || q.includes('nqr') || q.includes('7000') || q.includes('8000')
+    const isDmax = q.includes('ديماكس') || q.includes('dmax') || q.includes('d-max') || q.includes('اسوزو') || q.includes('ايسوزو')
+    const isHilux = q.includes('هايلكس') || q.includes('هايلوكس') || q.includes('هيلوكس') || q.includes('hilux')
+    const isCanter = q.includes('كانتر') || q.includes('canter') || q.includes('فوسو')
+    const isVan = q.includes('تمناي') || q.includes('تُمناي') || q.includes('فان') || q.includes('n300')
+    const isBrake = q.includes('تيل') || q.includes('فرامل') || q.includes('brakes')
+    const isSpring = q.includes('سوست') || q.includes('ورق') || q.includes('شنكل') || q.includes('افييز')
+    const isClutch = q.includes('دبرياج') || q.includes('اسطوان') || q.includes('ديسك')
+    const isFilter = q.includes('فلتر') || q.includes('صفاي') || q.includes('فاصل')
+    const isCross = q.includes('صلايب') || q.includes('صليب') || q.includes('كردان')
+    const isCrown = q.includes('كرون') || q.includes('دفرنس') || q.includes('تاجي')
+
     return products.filter(p => {
       if (p.quantity <= 0) return false
       const matchCat = !catFilter || p.category === catFilter
       if (!matchCat) return false
       if (terms.length === 0) return true
-      return terms.every(t =>
-        p.name?.toLowerCase().includes(t) ||
-        p.sku?.toLowerCase().includes(t) ||
-        p.category?.toLowerCase().includes(t)
+
+      const nameN = norm(p.name || '')
+      const skuN = norm(p.sku || '')
+      const catN = norm(p.category || '')
+      const brandN = norm(p.brand || '')
+      const oemN = norm(p.oemPartNumber || '')
+
+      // 1. Direct text match
+      const directMatch = terms.every(t =>
+        nameN.includes(t) || skuN.includes(t) || catN.includes(t) || brandN.includes(t) || oemN.includes(t)
       )
+      if (directMatch) return true
+
+      // 2. Compatibility Array Match
+      if (Array.isArray(p.compatibility) && p.compatibility.length > 0) {
+        const compMatch = p.compatibility.some(c => {
+          const makeN = norm(c.make || '')
+          const modelN = norm(c.model || '')
+          return terms.some(t => makeN.includes(t) || modelN.includes(t) || t.includes(modelN))
+        })
+        if (compMatch) return true
+      }
+
+      // 3. Smart Commercial Truck Aliases
+      if (isDababa && (nameN.includes('دباب') || nameN.includes('tfr') || nameN.includes('tfs') || nameN.includes('شفر') || norm(p.carModel).includes('دباب'))) return true
+      if (isJumbo && (nameN.includes('جامبو') || nameN.includes('npr') || nameN.includes('nqr') || norm(p.carModel).includes('جامبو'))) return true
+      if (isDmax && (nameN.includes('ديماكس') || nameN.includes('dmax') || nameN.includes('isuzu') || norm(p.carModel).includes('ديماكس'))) return true
+      if (isHilux && (nameN.includes('هيلوكس') || nameN.includes('hilux') || nameN.includes('هايلكس') || norm(p.carModel).includes('هيلوكس'))) return true
+      if (isCanter && (nameN.includes('كانتر') || nameN.includes('canter') || norm(p.carModel).includes('كانتر'))) return true
+      if (isVan && (nameN.includes('تمناي') || nameN.includes('فان') || nameN.includes('n300') || nameN.includes('سوزوكي'))) return true
+
+      // 4. Smart Part Type Aliases
+      if (isBrake && (nameN.includes('تيل') || nameN.includes('فرامل') || catN.includes('فرامل') || p.partType === 'brake_pads')) return true
+      if (isSpring && (nameN.includes('سوست') || nameN.includes('ورق') || p.partType === 'leaf_springs')) return true
+      if (isClutch && (nameN.includes('دبرياج') || nameN.includes('اسطوان') || nameN.includes('ديسك') || p.partType === 'clutch_kit')) return true
+      if (isFilter && (nameN.includes('فلتر') || nameN.includes('صفاي') || p.partType?.includes('filter'))) return true
+      if (isCross && (nameN.includes('صلايب') || nameN.includes('صليب') || nameN.includes('كردان') || p.partType === 'propeller_shaft_cross')) return true
+      if (isCrown && (nameN.includes('كرون') || nameN.includes('دفرنس') || p.partType === 'differential_crown')) return true
+
+      return false
     })
   }, [products, search, catFilter])
 
