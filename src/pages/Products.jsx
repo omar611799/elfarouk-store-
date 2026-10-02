@@ -7,7 +7,28 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import toast from 'react-hot-toast'
 
 
-const EMPTY = { name: '', category: '', price: '', cost: '', quantity: '', minStock: '5', sku: '', supplier: '', image: '', hasSubUnits: false, piecesPerBox: '', boxCost: '', piecePrice: '' }
+const EMPTY = {
+  name: '',
+  category: '',
+  price: '',
+  cost: '',
+  quantity: '',
+  minStock: '5',
+  sku: '',
+  supplier: '',
+  image: '',
+  hasSubUnits: false,
+  piecesPerBox: '',
+  boxCost: '',
+  piecePrice: '',
+  brand: '',
+  qualityTier: 'oem',
+  oemPartNumber: '',
+  carMake: '',
+  carModel: '',
+  yearStart: '',
+  yearEnd: '',
+}
 
 export default function Products() {
   const { products, categories, suppliers, addProduct, updateProduct, deleteProduct, importProductsBatch } = useStore()
@@ -146,12 +167,32 @@ export default function Products() {
   }
 
   const openAdd  = () => { setEditing(null); setForm(EMPTY); setModal(true) }
-  const openEdit = (p) => { setEditing(p.id); setForm({ ...EMPTY, ...p }); setModal(true) }
+  const openEdit = (p) => {
+    setEditing(p.id)
+    const firstComp = Array.isArray(p.compatibility) && p.compatibility.length > 0 ? p.compatibility[0] : {}
+    setForm({
+      ...EMPTY,
+      ...p,
+      carMake: firstComp.make || p.carMake || '',
+      carModel: firstComp.model || p.carModel || '',
+      yearStart: firstComp.yearStart || p.yearStart || '',
+      yearEnd: firstComp.yearEnd || p.yearEnd || '',
+    })
+    setModal(true)
+  }
   const close    = () => setModal(false)
 
   const handleSubmit = async () => {
     if (!form.name || !form.price) return toast.error('اسم المنتج والسعر مطلوبان')
     if (form.hasSubUnits && !form.piecesPerBox) return toast.error('ادخل عدد القطع في العلبة')
+    
+    const compatibility = (form.carMake || form.carModel) ? [{
+      make: form.carMake || '',
+      model: form.carModel || '',
+      yearStart: form.yearStart ? Number(form.yearStart) : null,
+      yearEnd: form.yearEnd ? Number(form.yearEnd) : null,
+    }] : (editing?.compatibility || [])
+
     const data = {
       ...form,
       price:       Number(form.price),
@@ -162,6 +203,7 @@ export default function Products() {
       piecesPerBox: form.hasSubUnits ? Number(form.piecesPerBox || 1) : null,
       boxCost:     form.hasSubUnits ? Number(form.boxCost || 0) : null,
       piecePrice:  form.hasSubUnits ? Number(form.piecePrice || 0) : null,
+      compatibility,
     }
     if (editing) await updateProduct(editing, data)
     else         await addProduct(data)
@@ -577,6 +619,82 @@ export default function Products() {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* ===== قسم توافق السيارات وذكاء القطع (AI Vehicle Compatibility) ===== */}
+                <div className="sm:col-span-2 border border-cyan-200 bg-gradient-to-r from-cyan-50/50 to-blue-50/50 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="w-4 h-4 text-cyan-600 animate-pulse" />
+                    <span className="font-bold text-slate-800 text-sm">بيانات التوافق مع السيارات (AI Compatibility)</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="label-text">ماركة السيارة</label>
+                      <input
+                        type="text"
+                        value={form.carMake || ''}
+                        onChange={e => setForm(p => ({ ...p, carMake: e.target.value }))}
+                        className="input mt-1 text-xs"
+                        placeholder="مثال: تويوتا"
+                      />
+                    </div>
+                    <div>
+                      <label className="label-text">موديل السيارة</label>
+                      <input
+                        type="text"
+                        value={form.carModel || ''}
+                        onChange={e => setForm(p => ({ ...p, carModel: e.target.value }))}
+                        className="input mt-1 text-xs"
+                        placeholder="مثال: كورولا"
+                      />
+                    </div>
+                    <div>
+                      <label className="label-text">من سنة</label>
+                      <input
+                        type="number"
+                        value={form.yearStart || ''}
+                        onChange={e => setForm(p => ({ ...p, yearStart: e.target.value }))}
+                        className="input mt-1 text-xs"
+                        placeholder="2014"
+                      />
+                    </div>
+                    <div>
+                      <label className="label-text">إلى سنة</label>
+                      <input
+                        type="number"
+                        value={form.yearEnd || ''}
+                        onChange={e => setForm(p => ({ ...p, yearEnd: e.target.value }))}
+                        className="input mt-1 text-xs"
+                        placeholder="2019"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="label-text">الماركة المصنعة للقطعة (Brand)</label>
+                      <input
+                        type="text"
+                        value={form.brand || ''}
+                        onChange={e => setForm(p => ({ ...p, brand: e.target.value }))}
+                        className="input mt-1 text-xs"
+                        placeholder="مثال: Bosch, Brembo, Denso, Mobis"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="label-text">مستوى الجودة (Quality Tier)</label>
+                      <select
+                        value={form.qualityTier || 'oem'}
+                        onChange={e => setForm(p => ({ ...p, qualityTier: e.target.value }))}
+                        className="input mt-1 text-xs"
+                      >
+                        <option value="oem">أصلي معتمد (OEM / Genuine)</option>
+                        <option value="oam_aftermarket">بديل ممتاز (Aftermarket Premium)</option>
+                        <option value="commercial">تجاري درجة أولى</option>
+                        <option value="economy">اقتصادي</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
               </div>

@@ -28,12 +28,14 @@ import {
   X,
   Sun,
   Moon,
+  Sparkles,
 } from 'lucide-react'
 import { useStore } from '../../context/StoreContext'
 import { useAuth } from '../../context/AuthContext'
 
 const nav = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'لوحة التحكم', adminOnly: true },
+  { to: '/ai-business', icon: Sparkles, label: 'مساعد AI للأعمال', adminOnly: true },
   { to: '/pos', icon: ShoppingCart, label: 'نقطة البيع', adminOnly: false },
   { to: '/products', icon: Package, label: 'المخزن', adminOnly: false },
   { to: '/categories', icon: Tag, label: 'الفئات', adminOnly: true },

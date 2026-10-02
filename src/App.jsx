@@ -31,6 +31,8 @@ const SupplierReturns = lazy(() => import('./pages/SupplierReturns'))
 const SalesReturns = lazy(() => import('./pages/SalesReturns'))
 const StaffActivity = lazy(() => import('./pages/StaffActivity'))
 const ServiceCalendar = lazy(() => import('./pages/ServiceCalendar'))
+const AIBusinessAssistant = lazy(() => import('./pages/AIBusinessAssistant'))
+import AIAssistantWidget from './components/ai/AIAssistantWidget'
 
 function isStaffRole(role) {
   return role === 'admin' || role === 'cashier'
@@ -57,6 +59,7 @@ function AppRouter() {
           },
         }}
       />
+      <AIAssistantWidget />
       <Routes>
         {/* صفحة تسجيل الدخول */}
         <Route
@@ -106,6 +109,7 @@ function AppRouter() {
 
             {isAdminUser && (
               <>
+                <Route path="ai-business" element={<AIBusinessAssistant />} />
                 <Route path="categories" element={<Categories />} />
                 <Route path="suppliers" element={<Suppliers />} />
                 <Route path="supplier-returns" element={<SupplierReturns />} />
