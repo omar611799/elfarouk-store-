@@ -38,6 +38,7 @@ import {
   markNotificationAsRead,
   adjustCustomerWallet,
   reviewCustomerAccount,
+  logAuditEvent,
 } from '../firebase/collections'
 import { createServiceBooking, updateServiceBookingAdmin } from '../services/serviceBookingApi'
 import { useAuth } from './AuthContext'
@@ -60,6 +61,7 @@ const init = {
   notifications: [],
   customerWallets: [],
   customerAccounts: [],
+  auditLogs: [],
   loading: true,
   cart: [],
 }
@@ -239,6 +241,11 @@ export function StoreProvider({ children }) {
           dispatch({ type: 'SET', key: 'customerAccounts', data: sortByCreatedAtDesc(data) })
         , 300)
       )
+      unsubs.push(
+        listenColLimited(COLS.AUDIT_LOGS, (data) =>
+          dispatch({ type: 'SET', key: 'auditLogs', data: sortByCreatedAtDesc(data) })
+        , 300)
+      )
     }, 4500)
 
     return () => {
@@ -260,7 +267,22 @@ export function StoreProvider({ children }) {
 
   const handleUpdateProduct = async (id, data) => {
     try {
+      const oldProd = state.products.find(p => p.id === id)
       await updateProduct(id, data)
+
+      if (oldProd && (Number(oldProd.price) !== Number(data.price) || Number(oldProd.cost) !== Number(data.cost))) {
+        await logAuditEvent({
+          action: 'product_price_changed',
+          targetType: 'product',
+          targetId: id,
+          details: `تعديل أسعار القطعة "${data.name || oldProd.name}": سعر البيع (${oldProd.price} ⬅️ ${data.price})، سعر التكلفة (${oldProd.cost} ⬅️ ${data.cost})`,
+          oldData: { price: oldProd.price, cost: oldProd.cost, name: oldProd.name },
+          newData: { price: data.price, cost: data.cost, name: data.name || oldProd.name },
+          actorUid: currentUser?.uid || '',
+          actorName: currentUser?.name || currentUser?.email || 'مسؤول النظام',
+          severity: 'warning',
+        })
+      }
       toast.success('تم تحديث القطعة')
     } catch (error) {
       toast.error(error.message)
@@ -269,7 +291,20 @@ export function StoreProvider({ children }) {
 
   const handleDeleteProduct = async (id) => {
     try {
+      const oldProd = state.products.find(p => p.id === id)
       await deleteProduct(id)
+      if (oldProd) {
+        await logAuditEvent({
+          action: 'product_deleted',
+          targetType: 'product',
+          targetId: id,
+          details: `تم حذف القطعة "${oldProd.name}" من المخزن (الباركود: ${oldProd.sku || 'لا يوجد'})`,
+          oldData: { name: oldProd.name, sku: oldProd.sku, price: oldProd.price, quantity: oldProd.quantity },
+          actorUid: currentUser?.uid || '',
+          actorName: currentUser?.name || currentUser?.email || 'مسؤول النظام',
+          severity: 'danger',
+        })
+      }
       toast.success('تم حذف القطعة')
     } catch (error) {
       toast.error(error.message)
@@ -421,7 +456,10 @@ export function StoreProvider({ children }) {
 
   const handlePayInvoiceDebt = async (invoiceId, amount, note) => {
     try {
-      await payInvoiceDebt(invoiceId, amount, note)
+      await payInvoiceDebt(invoiceId, amount, note, {
+        actorUid: currentUser?.uid || '',
+        actorName: currentUser?.name || currentUser?.email || 'مسؤول النظام'
+      })
       toast.success('تم تسجيل سداد المديونية بنجاح')
     } catch (error) {
       toast.error(error.message)
@@ -431,7 +469,10 @@ export function StoreProvider({ children }) {
 
   const handleDeleteInvoice = async (invoiceId) => {
     try {
-      await deleteInvoiceAndReturnStock(invoiceId)
+      await deleteInvoiceAndReturnStock(invoiceId, {
+        actorUid: currentUser?.uid || '',
+        actorName: currentUser?.name || currentUser?.email || 'مسؤول النظام'
+      })
       toast.success('تم حذف الفاتورة واسترداد المخزون بنجاح')
     } catch (error) {
       toast.error(error.message)
@@ -441,7 +482,11 @@ export function StoreProvider({ children }) {
 
   const handleReturnItems = async (params) => {
     try {
-      await returnInvoiceItems(params)
+      await returnInvoiceItems({
+        ...params,
+        actorUid: currentUser?.uid || '',
+        actorName: currentUser?.name || currentUser?.email || 'مسؤول النظام'
+      })
       toast.success('تم إرجاع القطع وتسوية المبالغ بنجاح')
     } catch (error) {
       toast.error(error.message)
@@ -472,7 +517,10 @@ export function StoreProvider({ children }) {
 
   const handleImportProductsBatch = async (products) => {
     try {
-      const result = await importProductsBatch(products)
+      const result = await importProductsBatch(products, {
+        actorUid: currentUser?.uid || '',
+        actorName: currentUser?.name || currentUser?.email || 'مسؤول النظام'
+      })
       toast.success(`تم بنجاح! إضافة: ${result.addedCount} | تحديث: ${result.updatedCount}`)
       return result
     } catch (error) {
@@ -663,6 +711,7 @@ export function StoreProvider({ children }) {
       markNotificationAsRead: handleMarkNotificationAsRead,
       adjustCustomerWallet: handleAdjustCustomerWallet,
       reviewCustomerAccount: handleReviewCustomerAccount,
+      logAuditEvent,
       cartAdd,
       cartQty,
       cartRemove,

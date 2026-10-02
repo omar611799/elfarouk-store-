@@ -29,6 +29,7 @@ const Login = lazy(() => import('./pages/Login'))
 const SupplierReturns = lazy(() => import('./pages/SupplierReturns'))
 const SalesReturns = lazy(() => import('./pages/SalesReturns'))
 const StaffActivity = lazy(() => import('./pages/StaffActivity'))
+const AuditLogs = lazy(() => import('./pages/AuditLogs'))
 const ServiceCalendar = lazy(() => import('./pages/ServiceCalendar'))
 const AIBusinessAssistant = lazy(() => import('./pages/AIBusinessAssistant'))
 import AIAssistantWidget from './components/ai/AIAssistantWidget'
@@ -121,6 +122,7 @@ function AppRouter() {
                 <Route path="transactions" element={<Transactions />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="staff-activity" element={<StaffActivity />} />
+                <Route path="audit-logs" element={<AuditLogs />} />
                 <Route path="reminders" element={<Reminders />} />
                 <Route path="purchases" element={<Purchases />} />
                 <Route path="service-bookings" element={<ServiceBookingsAdmin />} />

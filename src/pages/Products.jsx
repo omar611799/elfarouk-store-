@@ -1,6 +1,10 @@
 import { useState, useRef, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud, QrCode, Printer, X, Filter, Sparkles, Download, Camera } from 'lucide-react'
+import { 
+  Plus, Search, Edit2, Trash2, AlertTriangle, Package, UploadCloud, 
+  QrCode, Printer, X, Filter, Sparkles, Download, Camera,
+  FileSpreadsheet, ArrowRight, CheckCircle2, RefreshCw
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
@@ -36,9 +40,11 @@ export default function Products() {
   const [catFilter, setCatFilter] = useState('')
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState(EMPTY)
   const [qrModal, setQrModal] = useState(null)
   const [reorderModal, setReorderModal] = useState(false)
+  const [excelPreviewData, setExcelPreviewData] = useState(null)
+  const [importStrategy, setImportStrategy] = useState('all') // 'all' | 'update_only' | 'add_only'
+  const [isImporting, setIsImporting] = useState(false)
   const fileInputRef = useRef(null)
   const [scanning, setScanning] = useState(false)
   const scannerRef = useRef(null)
@@ -210,44 +216,193 @@ export default function Products() {
     close()
   }
 
+  const exportFullCatalogToExcel = async () => {
+    if (products.length === 0) return toast.error('لا توجد منتجات في المخزن لتصديرها')
+    const toastId = toast.loading('جاري تجهيز كشف الجرد والأسعار...')
+    try {
+      const XLSX = await import('xlsx')
+      const data = products.map((p, idx) => {
+        const comp = Array.isArray(p.compatibility) && p.compatibility.length > 0
+          ? p.compatibility.map(c => `${c.make || ''} ${c.model || ''}`).filter(Boolean).join(' - ')
+          : [p.carMake, p.carModel].filter(Boolean).join(' ')
+
+        return {
+          'م': idx + 1,
+          'كود الصنف / SKU': p.sku || '',
+          'اسم القطعة': p.name || '',
+          'الفئة': p.category || '',
+          'سعر البيع (ج.م)': Number(p.price || 0),
+          'سعر التكلفة (ج.م)': Number(p.cost || 0),
+          'رصيد المخزن (قطعة)': Number(p.quantity || 0),
+          'حد الطلب الأدنى': Number(p.minStock || 5),
+          'الماركة': p.brand || '',
+          'نوع الجودة': p.qualityTier === 'oem' ? 'أصلية OEM' : p.qualityTier === 'oam_aftermarket' ? 'بديل تجاري معتمد' : 'تجاري',
+          'السيارات المتوافقة': comp || 'عام',
+          'المورد الافتراضي': p.supplier || '',
+        }
+      })
+
+      const worksheet = XLSX.utils.json_to_sheet(data)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'كشف المخزن والأسعار')
+      XLSX.writeFile(workbook, `كشف_مخزن_الفاروق_${new Date().toISOString().slice(0, 10)}.xlsx`)
+      toast.success('تم تصدير كشف المخزن بنجاح!', { id: toastId })
+    } catch (err) {
+      console.error(err)
+      toast.error('فشل تصدير ملف الإكسيل!', { id: toastId })
+    }
+  }
+
+  const downloadSampleTemplateExcel = async () => {
+    const toastId = toast.loading('جاري تحميل النموذج...')
+    try {
+      const XLSX = await import('xlsx')
+      const templateData = [
+        {
+          'كود الصنف / SKU': 'DB-BRK-001',
+          'اسم القطعة': 'طقم تيل فرامل أمامي شيفروليه دبابة',
+          'الفئة': 'فرامل',
+          'سعر البيع (ج.م)': 480,
+          'سعر التكلفة (ج.م)': 360,
+          'رصيد المخزن (قطعة)': 25,
+          'حد الطلب الأدنى': 8,
+          'الماركة': 'Gold / كوريا',
+          'نوع الجودة': 'oem',
+          'السيارة': 'شيفروليه الدبابة (نصف نقل)',
+          'المورد': 'الشركة الدولية للاستيراد'
+        },
+        {
+          'كود الصنف / SKU': 'JB-BELT-7000',
+          'اسم القطعة': 'سير دينامو ومكيف شيفروليه جامبو 7000',
+          'الفئة': 'سيور ومحركات',
+          'سعر البيع (ج.م)': 240,
+          'سعر التكلفة (ج.م)': 175,
+          'رصيد المخزن (قطعة)': 14,
+          'حد الطلب الأدنى': 5,
+          'الماركة': 'Bando',
+          'نوع الجودة': 'oam_aftermarket',
+          'السيارة': 'شيفروليه الجامبو 7000',
+          'المورد': 'مؤسسة النور للتجارة'
+        }
+      ]
+
+      const worksheet = XLSX.utils.json_to_sheet(templateData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'نموذج إدخال وتحديث المنتجات')
+      XLSX.writeFile(workbook, `نموذج_إدخال_منتجات_الفاروق.xlsx`)
+      toast.success('تم تحميل النموذج بنجاح!', { id: toastId })
+    } catch {
+      toast.error('فشل تحميل النموذج!', { id: toastId })
+    }
+  }
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
     reader.onload = async (evt) => {
-      const toastId = toast.loading('جاري فحص واستيراد الملف...')
+      const toastId = toast.loading('جاري فحص وتحليل ملف الإكسيل...')
       try {
         const XLSX = await import('xlsx')
         const wb  = XLSX.read(evt.target.result, { type: 'binary' })
         const ws  = wb.Sheets[wb.SheetNames[0]]
-        const data = XLSX.utils.sheet_to_json(ws)
-        const formatted = data.map(row => ({
-          name:     row['الاسم']    || row['name']     || '',
-          price:    Number(row['السعر']    || row['price']    || 0),
-          cost:     Number(row['التكلفة']  || row['cost']     || 0),
-          quantity: Number(row['الكمية']   || row['quantity'] || 0),
-          category: row['الفئة']   || row['category'] || '',
-          sku:      String(row['الكود']    || row['sku']      || Date.now().toString().slice(-6)),
-        })).filter(item => item.name && item.price > 0)
+        const rawData = XLSX.utils.sheet_to_json(ws)
+
+        const formatted = rawData.map(row => {
+          const name = String(row['الاسم'] || row['اسم القطعة'] || row['name'] || '').trim()
+          const price = Number(row['السعر'] || row['سعر البيع'] || row['سعر البيع (ج.م)'] || row['price'] || 0)
+          const cost = Number(row['التكلفة'] || row['سعر التكلفة'] || row['سعر التكلفة (ج.م)'] || row['cost'] || 0)
+          const quantity = Number(row['الكمية'] || row['المخزون'] || row['رصيد المخزن (قطعة)'] || row['quantity'] || 0)
+          const category = String(row['الفئة'] || row['category'] || '').trim()
+          const sku = String(row['الكود'] || row['كود الصنف / SKU'] || row['كود الصنف'] || row['sku'] || '').trim()
+          const brand = String(row['الماركة'] || row['brand'] || '').trim()
+          const carModel = String(row['السيارة'] || row['السيارات المتوافقة'] || row['carModel'] || '').trim()
+          const minStock = Number(row['حد الطلب الأدنى'] || row['الحد الأدنى'] || row['minStock'] || 5)
+
+          return { name, price, cost, quantity, category, sku, brand, carModel, minStock }
+        }).filter(item => item.name && item.price > 0)
+
         if (formatted.length === 0) {
-          toast.error('لم يتم العثور على بيانات صالحة', { id: toastId })
+          toast.error('لم يتم العثور على أعمدة صالحة (الاسم والسعر مطلوبان)', { id: toastId })
           return
         }
-        if (window.confirm(`استيراد ${formatted.length} منتج؟`)) {
-          await importProductsBatch(formatted)
-          toast.success('تم الاستيراد بنجاح!', { id: toastId })
-        } else {
-          toast.dismiss(toastId)
-        }
-      } catch {
-        toast.error('خطأ في قراءة ملف الاكسيل!', { id: toastId })
+
+        let toUpdateCount = 0
+        let toAddCount = 0
+        const diffList = formatted.map(rowItem => {
+          const matchBySku = rowItem.sku ? products.find(p => p.sku === rowItem.sku) : null
+          const matchByName = !matchBySku ? products.find(p => p.name?.trim().toLowerCase() === rowItem.name?.trim().toLowerCase()) : null
+          const matched = matchBySku || matchByName
+
+          if (matched) {
+            toUpdateCount++
+            const priceChanged = Number(matched.price) !== Number(rowItem.price)
+            const costChanged = Number(matched.cost) !== Number(rowItem.cost)
+            const qtyChanged = Number(matched.quantity) !== Number(rowItem.quantity)
+            return {
+              ...rowItem,
+              isExisting: true,
+              matchedId: matched.id,
+              oldPrice: matched.price,
+              oldCost: matched.cost,
+              oldQty: matched.quantity,
+              priceChanged,
+              costChanged,
+              qtyChanged,
+            }
+          } else {
+            toAddCount++
+            return {
+              ...rowItem,
+              isExisting: false,
+            }
+          }
+        })
+
+        toast.dismiss(toastId)
+        setExcelPreviewData({
+          items: diffList,
+          total: formatted.length,
+          toUpdateCount,
+          toAddCount,
+        })
+      } catch (err) {
+        console.error(err)
+        toast.error('خطأ في قراءة ملف الإكسيل!', { id: toastId })
       }
       e.target.value = null
     }
     reader.readAsBinaryString(file)
   }
 
+  const handleCommitExcelImport = async () => {
+    if (!excelPreviewData || !excelPreviewData.items.length) return
+    setIsImporting(true)
+    const toastId = toast.loading('جاري حفظ وتحديث البيانات في السحابة...')
+    try {
+      let filteredItems = excelPreviewData.items
+      if (importStrategy === 'update_only') {
+        filteredItems = filteredItems.filter(i => i.isExisting)
+      } else if (importStrategy === 'add_only') {
+        filteredItems = filteredItems.filter(i => !i.isExisting)
+      }
+
+      if (filteredItems.length === 0) {
+        toast.error('لا توجد عناصر مطابقة للاستراتيجية المحددة', { id: toastId })
+        setIsImporting(false)
+        return
+      }
+
+      await importProductsBatch(filteredItems)
+      toast.success('تم استيراد وتحديث البيانات بنجاح!', { id: toastId })
+      setExcelPreviewData(null)
+    } catch (err) {
+      console.error(err)
+      toast.error('حدث خطأ أثناء الاستيراد!', { id: toastId })
+    } finally {
+      setIsImporting(false)
+    }
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-7 pb-20">
@@ -266,16 +421,33 @@ export default function Products() {
             {lowStockCount > 0 && <span className="mr-3 text-rose-500 font-black">{lowStockCount} منخفضة</span>}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <input type="file" accept=".xlsx,.xls,.csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-          <button onClick={() => fileInputRef.current?.click()}
-            className="btn-ghost flex items-center gap-2 text-xs">
-            <UploadCloud size={15} className="text-emerald-500" /> استيراد Excel
+          
+          <button 
+            onClick={exportFullCatalogToExcel}
+            className="btn-ghost flex items-center gap-2 text-xs text-slate-700 bg-white border border-slate-200 hover:bg-slate-50"
+            title="تصدير كشف الجرد والأسعار إلى ملف Excel"
+          >
+            <Download size={14} className="text-emerald-600" /> تصدير المخزن (Excel)
           </button>
+
+          <button onClick={() => fileInputRef.current?.click()}
+            className="btn-ghost flex items-center gap-2 text-xs text-emerald-700 border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100">
+            <UploadCloud size={15} className="text-emerald-600" /> تحديث واستيراد Excel
+          </button>
+
+          <button onClick={downloadSampleTemplateExcel}
+            className="btn-ghost flex items-center gap-2 text-xs text-slate-500 border border-slate-200 bg-white hover:bg-slate-50"
+            title="تحميل نموذج Excel فارغ لإدخال وتحديث البيانات">
+            <FileSpreadsheet size={14} /> نموذج فارغ
+          </button>
+
           <button onClick={() => setReorderModal(true)}
             className="btn-ghost flex items-center gap-2 text-xs text-violet-600 border border-violet-200 bg-violet-50/50 hover:bg-violet-100">
-            <Sparkles size={14} /> اقتراحات الشراء الذكية
+            <Sparkles size={14} /> اقتراحات الشراء
           </button>
+          
           <button onClick={openAdd} className="btn-primary">
             <Plus size={16} /> إضافة منتج
           </button>
@@ -815,6 +987,190 @@ export default function Products() {
                 <button onClick={exportReorderToExcel} disabled={reorderSuggestions.length === 0}
                   className="btn-primary flex-[2] py-3 flex items-center justify-center gap-2 !bg-violet-600 hover:!bg-violet-750 disabled:opacity-30">
                   <Download size={14} /> تصدير الاقتراحات لـ Excel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Bulk Excel Preview & Diff Modal */}
+        {excelPreviewData && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => !isImporting && setExcelPreviewData(null)}
+          >
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-4xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden rounded-t-[2rem] sm:rounded-[2rem] text-right"
+              dir="rtl"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
+                    <FileSpreadsheet size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
+                      معاينة وتحديث الأسعار والمخزون من Excel
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-bold mt-0.5">
+                      راجع التغييرات والفروقات قبل تأكيد الحفظ في النظام
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => !isImporting && setExcelPreviewData(null)}
+                  disabled={isImporting}
+                  className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-2 rounded-xl"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 sm:p-6 space-y-5 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                {/* Metrics */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-3.5 text-center">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">إجمالي الأصناف المقروءة</span>
+                    <span className="text-xl font-black text-slate-800 dark:text-slate-100">{excelPreviewData.total}</span>
+                  </div>
+                  <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl p-3.5 text-center">
+                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 block mb-1">أصناف سيتم تحديثها</span>
+                    <span className="text-xl font-black text-amber-600 dark:text-amber-400">{excelPreviewData.toUpdateCount}</span>
+                  </div>
+                  <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-2xl p-3.5 text-center">
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block mb-1">أصناف جديدة ستضاف</span>
+                    <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{excelPreviewData.toAddCount}</span>
+                  </div>
+                </div>
+
+                {/* Strategy Selector */}
+                <div className="bg-slate-50 dark:bg-slate-800/30 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <span className="font-black text-slate-700 dark:text-slate-300">استراتيجية المعالجة:</span>
+                  <div className="flex items-center gap-2">
+                    {[
+                      { id: 'all', label: 'تحديث شامل وإضافة جديدة (مستحسن)' },
+                      { id: 'update_only', label: 'تحديث الأسعار والمخزون الحالي فقط' },
+                      { id: 'add_only', label: 'إضافة أصناف جديدة فقط' },
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        onClick={() => setImportStrategy(opt.id)}
+                        className={`px-3 py-1.5 rounded-xl font-black text-[11px] transition-all ${
+                          importStrategy === opt.id 
+                            ? 'bg-primary-600 text-white shadow-sm' 
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Diff Preview Table */}
+                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-inner">
+                  <table className="w-full text-right text-xs">
+                    <thead className="bg-slate-100/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black">
+                      <tr>
+                        <th className="p-3">اسم القطعة / الكود</th>
+                        <th className="p-3 text-center">الحالة</th>
+                        <th className="p-3 text-center">سعر البيع</th>
+                        <th className="p-3 text-center">سعر التكلفة</th>
+                        <th className="p-3 text-center">المخزون</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {excelPreviewData.items.slice(0, 50).map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                          <td className="p-3 font-bold text-slate-800 dark:text-slate-100">
+                            <div>{row.name}</div>
+                            {row.sku && <span className="text-[10px] text-slate-400 font-mono">{row.sku}</span>}
+                          </td>
+                          <td className="p-3 text-center">
+                            {row.isExisting ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300">
+                                تحديث صنف
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">
+                                صنف جديد
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center font-bold">
+                            {row.isExisting && row.priceChanged ? (
+                              <div className="flex items-center justify-center gap-1.5 text-[11px]">
+                                <span className="text-slate-400 line-through">{row.oldPrice}</span>
+                                <ArrowRight size={10} className="text-slate-400" />
+                                <span className="text-emerald-600 font-black">{row.price} ج</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-800 dark:text-slate-200">{row.price} ج</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center font-bold">
+                            {row.isExisting && row.costChanged ? (
+                              <div className="flex items-center justify-center gap-1.5 text-[11px]">
+                                <span className="text-slate-400 line-through">{row.oldCost}</span>
+                                <ArrowRight size={10} className="text-slate-400" />
+                                <span className="text-indigo-600 font-black">{row.cost} ج</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-600 dark:text-slate-400">{row.cost} ج</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center font-bold">
+                            {row.isExisting && row.qtyChanged ? (
+                              <div className="flex items-center justify-center gap-1.5 text-[11px]">
+                                <span className="text-slate-400 line-through">{row.oldQty}</span>
+                                <ArrowRight size={10} className="text-slate-400" />
+                                <span className="text-primary-600 font-black">{row.quantity}</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-700 dark:text-slate-300">{row.quantity}</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {excelPreviewData.items.length > 50 && (
+                    <div className="p-2.5 bg-slate-50 dark:bg-slate-800 text-center text-[11px] text-slate-500 font-bold border-t border-slate-200 dark:border-slate-700">
+                      معروض أول 50 صنف من إجمالي {excelPreviewData.items.length} صنف
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-5 sm:p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 flex gap-3">
+                <button 
+                  onClick={() => setExcelPreviewData(null)}
+                  disabled={isImporting}
+                  className="btn-ghost flex-1 py-3"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={handleCommitExcelImport}
+                  disabled={isImporting}
+                  className="btn-primary flex-[2] py-3 flex items-center justify-center gap-2 !bg-emerald-600 hover:!bg-emerald-700 text-white font-black"
+                >
+                  {isImporting ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" /> جاري الحفظ والتطبيق...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} /> تأكيد وتطبيق التحديثات في النظام
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>

@@ -29,6 +29,7 @@ import {
   Sun,
   Moon,
   Sparkles,
+  ShieldAlert,
 } from 'lucide-react'
 import { useStore } from '../../context/StoreContext'
 import { useAuth } from '../../context/AuthContext'
@@ -51,6 +52,7 @@ const nav = [
   { to: '/transactions', icon: ArrowLeftRight, label: 'المعاملات', adminOnly: true },
   { to: '/reports', icon: BarChart3, label: 'التقارير', adminOnly: true },
   { to: '/staff-activity', icon: Activity, label: 'نشاط الموظفين', adminOnly: true },
+  { to: '/audit-logs', icon: ShieldAlert, label: 'سجل تدقيق العمليات', adminOnly: true },
   { to: '/service-bookings', icon: Wrench, label: 'حجوزات الصيانة', adminOnly: true },
   { to: '/service-calendar', icon: Calendar, label: 'تقويم الصيانة', adminOnly: true },
 ]

@@ -42,6 +42,37 @@ export const COLS = {
   CUSTOMER_ACCOUNTS: 'customerAccounts',
   CUSTOMER_WALLETS: 'customerWallets',
   NOTIFICATIONS: 'notifications',
+  AUDIT_LOGS: 'auditLogs',
+}
+
+export async function logAuditEvent({
+  action,
+  targetType = 'general',
+  targetId = '',
+  details = '',
+  oldData = null,
+  newData = null,
+  actorUid = '',
+  actorName = '',
+  severity = 'info', // 'info' | 'warning' | 'danger'
+}) {
+  try {
+    const logRef = doc(collection(db, COLS.AUDIT_LOGS))
+    await setDoc(logRef, {
+      action,
+      targetType,
+      targetId,
+      details,
+      oldData: oldData ? JSON.parse(JSON.stringify(oldData)) : null,
+      newData: newData ? JSON.parse(JSON.stringify(newData)) : null,
+      actorUid: actorUid || 'system',
+      actorName: actorName || 'النظام / كاشير',
+      severity,
+      createdAt: serverTimestamp(),
+    })
+  } catch (err) {
+    console.error('Failed to write audit event:', err)
+  }
 }
 
 // ── Real-time listeners (onSnapshot) ──
@@ -446,7 +477,7 @@ export async function completeSale({ items, cartItems, customerData = {}, total,
 
 
 // ── Delete Invoice (Return stock) ──
-export async function deleteInvoiceAndReturnStock(invoiceId) {
+export async function deleteInvoiceAndReturnStock(invoiceId, { actorUid = '', actorName = '' } = {}) {
   const inv = await getDoc_(COLS.INVOICES, invoiceId)
   if (!inv) throw new Error('الفاتورة غير موجودة')
 
@@ -505,10 +536,21 @@ export async function deleteInvoiceAndReturnStock(invoiceId) {
   })
 
   await batch.commit()
+
+  await logAuditEvent({
+    action: 'invoice_deleted',
+    targetType: 'invoice',
+    targetId: invoiceId,
+    details: `تم حذف الفاتورة رقم ${inv.number} واسترداد المخزون بمبلغ ${inv.total || 0} ج.م`,
+    oldData: { number: inv.number, total: inv.total, customer: inv.customerData?.name || 'نقدي', itemsCount: inv.items?.length || 0 },
+    actorUid,
+    actorName,
+    severity: 'danger',
+  })
 }
 
 // ── Pay Debt ──
-export async function payInvoiceDebt(invoiceId, paymentAmount, note) {
+export async function payInvoiceDebt(invoiceId, paymentAmount, note, { actorUid = '', actorName = '' } = {}) {
   const inv = await getDoc_(COLS.INVOICES, invoiceId)
   if (!inv) throw new Error('الفاتورة غير موجودة')
 
@@ -553,10 +595,21 @@ export async function payInvoiceDebt(invoiceId, paymentAmount, note) {
   })
 
   await batch.commit()
+
+  await logAuditEvent({
+    action: 'customer_debt_cleared',
+    targetType: 'invoice',
+    targetId: invoiceId,
+    details: `تحصيل سداد من آجل الفاتورة ${inv.number} بقيمة ${payment} ج.م - ${note || 'سداد معتمد'}`,
+    newData: { paymentAmount: payment, newPaidAmount, newDueAmount },
+    actorUid,
+    actorName,
+    severity: 'info',
+  })
 }
 
 // ── Partial Return ──
-export async function returnInvoiceItems({ invoiceId, itemsToReturn }) {
+export async function returnInvoiceItems({ invoiceId, itemsToReturn, actorUid = '', actorName = '' }) {
   const inv = await getDoc_(COLS.INVOICES, invoiceId)
   if (!inv) throw new Error('الفاتورة غير موجودة')
 
@@ -696,6 +749,18 @@ export async function returnInvoiceItems({ invoiceId, itemsToReturn }) {
   })
 
   await batch.commit()
+
+  await logAuditEvent({
+    action: 'invoice_returned',
+    targetType: 'invoice',
+    targetId: invoiceId,
+    details: `مرتجع أصناف من الفاتورة رقم ${inv.number} بإجمالي استرداد ${refundValue} ج.م`,
+    oldData: { invoiceNumber: inv.number, items: itemsToReturn },
+    newData: { refundValue, newDueAmount, newPaidAmount },
+    actorUid,
+    actorName,
+    severity: 'warning',
+  })
 }
 
 // ── Quotations (عروض الأسعار) ──
@@ -703,8 +768,7 @@ export const addQuote = (d) => addDoc_(COLS.QUOTATIONS, d)
 export const deleteQuote = (id) => deleteDoc_(COLS.QUOTATIONS, id)
 
 // ── Bulk Import Excel (استيراد مجمع) ──
-export async function importProductsBatch(productsData) {
-  // We chunk batches of 500 for Firestore limit
+export async function importProductsBatch(productsData, { actorUid = '', actorName = '' } = {}) {
   const chunkSize = 400; 
   let addedCount = 0;
   let updatedCount = 0;
@@ -714,11 +778,9 @@ export async function importProductsBatch(productsData) {
     const batch = writeBatch(db);
 
     for (const item of chunk) {
-      if (!item.name) continue; // safety
+      if (!item.name) continue;
 
-      // check if exists by SKU or Exact Name
       let existsRefId = null;
-      
       const qSku = item.sku ? query(collection(db, COLS.PRODUCTS), where('sku', '==', item.sku)) : null;
       if (qSku) {
         const snap = await getDocs(qSku);
@@ -731,26 +793,41 @@ export async function importProductsBatch(productsData) {
         if (!snap.empty) existsRefId = snap.docs[0].id;
       }
 
+      const cleanPrice = Number(item.price) || 0
+      const cleanCost = Number(item.cost) || 0
+      const cleanQty = Number(item.quantity) || 0
+      const cleanMinStock = Number(item.minStock || 5)
+
       if (existsRefId) {
-        // Update price and quantity
-        batch.update(doc(db, COLS.PRODUCTS, existsRefId), {
-          price: Number(item.price) || 0,
-          cost: Number(item.cost) || 0,
-          quantity: Number(item.quantity) || 0,
+        const updatePayload = {
+          price: cleanPrice,
+          cost: cleanCost,
+          quantity: cleanQty,
+          minStock: cleanMinStock,
           category: item.category || '',
+          brand: item.brand || '',
+          qualityTier: item.qualityTier || 'oem',
           updatedAt: serverTimestamp()
-        });
+        }
+        if (item.carMake) updatePayload.carMake = item.carMake
+        if (item.carModel) updatePayload.carModel = item.carModel
+
+        batch.update(doc(db, COLS.PRODUCTS, existsRefId), updatePayload);
         updatedCount++;
       } else {
-        // Add new
         const docRef = doc(collection(db, COLS.PRODUCTS));
         batch.set(docRef, {
           name: item.name,
-          sku: item.sku || '',
-          price: Number(item.price) || 0,
-          cost: Number(item.cost) || 0,
-          quantity: Number(item.quantity) || 0,
+          sku: item.sku || String(Date.now()).slice(-6),
+          price: cleanPrice,
+          cost: cleanCost,
+          quantity: cleanQty,
+          minStock: cleanMinStock,
           category: item.category || '',
+          brand: item.brand || '',
+          qualityTier: item.qualityTier || 'oem',
+          carMake: item.carMake || '',
+          carModel: item.carModel || '',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
@@ -760,6 +837,17 @@ export async function importProductsBatch(productsData) {
     
     await batch.commit();
   }
+
+  // Record audit log
+  await logAuditEvent({
+    action: 'bulk_excel_imported',
+    targetType: 'products',
+    details: `استيراد وتحديث إكسيل جماعي: تم تحديث ${updatedCount} صنف وإضافة ${addedCount} صنف جديد`,
+    newData: { addedCount, updatedCount, totalProcessed: productsData.length },
+    actorUid,
+    actorName,
+    severity: 'warning',
+  })
   
   return { addedCount, updatedCount };
 }
