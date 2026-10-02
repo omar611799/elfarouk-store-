@@ -98,10 +98,9 @@ export default async function handler(req, res) {
       ...responsePayload,
     })
   } catch (error) {
-    console.error('Customer AI Assistant error:', error)
+    console.error('Customer AI Assistant internal error:', error)
     return res.status(500).json({
-      error: 'حدث خطأ أثناء معالجة الطلب الذكي',
-      details: error.message,
+      error: 'حدث خطأ مؤقت أثناء معالجة الطلب. يرجى المحاولة لاحقاً.',
     })
   }
 }

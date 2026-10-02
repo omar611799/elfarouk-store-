@@ -169,10 +169,9 @@ export default async function handler(req, res) {
       deadStock: deadStock.slice(0, 15),
     })
   } catch (error) {
-    console.error('AI Business Assistant error:', error)
+    console.error('AI Business Assistant internal error:', error)
     return res.status(500).json({
-      error: 'حدث خطأ أثناء معالجة استعلامات الـ ERP الذكية',
-      details: error.message,
+      error: 'حدث خطأ أثناء معالجة استعلامات الـ ERP الذكية. يرجى المحاولة مرة أخرى.',
     })
   }
 }

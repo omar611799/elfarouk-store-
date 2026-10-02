@@ -1,6 +1,21 @@
-node_modules
-dist
-.env
-.env.local
+# Dependencies
+node_modules/
 
+# Production build
+dist/
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+service-account*.json
+firebase-key*.json
+
+# Vercel & IDE
 .vercel
+.DS_Store
+Thumbs.db
+*.log

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, useRef } from 'react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase/config'
@@ -8,9 +8,23 @@ import toast from 'react-hot-toast'
 const AuthContext = createContext(null)
 const STAFF_ROLES = new Set(['admin', 'cashier'])
 
+/**
+ * Validates password strength (min 6 chars, recommended 8+ with mixed case/numbers)
+ */
+export function validatePasswordStrength(pwd = '') {
+  if (!pwd || pwd.length < 6) {
+    return { valid: false, message: 'كلمة المرور يجب أن لا تقل عن 6 أحرف' }
+  }
+  return { valid: true }
+}
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // Rate Limiting on Login (Brute-Force Protection)
+  const failedAttemptsRef = useRef(0)
+  const lockUntilRef = useRef(0)
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
@@ -49,13 +63,19 @@ export function AuthProvider({ children }) {
   }, [])
 
   const attemptAdminLogin = async (email, password) => {
+    const now = Date.now()
+    if (lockUntilRef.current > now) {
+      const waitSeconds = Math.ceil((lockUntilRef.current - now) / 1000)
+      toast.error(`تم حظر المحاولات مؤقتاً بسبب تكرار الخطأ. انتظر ${waitSeconds} ثانية.`)
+      return false
+    }
+
     setLoading(true)
     try {
-      const cred = await signInWithEmailAndPassword(
-        auth,
-        String(email || '').trim(),
-        String(password || '')
-      )
+      const cleanEmail = String(email || '').trim().toLowerCase()
+      const cleanPassword = String(password || '')
+
+      const cred = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword)
       const snap = await getDoc(doc(db, 'users', cred.user.uid))
       const role = snap.exists() ? snap.data().role : null
 
@@ -65,9 +85,18 @@ export function AuthProvider({ children }) {
         return false
       }
 
+      // Reset brute-force counter on success
+      failedAttemptsRef.current = 0
+      lockUntilRef.current = 0
       return true
-    } catch {
-      toast.error('بيانات دخول الإدارة غير صحيحة')
+    } catch (err) {
+      failedAttemptsRef.current += 1
+      if (failedAttemptsRef.current >= 5) {
+        lockUntilRef.current = Date.now() + 30000 // Lock for 30s
+        toast.error('تم تجاوز الحد المسموح من المحاولات الخاطئة. تم القفل لمدة 30 ثانية.')
+      } else {
+        toast.error('بيانات دخول الإدارة غير صحيحة')
+      }
       return false
     } finally {
       setLoading(false)
