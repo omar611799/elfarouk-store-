@@ -6,15 +6,17 @@ import {
   Star, Download, ChevronDown,
   ExternalLink, Activity, RefreshCw,
   CheckCircle2, Wallet, BarChart2, TrendingDown, PhoneCall,
-  Car, Wrench
+  Car, Wrench, MessageCircle, Send, X, ShieldAlert, Sparkles, DollarSign
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import CashierAccountCard from '../components/CashierAccountCard'
+import { formatPhoneForWhatsApp } from '../utils/phone'
+import toast from 'react-hot-toast'
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } }
 const item = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } } }
@@ -26,7 +28,101 @@ export default function Dashboard() {
   const { currentUser } = useAuth()
   const [period, setPeriod] = useState('7d')
   const [stockPage, setStockPage] = useState(0)
+  const [shiftClosingModal, setShiftClosingModal] = useState(false)
+  const [closingPhone, setClosingPhone] = useState('01115329887')
   const STOCK_PER_PAGE = 3
+
+  // ── Shift & Today Stats ──────────────────────────────────────────────────
+  const todayShift = useMemo(() => {
+    const todayStr = new Date().toDateString()
+    const todayInvoices = invoices.filter(inv => {
+      const d = inv.createdAt?.toDate?.() || new Date(inv.createdAt || 0)
+      return d.toDateString() === todayStr
+    })
+
+    const totalSales = todayInvoices.reduce((s, i) => s + Number(i.total || 0), 0)
+    let cash = 0
+    let visa = 0
+    let instapay = 0
+    let debt = 0
+
+    todayInvoices.forEach(inv => {
+      const p = inv.payments || {}
+      cash += Number(p.cash || (inv.paidAmount && !p.visa && !p.instapay ? inv.paidAmount : 0) || 0)
+      visa += Number(p.visa || 0)
+      instapay += Number(p.instapay || 0)
+      debt += Number(inv.dueAmount || 0)
+    })
+
+    const todayExpensesList = (expenses || []).filter(e => {
+      const d = e.createdAt?.toDate?.() || new Date(e.createdAt || 0)
+      return d.toDateString() === todayStr
+    })
+    const totalExpenses = todayExpensesList.reduce((s, e) => s + Number(e.amount || 0), 0)
+
+    const grossProfit = todayInvoices.reduce((sum, inv) => {
+      return sum + (inv.items || []).reduce((itSum, it) => {
+        const cost = Number(it.cost || 0)
+        const price = Number(it.price || 0)
+        const effQty = Math.max(0, Number(it.qty || 1) - Number(it.returnedQty || 0))
+        return itSum + (price - cost) * effQty
+      }, 0)
+    }, 0)
+
+    const netProfit = Math.max(0, grossProfit - totalExpenses)
+
+    const criticalShortages = products
+      .filter(p => Number(p.quantity || 0) <= (p.minStock || 5))
+      .slice(0, 5)
+
+    return {
+      todayInvoices,
+      totalSales,
+      cash,
+      visa,
+      instapay,
+      debt,
+      totalExpenses,
+      grossProfit,
+      netProfit,
+      criticalShortages,
+      invoiceCount: todayInvoices.length,
+    }
+  }, [invoices, expenses, products])
+
+  const handleSendClosingWhatsApp = () => {
+    const normPhone = formatPhoneForWhatsApp(closingPhone) || '201115329887'
+    const nowStr = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    const timeStr = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+
+    let shortagesText = ''
+    if (todayShift.criticalShortages.length > 0) {
+      shortagesText = '\n⚠️ *أبرز النواقص بالمخزن:*\n' + todayShift.criticalShortages.map(p => `• ${p.name} (المتبقي: ${p.quantity})`).join('\n')
+    }
+
+    const msg = 
+      `📊 *تقرير إغلاق الوردية واليومية - ELFAROUK Service*\n` +
+      `🗓️ *التاريخ:* ${nowStr} (${timeStr})\n` +
+      `👤 *المسؤول:* ${currentUser?.name || currentUser?.email || 'كاشير'}\n` +
+      `────────────────────\n` +
+      `💵 *تفاصيل الخزينة والتحصيل:*\n` +
+      `• النقدية بالدرج (كاش): *${Math.round(todayShift.cash).toLocaleString()} ج.م*\n` +
+      `• مدفوعات الفيزا: *${Math.round(todayShift.visa).toLocaleString()} ج.م*\n` +
+      `• مدفوعات إنستاباي: *${Math.round(todayShift.instapay).toLocaleString()} ج.م*\n` +
+      `• إجمالي المبيعات اليومية: *${Math.round(todayShift.totalSales).toLocaleString()} ج.م*\n` +
+      `• آجل ومديونيات جديدة: *${Math.round(todayShift.debt).toLocaleString()} ج.م*\n` +
+      `────────────────────\n` +
+      `📈 *الأرباح والتشغيل:*\n` +
+      `• إجمالي عدد الفواتير: *${todayShift.invoiceCount} فاتورة*\n` +
+      `• المصروفات اليومية: *${Math.round(todayShift.totalExpenses).toLocaleString()} ج.م*\n` +
+      `• صافي الأرباح المقدرة اليوم: *${Math.round(todayShift.netProfit).toLocaleString()} ج.م*\n` +
+      shortagesText + '\n\n' +
+      `🏢 *تم إرسال هذا التقرير آلياً من نظام الفاروق لإدارة قطع الغيار والخدمات*`
+
+    window.open(`https://wa.me/${normPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+    setShiftClosingModal(false)
+    toast.success('تم فتح واتساب لإرسال تقرير الإغلاق!')
+  }
 
 
 
@@ -221,21 +317,32 @@ export default function Dashboard() {
             استعرض حالة المبيعات اليومية لقطع الغيار والصيانة، ومتابعة مديونيات العملاء بشكل فوري وآمن.
           </p>
 
-          <div className="grid grid-cols-3 gap-3 mt-6">
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-              <p className="text-[10px] font-black text-slate-400">إجمالي المبيعات</p>
-              <p className="text-base sm:text-lg font-black text-slate-800 mt-1 font-display">
-                {isAdmin ? `${Math.round(totalSales).toLocaleString()} ج` : 'مؤمن'}
-              </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-100">
+            <div className="grid grid-cols-3 gap-3 flex-1">
+              <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 text-center">
+                <p className="text-[10px] font-black text-slate-400">مبيعات اليوم</p>
+                <p className="text-base font-black text-slate-800 mt-0.5 font-display">
+                  {isAdmin ? `${Math.round(todayShift.totalSales).toLocaleString()} ج` : 'مؤمن'}
+                </p>
+              </div>
+              <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 text-center">
+                <p className="text-[10px] font-black text-slate-400">النقدية (كاش)</p>
+                <p className="text-base font-black text-emerald-600 mt-0.5 font-display">{Math.round(todayShift.cash).toLocaleString()} ج</p>
+              </div>
+              <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 text-center">
+                <p className="text-[10px] font-black text-slate-400">فواتير اليوم</p>
+                <p className="text-base font-black text-primary-600 mt-0.5 font-display">{todayShift.invoiceCount}</p>
+              </div>
             </div>
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-              <p className="text-[10px] font-black text-slate-400">السيارات</p>
-              <p className="text-base sm:text-lg font-black text-slate-800 mt-1 font-display">{customers.length}</p>
-            </div>
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-              <p className="text-[10px] font-black text-slate-400">نواقص قطع الغيار</p>
-              <p className="text-base sm:text-lg font-black text-rose-500 mt-1 font-display">{lowStock.length}</p>
-            </div>
+
+            {isAdmin && (
+              <button
+                onClick={() => setShiftClosingModal(true)}
+                className="btn-primary !bg-emerald-600 hover:!bg-emerald-700 !py-3 px-4 text-xs font-black flex items-center justify-center gap-2 shadow-sm shrink-0"
+              >
+                <MessageCircle size={16} /> إرسال تقرير إغلاق اليوم على واتساب
+              </button>
+            )}
           </div>
         </motion.div>
 
@@ -722,6 +829,16 @@ export default function Dashboard() {
         </footer>
       </motion.div>
 
+      {/* ── Shift Closing Digest Modal ── */}
+      <ShiftClosingModal
+        isOpen={shiftClosingModal}
+        onClose={() => setShiftClosingModal(false)}
+        shift={todayShift}
+        phone={closingPhone}
+        setPhone={setClosingPhone}
+        onSend={handleSendClosingWhatsApp}
+      />
+
     </motion.div>
   )
 }
@@ -848,6 +965,102 @@ function EmptyState() {
     <div className="flex flex-col items-center py-8 opacity-30">
       <Activity size={36} className="mb-2" />
       <p className="text-xs font-bold">لا توجد عمليات بعد</p>
+    </div>
+  )
+}
+
+function ShiftClosingModal({ isOpen, onClose, shift, phone, setPhone, onSend }) {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
+      >
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-950/30">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <MessageCircle size={20} />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800 dark:text-slate-100 text-sm">
+                تقرير إغلاق الوردية والخزينة اليومية
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-0.5">
+                ملخص إيرادات ونقدية وأرباح اليوم للإرسال على الواتساب
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-slate-500">
+            ✕
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 text-xs">
+          {/* Financial Breakdown */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 block mb-1 font-bold">النقدية بالدرج (كاش):</span>
+              <span className="text-xl font-black text-emerald-600">{Math.round(shift.cash).toLocaleString()} ج.م</span>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 block mb-1 font-bold">مدفوعات الفيزا وإنستاباي:</span>
+              <span className="text-xl font-black text-primary-600">{Math.round(shift.visa + shift.instapay).toLocaleString()} ج.م</span>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 block mb-1 font-bold">صافي أرباح اليوم:</span>
+              <span className="text-xl font-black text-indigo-600">{Math.round(shift.netProfit).toLocaleString()} ج.م</span>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 block mb-1 font-bold">المصروفات اليومية:</span>
+              <span className="text-xl font-black text-rose-600">{Math.round(shift.totalExpenses).toLocaleString()} ج.م</span>
+            </div>
+          </div>
+
+          {/* Shortages Alert */}
+          {shift.criticalShortages.length > 0 && (
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-3.5 rounded-2xl">
+              <span className="text-[11px] font-black text-amber-800 dark:text-amber-400 block mb-1">
+                ⚠️ نواقص حرجة سيتم تضمينها في التقرير ({shift.criticalShortages.length}):
+              </span>
+              <ul className="text-[11px] text-amber-700 dark:text-amber-300 font-bold space-y-0.5">
+                {shift.criticalShortages.map(p => (
+                  <li key={p.id}>• {p.name} (متبقي {p.quantity} قطعة)</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Phone input */}
+          <div className="space-y-1.5 pt-2">
+            <label className="text-[11px] font-black text-slate-700 dark:text-slate-300 block">
+              رقم هاتف الواتساب المستلم (المدير / صاحب العمل):
+            </label>
+            <input
+              type="text"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="مثال: 01115329887"
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 flex gap-3">
+          <button onClick={onClose} className="px-4 py-2.5 btn-ghost text-xs font-bold flex-1">
+            إلغاء
+          </button>
+          <button
+            onClick={onSend}
+            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs flex-[2] flex items-center justify-center gap-2 shadow-sm"
+          >
+            <Send size={15} /> إرسال التقرير عبر واتساب الآن
+          </button>
+        </div>
+      </motion.div>
     </div>
   )
 }

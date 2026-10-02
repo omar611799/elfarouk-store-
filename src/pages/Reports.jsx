@@ -3,7 +3,8 @@ import { useStore } from '../context/StoreContext'
 import { motion } from 'framer-motion'
 import {
   BarChart3, TrendingUp, TrendingDown, Download,
-  Package, FileText, Wallet, Calendar, ArrowUpRight, Users
+  Package, FileText, Wallet, Calendar, ArrowUpRight, Users,
+  Hourglass, AlertOctagon, Flame, Coins, Sparkles
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -19,6 +20,72 @@ const PIE_COLORS = ['#225c97', '#4b6786', '#10b981', '#7c93ad', '#f43f5e', '#eab
 export default function Reports() {
   const { products, invoices, expenses, customers = [], purchases = [], suppliers = [], transactions = [] } = useStore()
   const [period, setPeriod] = useState('30d')
+  const [deadStockDays, setDeadStockDays] = useState(60)
+
+  // ── Dead Stock & Capital Freeze Analyzer ───────────────────────────────────
+  const deadStockAnalysis = useMemo(() => {
+    const now = Date.now()
+    const productLastSaleMap = {}
+
+    invoices.forEach(inv => {
+      const invTime = inv.createdAt?.toDate?.() 
+        ? inv.createdAt.toDate().getTime() 
+        : (inv.createdAt ? new Date(inv.createdAt).getTime() : 0)
+      ;(inv.items || []).forEach(it => {
+        const pId = it._originalId || it.id
+        if (!productLastSaleMap[pId] || invTime > productLastSaleMap[pId]) {
+          productLastSaleMap[pId] = invTime
+        }
+      })
+    })
+
+    const stagnantItems = products
+      .filter(p => Number(p.quantity || 0) > 0)
+      .map(p => {
+        const lastSaleTime = productLastSaleMap[p.id] || 0
+        const daysSinceLastSale = lastSaleTime > 0 
+          ? Math.floor((now - lastSaleTime) / (24 * 60 * 60 * 1000))
+          : 999
+        const unitCost = Number(p.cost || p.price * 0.7 || 0)
+        const frozenCapital = Number(p.quantity || 0) * unitCost
+        return {
+          ...p,
+          daysSinceLastSale,
+          frozenCapital,
+          unitCost,
+          hasNeverSold: lastSaleTime === 0,
+        }
+      })
+      .filter(p => p.daysSinceLastSale >= deadStockDays)
+      .sort((a, b) => b.frozenCapital - a.frozenCapital)
+
+    const totalFrozenCapital = stagnantItems.reduce((sum, item) => sum + item.frozenCapital, 0)
+
+    return {
+      items: stagnantItems,
+      totalFrozenCapital,
+      count: stagnantItems.length,
+    }
+  }, [products, invoices, deadStockDays])
+
+  const exportDeadStockToExcel = () => {
+    if (deadStockAnalysis.items.length === 0) return
+    const wb = XLSX.utils.book_new()
+    const data = deadStockAnalysis.items.map((item, idx) => ({
+      'م': idx + 1,
+      'اسم القطعة': item.name,
+      'كود الصنف / SKU': item.sku || '—',
+      'الفئة': item.category || 'عام',
+      'الكمية الراكدة': item.quantity,
+      'سعر التكلفة للقطعة': item.unitCost,
+      'سعر البيع': item.price,
+      'إجمالي رأس المال المجمد': item.frozenCapital,
+      'مدة الركود': item.hasNeverSold ? 'لم تُبع من قبل' : `${item.daysSinceLastSale} يوم`,
+      'المورد': item.supplier || '—',
+    }))
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'البضاعة الراكدة')
+    XLSX.writeFile(wb, `تقرير_البضاعة_الراكدة_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
 
   // ── Calculations ──────────────────────────────────────────────────────────
   const totalRevenue  = invoices.reduce((s, i) => s + (i.total || 0), 0)
@@ -497,6 +564,149 @@ export default function Reports() {
           </div>
         </motion.div>
       </div>
+
+      {/* ── Dead Stock & Capital Freeze Analyzer ── */}
+      <motion.div variants={item} className="card !p-0 overflow-hidden border border-amber-200 dark:border-amber-900/40 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="px-6 py-5 border-b border-amber-100 dark:border-amber-900/30 bg-amber-50/40 dark:bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-800">
+              <Hourglass size={20} />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
+                كاشف البضاعة الراكدة وتجميد السيولة (Dead Stock Analyzer)
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-0.5">
+                قطع الغيار الموجودة بالمخزن بدون أي حركة بيع خلال الفترة المحددة
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-black">
+              {[
+                { label: 'شهر (30 يوم)', val: 30 },
+                { label: 'شهرين (60 يوم)', val: 60 },
+                { label: '3 أشهر (90 يوم)', val: 90 },
+              ].map(opt => (
+                <button
+                  key={opt.val}
+                  onClick={() => setDeadStockDays(opt.val)}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    deadStockDays === opt.val
+                      ? 'bg-amber-500 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={exportDeadStockToExcel}
+              disabled={deadStockAnalysis.items.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-black rounded-xl shadow-sm transition-all"
+            >
+              <Download size={14} /> تصدير الكشف
+            </button>
+          </div>
+        </div>
+
+        {/* Dead Stock Summary Metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-6 bg-amber-50/10 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-900/40 rounded-2xl p-4">
+            <span className="text-[11px] font-bold text-slate-400 block mb-1">إجمالي رأس المال المجمد</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
+                {Math.round(deadStockAnalysis.totalFrozenCapital).toLocaleString()}
+              </span>
+              <span className="text-xs font-bold text-slate-400">ج.م</span>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">سيولة متوقفة في قطع غير متحركة</p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
+            <span className="text-[11px] font-bold text-slate-400 block mb-1">عدد الأصناف الراكدة</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                {deadStockAnalysis.count}
+              </span>
+              <span className="text-xs font-bold text-slate-400">صنف</span>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">من إجمالي {products.length} صنف بالمخزن</p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
+            <span className="text-[11px] font-bold text-slate-400 block mb-1">اقتراح الإدارة والتصفية</span>
+            <p className="text-xs font-black text-primary-600 dark:text-primary-400 mt-1">
+              تطبيق خصم تصفية 10-15% أو تضمينها كعروض مجمعة مع الصيانات الدورية
+            </p>
+          </div>
+        </div>
+
+        {/* Dead Stock Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-right text-xs">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black">
+              <tr>
+                <th className="p-3.5">اسم القطعة / الكود</th>
+                <th className="p-3.5">الفئة</th>
+                <th className="p-3.5 text-center">الكمية الراكدة</th>
+                <th className="p-3.5 text-center">سعر التكلفة</th>
+                <th className="p-3.5 text-center">رأس المال المجمد</th>
+                <th className="p-3.5 text-center">مدة الركود</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {deadStockAnalysis.items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-emerald-600 font-black text-sm">
+                    ✨ ممتاز! لا توجد قطع غيار راكدة خلال الـ {deadStockDays} يوم الماضية
+                  </td>
+                </tr>
+              ) : (
+                deadStockAnalysis.items.slice(0, 15).map(item => (
+                  <tr key={item.id} className="hover:bg-amber-50/30 dark:hover:bg-amber-950/10 transition-colors">
+                    <td className="p-3.5 font-black text-slate-800 dark:text-slate-100">
+                      <div>{item.name}</div>
+                      {item.sku && <span className="text-[10px] text-slate-400 font-mono">{item.sku}</span>}
+                    </td>
+                    <td className="p-3.5 font-bold text-slate-500 dark:text-slate-400">
+                      {item.category || 'عام'}
+                    </td>
+                    <td className="p-3.5 text-center font-black text-amber-600 dark:text-amber-400">
+                      {item.quantity} قطعة
+                    </td>
+                    <td className="p-3.5 text-center font-bold text-slate-600 dark:text-slate-300">
+                      {item.unitCost} ج.م
+                    </td>
+                    <td className="p-3.5 text-center font-black text-rose-600 dark:text-rose-400">
+                      {Math.round(item.frozenCapital).toLocaleString()} ج.م
+                    </td>
+                    <td className="p-3.5 text-center whitespace-nowrap font-bold">
+                      {item.hasNeverSold ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-black">
+                          لم تُبع إطلاقاً
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          {item.daysSinceLastSale} يوم
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          {deadStockAnalysis.items.length > 15 && (
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 text-center text-xs text-slate-500 font-bold border-t border-slate-100 dark:border-slate-800">
+              معروض أول 15 صنف راكد. اضغط على زر "تصدير الكشف" لتحميل القائمة الكاملة بملف Excel.
+            </div>
+          )}
+        </div>
+      </motion.div>
 
     </motion.div>
   )
