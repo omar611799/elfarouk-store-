@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CUSTOMER_ACCOUNT_STATUSES, getCustomerAccountStatusLabel } from '../utils/customerAccounts'
+import { normalizeEgyptianPhone, formatPhoneForWhatsApp } from '../utils/phone'
 import toast from 'react-hot-toast'
 
 const EMPTY = { name: '', phone: '', nationalId: '', carModel: '', licensePlate: '' }
@@ -121,7 +122,7 @@ export default function Customers() {
                : `تم تسوية مديونياتكم بالكامل، رصيدكم الحالي 0 ج.م ✨\n`) +
              `شكراً لتعاملكم معنا 🙏`
 
-      const phone = payCustomer.phone?.replace(/^0/, '20')
+      const phone = formatPhoneForWhatsApp(payCustomer.phone)
       if (phone) {
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
       }
@@ -248,8 +249,14 @@ export default function Customers() {
 
   const handleSubmit = async () => {
     if (!form.name) return
-    if (editing) await updateCustomer(editing, form)
-    else await addCustomer(form)
+    const rawPhone = (form.phone || '').trim()
+    const normPhone = normalizeEgyptianPhone(rawPhone)
+    const payload = {
+      ...form,
+      phone: normPhone || rawPhone,
+    }
+    if (editing) await updateCustomer(editing, payload)
+    else await addCustomer(payload)
     setModal(false)
   }
 

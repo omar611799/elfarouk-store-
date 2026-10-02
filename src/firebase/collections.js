@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './config'
 import { buildCustomerAccountReviewState } from '../utils/customerAccounts'
+import { normalizeEgyptianPhone } from '../utils/phone'
 
 export const COLS = {
   PRODUCTS: 'products',
@@ -167,9 +168,21 @@ export const updateCustomer = (id, d) => updateDoc_(COLS.CUSTOMERS, id, d)
 export const deleteCustomer = (id) => deleteDoc_(COLS.CUSTOMERS, id)
 
 export async function findCustomerByPhone(phone) {
-  const q = query(collection(db, COLS.CUSTOMERS), where('phone', '==', phone))
-  const snap = await getDocs(q)
-  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }
+  if (!phone) return null
+  const normPhone = normalizeEgyptianPhone(phone)
+  let q = query(collection(db, COLS.CUSTOMERS), where('phone', '==', normPhone))
+  let snap = await getDocs(q)
+  if (!snap.empty) {
+    return { id: snap.docs[0].id, ...snap.docs[0].data() }
+  }
+  if (normPhone !== phone) {
+    q = query(collection(db, COLS.CUSTOMERS), where('phone', '==', phone))
+    snap = await getDocs(q)
+    if (!snap.empty) {
+      return { id: snap.docs[0].id, ...snap.docs[0].data() }
+    }
+  }
+  return null
 }
 
 // ── Invoices ──
@@ -245,9 +258,12 @@ export async function completeSale({ items, cartItems, customerData = {}, total,
   const dueAmount = Math.max(0, total - paidAmount)
   const paymentStatus = dueAmount === 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid'
 
+  const rawPhone = customerData.phone?.trim() || ''
+  const normPhone = normalizeEgyptianPhone(rawPhone)
+
   const customerFields = {
     name: customerData.name?.trim() || '',
-    phone: customerData.phone?.trim() || '',
+    phone: normPhone || rawPhone,
     carModel: customerData.carModel?.trim() || '',
     licensePlate: customerData.licensePlate?.trim() || '',
     nationalId: customerData.nationalId?.trim() || '',
@@ -749,9 +765,10 @@ export async function importProductsBatch(productsData) {
 }
 
 // ── Purchases & Supplier Ledger ──
-export async function recordPurchase({ supplierId, items, total, paidAmount, billNumber }) {
-  const dueAmount = Math.max(0, total - paidAmount)
+export async function recordPurchase({ supplierId, items, total, paidAmount = 0, billNumber, status = 'received' }) {
+  const dueAmount = Math.max(0, total - Number(paidAmount || 0))
   const batch = writeBatch(db)
+  const isReceived = status === 'received'
 
   // 1. Save Purchase Record
   const purchaseRef = doc(collection(db, COLS.PURCHASES))
@@ -760,13 +777,88 @@ export async function recordPurchase({ supplierId, items, total, paidAmount, bil
     billNumber,
     items,
     total,
-    paidAmount,
+    paidAmount: Number(paidAmount || 0),
     dueAmount,
+    status,
+    isReceived,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   })
 
-  // 2. Update Stock and Log
-  for (const item of items) {
+  // 2. If already received, Update Stock and Log immediately
+  if (isReceived) {
+    for (const item of items) {
+      const productId = item._originalId || item.id
+      const piecesPerUnit = Number(item._piecesPerBox || 1)
+      const addedPieces = Number(item.qty || 0) * piecesPerUnit
+
+      const p = await getDoc_(COLS.PRODUCTS, productId)
+      if (p) {
+        const newQty = (p.quantity || 0) + addedPieces
+        batch.update(doc(db, COLS.PRODUCTS, productId), {
+          quantity: increment(addedPieces),
+          cost: Number(item.cost || p.cost || 0),
+          updatedAt: serverTimestamp(),
+        })
+
+        logStockChange(batch, {
+          productId,
+          productName: item.name,
+          type: 'purchase',
+          delta: addedPieces,
+          newQty,
+          refId: purchaseRef.id,
+          note: `شراء من مورد - فاتورة ${billNumber}`,
+        })
+      }
+    }
+
+    // 3. Update Supplier Debt and Purchases if supplier exists
+    if (supplierId) {
+      const supDoc = await getDoc_(COLS.SUPPLIERS, supplierId)
+      if (supDoc) {
+        batch.update(doc(db, COLS.SUPPLIERS, supplierId), {
+          debtTotal: increment(dueAmount),
+          totalPurchases: increment(total),
+          updatedAt: serverTimestamp(),
+        })
+      }
+    }
+
+    // 4. Register Transaction if cash was paid
+    if (Number(paidAmount) > 0) {
+      const txRef = doc(collection(db, COLS.TRANSACTIONS))
+      batch.set(txRef, {
+        type: 'purchase',
+        refId: purchaseRef.id,
+        details: `شراء بضاعة - فاتورة ${billNumber}`,
+        amount: -Number(paidAmount),
+        createdAt: serverTimestamp(),
+      })
+    }
+  }
+
+  await batch.commit()
+  return purchaseRef.id
+}
+
+export async function confirmReceivePurchase(purchaseId) {
+  const po = await getDoc_(COLS.PURCHASES, purchaseId)
+  if (!po) throw new Error('فاتورة الشراء غير موجودة')
+  if (po.isReceived) throw new Error('تم استلام هذه الفاتورة مسبقاً')
+
+  const batch = writeBatch(db)
+
+  // 1. Update purchase document
+  batch.update(doc(db, COLS.PURCHASES, purchaseId), {
+    status: 'received',
+    isReceived: true,
+    receivedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+
+  // 2. Increment stock for all items
+  for (const item of po.items || []) {
     const productId = item._originalId || item.id
     const piecesPerUnit = Number(item._piecesPerBox || 1)
     const addedPieces = Number(item.qty || 0) * piecesPerUnit
@@ -783,31 +875,26 @@ export async function recordPurchase({ supplierId, items, total, paidAmount, bil
       logStockChange(batch, {
         productId,
         productName: item.name,
-        type: 'purchase',
+        type: 'purchase_received',
         delta: addedPieces,
         newQty,
-        refId: purchaseRef.id,
-        note: `شراء من مورد - فاتورة ${billNumber}`,
+        refId: purchaseId,
+        note: `استلام طلب توريد - فاتورة ${po.billNumber}`,
       })
     }
   }
 
-  // 3. Update Supplier Debt and Purchases
-  batch.update(doc(db, COLS.SUPPLIERS, supplierId), {
-    debtTotal: increment(dueAmount),
-    totalPurchases: increment(total),
-    updatedAt: serverTimestamp(),
-  })
-
-  // 4. Register Transaction
-  const txRef = doc(collection(db, COLS.TRANSACTIONS))
-  batch.set(txRef, {
-    type: 'purchase',
-    refId: purchaseRef.id,
-    details: `شراء بضاعة - فاتورة ${billNumber}`,
-    amount: -paidAmount,
-    createdAt: serverTimestamp(),
-  })
+  // 3. Update Supplier balance
+  if (po.supplierId) {
+    const supDoc = await getDoc_(COLS.SUPPLIERS, po.supplierId)
+    if (supDoc) {
+      batch.update(doc(db, COLS.SUPPLIERS, po.supplierId), {
+        debtTotal: increment(po.dueAmount || 0),
+        totalPurchases: increment(po.total || 0),
+        updatedAt: serverTimestamp(),
+      })
+    }
+  }
 
   await batch.commit()
 }

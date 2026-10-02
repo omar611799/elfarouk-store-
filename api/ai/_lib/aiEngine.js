@@ -27,8 +27,10 @@ export function calculateProductRankingScore(product, queryEntities = {}, option
         
         let yearMatches = true
         if (queryEntities.year) {
-          const yStart = comp.yearStart ? parseInt(comp.yearStart, 10) : 1900
-          const yEnd = comp.yearEnd ? parseInt(comp.yearEnd, 10) : 2099
+          const parsedStart = comp.yearStart ? parseInt(comp.yearStart, 10) : NaN
+          const parsedEnd = comp.yearEnd ? parseInt(comp.yearEnd, 10) : NaN
+          const yStart = !isNaN(parsedStart) && parsedStart > 1900 ? parsedStart : 1900
+          const yEnd = !isNaN(parsedEnd) && parsedEnd > 1900 ? parsedEnd : 2099
           yearMatches = queryEntities.year >= yStart && queryEntities.year <= yEnd
         }
 

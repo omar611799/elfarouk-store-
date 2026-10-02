@@ -7,6 +7,7 @@
  * هذا الكود يرسل تذكيرات واتساب تلقائياً للعملاء
  * قبل موعد صيانة سياراتهم بـ 3 أيام من فواتير المبيعات وحجوزات الصيانة.
  *
+ * مزود بنظام منع التكرار الذكي (Deduplication Guard) لضمان عدم إرسال الرسالة مرتين لنفس العميل.
  * يعمل كل يوم الساعة 9 صباحاً (بتوقيت مصر/السعودية).
  */
 
@@ -52,7 +53,7 @@ exports.sendMaintenanceReminders = onSchedule(
 
       const remindersToSend = [];
 
-      // 1. البحث في حجوزات الصيانة (serviceBookings)
+      // 1. البحث في حجوزات الصيانة (serviceBookings) مع فحص عدم الإرسال المسبق
       const bookingsSnap = await db
         .collection("serviceBookings")
         .where("bookingDate", "==", targetDateStr)
@@ -62,8 +63,12 @@ exports.sendMaintenanceReminders = onSchedule(
 
       bookingsSnap.docs?.forEach((doc) => {
         const data = doc.data();
+        // Skip if already sent for this due date
+        if (data.lastReminderDate === targetDateStr) return;
+
         if (data.customerPhone && data.customerName) {
           remindersToSend.push({
+            docRef: doc.ref,
             phone: String(data.customerPhone).replace(/^\+/, ""),
             name: data.customerName,
             vehicle: data.carModel || data.licensePlate || "السيارة",
@@ -86,6 +91,9 @@ exports.sendMaintenanceReminders = onSchedule(
         const inv = doc.data();
         const customer = inv.customerData || {};
         if (Array.isArray(customer.reminders) && customer.reminders.length > 0 && customer.phone) {
+          // Skip if invoice already had reminder sent for this target date
+          if (inv.lastReminderDate === targetDateStr) return;
+
           const invDate = inv.createdAt?.toDate ? inv.createdAt.toDate() : new Date(inv.createdAt || Date.now());
 
           customer.reminders.forEach((rem) => {
@@ -95,6 +103,7 @@ exports.sendMaintenanceReminders = onSchedule(
 
             if (dueStr === targetDateStr) {
               remindersToSend.push({
+                docRef: doc.ref,
                 phone: String(customer.phone).replace(/^\+/, ""),
                 name: customer.name || "عميلنا العزيز",
                 vehicle: customer.carModel || "السيارة",
@@ -108,26 +117,38 @@ exports.sendMaintenanceReminders = onSchedule(
       });
 
       if (remindersToSend.length === 0) {
-        console.log("✅ لا توجد تذكيرات مستحقة لليوم.");
+        console.log("✅ لا توجد تذكيرات مستحقة جديدة لليوم.");
         return;
       }
 
-      console.log(`📋 وُجد ${remindersToSend.length} تذكير جاهز للإرسال.`);
+      console.log(`📋 وُجد ${remindersToSend.length} تذكير غير مكرر جاهز للإرسال.`);
 
-      // إرسال رسائل الواتساب
-      const promises = remindersToSend.map((item) =>
-        sendWhatsAppMessage(
-          item.phone,
-          item.name,
-          item.vehicle,
-          item.serviceName,
-          item.dueDate,
-          WHATSAPP_TOKEN.value(),
-          WHATSAPP_PHONE_ID.value()
-        )
+      // إرسال رسائل الواتساب وتحديث وثيقة العميل لمنع التكرار
+      const results = await Promise.allSettled(
+        remindersToSend.map(async (item) => {
+          await sendWhatsAppMessage(
+            item.phone,
+            item.name,
+            item.vehicle,
+            item.serviceName,
+            item.dueDate,
+            WHATSAPP_TOKEN.value(),
+            WHATSAPP_PHONE_ID.value()
+          );
+
+          // Mark document to prevent duplicate sends
+          if (item.docRef) {
+            await item.docRef.set(
+              {
+                lastReminderDate: targetDateStr,
+                lastReminderSentAt: admin.firestore.FieldValue.serverTimestamp(),
+              },
+              { merge: true }
+            );
+          }
+        })
       );
 
-      const results = await Promise.allSettled(promises);
       let success = 0;
       let failed = 0;
 

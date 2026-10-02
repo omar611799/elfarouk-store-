@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Html5Qrcode } from 'html5-qrcode'
 import toast from 'react-hot-toast'
+import { normalizeEgyptianPhone, formatPhoneForWhatsApp } from '../utils/phone'
 
 /* ─── car list database ─── */
 const POPULAR_CARS = [
@@ -93,7 +94,7 @@ const ThermalReceipt = memo(({ invoice, onNewSale }) => {
   }, [invoice, selectedTemplate, link])
 
   const sendWhatsApp = () => {
-    const phone = invoice.customerPhone?.replace(/^0/, '20') || '201115329887'
+    const phone = formatPhoneForWhatsApp(invoice.customerPhone) || '201115329887'
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(editedMsg)}`, '_blank')
   }
 
@@ -266,19 +267,23 @@ const CartContent = memo(({
   /* Customer debt from invoices */
   const customerDebt = useMemo(() => {
     if (!customer.name && !customer.phone) return 0
+    const normPhone = normalizeEgyptianPhone(customer.phone)
     return invoices.filter(inv => {
-      const matchPhone = customer.phone && inv.customerData?.phone === customer.phone
-      const matchName = !customer.phone && customer.name && inv.customerData?.name?.toLowerCase() === customer.name?.toLowerCase()
+      const invPhone = normalizeEgyptianPhone(inv.customerData?.phone || '')
+      const matchPhone = normPhone && invPhone && invPhone === normPhone
+      const matchName = !normPhone && customer.name && inv.customerData?.name?.toLowerCase() === customer.name?.toLowerCase()
       return (matchPhone || matchName) && inv.paymentStatus !== 'paid'
     }).reduce((sum, inv) => sum + (inv.dueAmount || 0), 0)
   }, [invoices, customer.name, customer.phone])
 
   const matchedCustomerHistory = useMemo(() => {
     if (!customer.name && !customer.phone) return []
-    return invoices.filter(inv => 
-      (customer.phone && inv.customerData?.phone === customer.phone) ||
-      (!customer.phone && customer.name && inv.customerData?.name?.toLowerCase() === customer.name?.toLowerCase())
-    ).sort((a, b) => {
+    const normPhone = normalizeEgyptianPhone(customer.phone)
+    return invoices.filter(inv => {
+      const invPhone = normalizeEgyptianPhone(inv.customerData?.phone || '')
+      return (normPhone && invPhone && invPhone === normPhone) ||
+        (!normPhone && customer.name && inv.customerData?.name?.toLowerCase() === customer.name?.toLowerCase())
+    }).sort((a, b) => {
       const da = a.createdAt?.toDate?.() || new Date(a.createdAt || 0)
       const db = b.createdAt?.toDate?.() || new Date(b.createdAt || 0)
       return db - da
@@ -1753,7 +1758,7 @@ export default function POS() {
                       phone = window.prompt('يرجى إدخال رقم هاتف العميل لإرسال الفاتورة عبر واتساب (مثال: 01115329887):')
                       if (!phone) return
                     }
-                    const cleanPhone = phone.replace(/^0/, '20').replace(/\D/g, '')
+                    const cleanPhone = formatPhoneForWhatsApp(phone)
                     const msg = `🧾 فاتورة مبيعات من ELFAROUK Service\nرقم الفاتورة: #${doneInvoice.number}\nالعميل: ${doneInvoice.customerName || 'نقدي'}\nالإجمالي: ${doneInvoice.total} ج.م\nشكراً لتعاملكم معنا 🙏`
                     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
                   }}
