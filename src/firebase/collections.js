@@ -1127,18 +1127,31 @@ export async function adjustCustomerWallet({ uid, amount, kind = 'cashback', not
   return { balance: nextBalance }
 }
 
-// ── Supplier Returns (مرتجعات الموردين) ──
-export async function recordSupplierReturn({ supplierId, purchaseId, items, totalValue, note, cashierUid, cashierName }) {
+// ── Supplier Returns (مرتجعات الموردين & إشعارات الخصم) ──
+export async function recordSupplierReturn({ supplierId, purchaseId, items, totalValue, note, cashierUid, cashierName, reason }) {
+  const returnNumber = 'DN-' + String(Date.now()).slice(-6)
+  const supplier = await getDoc_(COLS.SUPPLIERS, supplierId)
+  const supplierName = supplier?.name || 'مورد'
+  const supplierPhone = supplier?.phone || ''
+  const oldDebt = Number(supplier?.debtTotal || 0)
+  const newDebt = Math.max(0, oldDebt - Number(totalValue || 0))
+
   const batch = writeBatch(db)
 
   // 1. Save return record
   const returnRef = doc(collection(db, COLS.SUPPLIER_RETURNS))
   batch.set(returnRef, {
+    returnNumber,
     supplierId,
+    supplierName,
+    supplierPhone,
     purchaseId: purchaseId || '',
     items,
-    totalValue,
+    totalValue: Number(totalValue || 0),
     note: note || '',
+    reason: reason || 'مرتجع بضاعة للمورد',
+    oldDebt,
+    newDebt,
     cashierUid: cashierUid || '',
     cashierName: cashierName || '',
     createdAt: serverTimestamp(),
@@ -1165,7 +1178,7 @@ export async function recordSupplierReturn({ supplierId, purchaseId, items, tota
         delta: -deductedPieces,
         newQty,
         refId: returnRef.id,
-        note: `مرتجع للمورد${note ? ' - ' + note : ''}`,
+        note: `إشعار خصم مرتجع ${returnNumber}${note ? ' - ' + note : ''}`,
       })
     }
   }
@@ -1181,11 +1194,41 @@ export async function recordSupplierReturn({ supplierId, purchaseId, items, tota
   batch.set(txRef, {
     type: 'supplier_return',
     refId: returnRef.id,
-    details: `مرتجع للمورد${note ? ' - ' + note : ''}`,
+    details: `إشعار خصم للمورد ${supplierName} (${returnNumber})${note ? ' - ' + note : ''}`,
     amount: totalValue,
     createdAt: serverTimestamp(),
   })
 
   await batch.commit()
-  return returnRef.id
+
+  // 5. Security audit logging
+  try {
+    await logAuditEvent({
+      action: 'supplier_return',
+      targetType: 'supplier',
+      targetId: supplierId,
+      details: `تسجيل إشعار خصم مرتجع للمورد ${supplierName} بقيمة ${totalValue} ج.م (${returnNumber})`,
+      oldData: { debtTotal: oldDebt },
+      newData: { debtTotal: newDebt, returnNumber, itemsCount: items.length, totalValue },
+      actorUid: cashierUid,
+      actorName: cashierName,
+      severity: 'warning',
+    })
+  } catch (err) {
+    console.warn('Failed to write audit log for supplier return:', err)
+  }
+
+  return {
+    id: returnRef.id,
+    returnNumber,
+    supplierId,
+    supplierName,
+    supplierPhone,
+    totalValue,
+    items,
+    oldDebt,
+    newDebt,
+    note,
+    reason,
+  }
 }

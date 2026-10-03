@@ -541,12 +541,13 @@ export function StoreProvider({ children }) {
 
   const handleRecordSupplierReturn = async (data) => {
     try {
-      await recordSupplierReturn({
+      const res = await recordSupplierReturn({
         ...data,
         cashierUid: currentUser?.uid || '',
-        cashierName: currentUser?.name || '',
+        cashierName: currentUser?.name || currentUser?.email || 'مسؤول',
       })
-      toast.success('تم تسجيل المرتجع وتحديث المخزون بنجاح')
+      toast.success('تم تسجيل إشعار خصم المرتجع وتحديث الحساب والمخزن بنجاح')
+      return res
     } catch (error) {
       toast.error(error.message)
       throw error

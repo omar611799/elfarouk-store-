@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../context/StoreContext'
-import { Plus, Edit2, Trash2, Truck, History, DollarSign, Calendar, FileText, CheckCircle2, X } from 'lucide-react'
+import { Plus, Edit2, Trash2, Truck, History, DollarSign, Calendar, FileText, CheckCircle2, X, RotateCcw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Link } from 'react-router-dom'
 
 const EMPTY = { name: '', phone: '', address: '', notes: '' }
 
 export default function Suppliers() {
-  const { suppliers, addSupplier, updateSupplier, deleteSupplier, purchases, transactions, paySupplierDebt } = useStore()
+  const { suppliers, addSupplier, updateSupplier, deleteSupplier, purchases, transactions, supplierReturns = [], paySupplierDebt } = useStore()
   const [modal, setModal]   = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm]     = useState(EMPTY)
@@ -21,14 +22,22 @@ export default function Suppliers() {
     if (!historySupplier) return []
     const sPurchases = purchases.filter(p => p.supplierId === historySupplier.id)
     const sPayments = transactions.filter(t => t.type === 'supplier_payment' && t.refId === historySupplier.id)
+    const sReturns = supplierReturns.filter(r => r.supplierId === historySupplier.id)
     
-    return [...sPurchases.map(p => ({ ...p, type: 'purchase' })), ...sPayments.map(p => ({ ...p, type: 'payment' }))]
-      .sort((a, b) => {
-        const dateA = a.createdAt?.seconds || 0
-        const dateB = b.createdAt?.seconds || 0
-        return dateB - dateA
-      })
-  }, [historySupplier, purchases, transactions])
+    return [
+      ...sPurchases.map(p => ({ ...p, type: 'purchase' })),
+      ...sPayments.map(p => ({ ...p, type: 'payment' })),
+      ...sReturns.map(r => ({ ...r, type: 'supplier_return' }))
+    ].sort((a, b) => {
+      const getMs = (item) => {
+        if (!item.createdAt) return 0
+        if (typeof item.createdAt.toMillis === 'function') return item.createdAt.toMillis()
+        if (item.createdAt.seconds) return item.createdAt.seconds * 1000
+        return new Date(item.createdAt).getTime() || 0
+      }
+      return getMs(b) - getMs(a)
+    })
+  }, [historySupplier, purchases, transactions, supplierReturns])
 
   const openAdd  = () => { setEditing(null); setForm(EMPTY); setModal(true) }
   const openEdit = (s) => { setEditing(s.id); setForm({ ...EMPTY, ...s }); setModal(true) }
@@ -106,9 +115,14 @@ export default function Suppliers() {
               <div className="flex gap-1">
                 <button onClick={() => setHistorySupplier(s)} 
                   className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all" 
-                  title="سجل المشتريات">
+                  title="سجل المشتريات وكشف الحساب">
                   <History size={16} />
                 </button>
+                <Link to="/supplier-returns"
+                  className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all" 
+                  title="إرجاع بضاعة للمورد (إشعار خصم)">
+                  <RotateCcw size={16} />
+                </Link>
                 {s.debtTotal > 0 && (
                   <button onClick={() => setPayModal(s)} 
                     className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" 
@@ -211,50 +225,89 @@ export default function Suppliers() {
                     <p className="text-slate-400 font-bold text-sm">لا يوجد تاريخ تعاملات مع هذا المورد</p>
                   </div>
                 ) : (
-                  supplierHistory.map((item, idx) => (
-                    <div key={idx} className={`relative pr-6 border-r-2 ${item.type === 'purchase' ? 'border-primary-200' : 'border-emerald-200'} last:border-0 pb-2`}>
-                      <div className={`absolute right-[-7px] top-0 w-3 h-3 ${item.type === 'purchase' ? 'bg-primary-500' : 'bg-emerald-500'} rounded-full`} />
-                      
-                      <div className="flex justify-between items-center mb-2 pr-2">
-                        <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold">
-                          <Calendar size={12} className={item.type === 'purchase' ? 'text-primary-500' : 'text-emerald-500'} />
-                          {new Date(item.createdAt?.seconds * 1000).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}
-                        </div>
-                        <div className={`text-[10px] px-2.5 py-0.5 rounded-md border font-black ${item.type === 'purchase' ? 'bg-primary-50 text-primary-600 border-primary-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-                          {item.type === 'purchase' ? 'فاتورة توريد' : 'سداد قسط'}
-                        </div>
-                      </div>
+                  supplierHistory.map((item, idx) => {
+                    const isPurchase = item.type === 'purchase'
+                    const isReturn = item.type === 'supplier_return'
+                    const isPayment = item.type === 'payment'
+                    
+                    const borderColor = isPurchase ? 'border-primary-200' : isReturn ? 'border-amber-300' : 'border-emerald-200'
+                    const dotColor = isPurchase ? 'bg-primary-500' : isReturn ? 'bg-amber-500' : 'bg-emerald-500'
+                    const itemDate = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt?.seconds ? item.createdAt.seconds * 1000 : (item.createdAt || 0))
 
-                      <div className="glass-card bg-slate-50/50 border-slate-100 p-4 space-y-3">
-                        {item.type === 'purchase' ? (
-                          <>
-                            <p className="text-xs text-slate-800 font-black mb-2 flex items-center gap-2"><FileText size={12} className="text-slate-500" /> فاتورة #{item.billNumber}</p>
-                            {item.items?.map((p, i) => (
-                              <div key={i} className="flex justify-between items-center text-xs font-bold py-1 border-b border-slate-100/50 last:border-0">
-                                <span className="text-slate-600">{p.name} (x{p.qty})</span>
-                                <span className="text-slate-900 font-display">{(p.cost * p.qty).toLocaleString('en-US')} ج</span>
-                              </div>
-                            ))}
-                            <div className="border-t border-slate-200 pt-3 mt-2 flex justify-between font-black text-sm uppercase">
-                              <span className="text-slate-500">إجمالي الفاتورة:</span>
-                              <span className="text-primary-600 font-display">{item.total?.toLocaleString('en-US')} ج.م</span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 size={16} className="text-emerald-500" />
-                              <div>
-                                <p className="text-xs text-slate-800 font-black">دفعة نقدية مسددة للمورد</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5 font-bold">{item.details}</p>
-                              </div>
-                            </div>
-                            <p className="text-emerald-600 font-black text-sm font-display">{(Math.abs(item.amount)).toLocaleString('en-US')} ج.م</p>
+                    return (
+                      <div key={idx} className={`relative pr-6 border-r-2 ${borderColor} last:border-0 pb-2`}>
+                        <div className={`absolute right-[-7px] top-0 w-3 h-3 ${dotColor} rounded-full`} />
+                        
+                        <div className="flex justify-between items-center mb-2 pr-2">
+                          <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold">
+                            <Calendar size={12} className={isPurchase ? 'text-primary-500' : isReturn ? 'text-amber-500' : 'text-emerald-500'} />
+                            {itemDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}
                           </div>
-                        )}
+                          <div className={`text-[10px] px-2.5 py-0.5 rounded-md border font-black ${
+                            isPurchase ? 'bg-primary-50 text-primary-600 border-primary-100' :
+                            isReturn ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            'bg-emerald-50 text-emerald-600 border-emerald-100'
+                          }`}>
+                            {isPurchase ? 'فاتورة توريد (+)' : isReturn ? 'إشعار خصم مرتجع (-)' : 'سداد دفعة نقدية (-)'}
+                          </div>
+                        </div>
+
+                        <div className="glass-card bg-slate-50/50 border-slate-100 p-4 space-y-3">
+                          {isPurchase && (
+                            <>
+                              <p className="text-xs text-slate-800 font-black mb-2 flex items-center gap-2">
+                                <FileText size={12} className="text-slate-500" /> فاتورة #{item.billNumber || 'بدون رقم'}
+                              </p>
+                              {item.items?.map((p, i) => (
+                                <div key={i} className="flex justify-between items-center text-xs font-bold py-1 border-b border-slate-100/50 last:border-0">
+                                  <span className="text-slate-600">{p.name} (x{p.qty})</span>
+                                  <span className="text-slate-900 font-display">{(Number(p.cost || 0) * Number(p.qty || 1)).toLocaleString('en-US')} ج</span>
+                                </div>
+                              ))}
+                              <div className="border-t border-slate-200 pt-3 mt-2 flex justify-between font-black text-sm uppercase">
+                                <span className="text-slate-500">إجمالي الفاتورة:</span>
+                                <span className="text-primary-600 font-display">{Number(item.total || 0).toLocaleString('en-US')} ج.م</span>
+                              </div>
+                            </>
+                          )}
+
+                          {isReturn && (
+                            <>
+                              <div className="flex justify-between items-center mb-1">
+                                <p className="text-xs text-amber-800 font-black flex items-center gap-2">
+                                  <RotateCcw size={13} className="text-amber-600" />
+                                  إشعار خصم: {item.returnNumber || 'DN-مرتجع'}
+                                </p>
+                                <span className="text-xs font-black text-amber-600 font-display">
+                                  -{Number(item.totalValue || 0).toLocaleString()} ج.م
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 font-bold">السبب: {item.reason || item.note || 'مرتجع بضاعة'}</p>
+                              {item.items?.map((p, i) => (
+                                <div key={i} className="flex justify-between items-center text-[11px] font-bold py-0.5 border-b border-amber-100/50 last:border-0 text-slate-600">
+                                  <span>• {p.name} (x{p.qty})</span>
+                                  <span>{(Number(p.cost || 0) * Number(p.qty || 1)).toLocaleString()} ج</span>
+                                </div>
+                              ))}
+                            </>
+                          )}
+
+                          {isPayment && (
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle2 size={16} className="text-emerald-500" />
+                                <div>
+                                  <p className="text-xs text-slate-800 font-black">دفعة نقدية مسددة للمورد</p>
+                                  <p className="text-[10px] text-slate-400 mt-0.5 font-bold">{item.details}</p>
+                                </div>
+                              </div>
+                              <p className="text-emerald-600 font-black text-sm font-display">{(Math.abs(Number(item.amount || 0))).toLocaleString('en-US')} ج.م</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
               
