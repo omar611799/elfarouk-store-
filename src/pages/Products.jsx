@@ -189,7 +189,13 @@ export default function Products() {
   const close    = () => setModal(false)
 
   const handleSubmit = async () => {
-    if (!form.name || !form.price) return toast.error('اسم المنتج والسعر مطلوبان')
+    if (!form.name?.trim()) return toast.error('يرجى إدخال اسم المنتج')
+    if (form.price === '' || form.price === null || form.price === undefined) {
+      return toast.error('يرجى إدخال سعر البيع')
+    }
+    if (form.cost === '' || form.cost === null || form.cost === undefined) {
+      return toast.error('يرجى إدخال سعر التكلفة')
+    }
     if (form.hasSubUnits && !form.piecesPerBox) return toast.error('ادخل عدد القطع في العلبة')
     
     const compatibility = (form.carMake || form.carModel) ? [{
@@ -201,10 +207,12 @@ export default function Products() {
 
     const data = {
       ...form,
+      name:        form.name.trim(),
       price:       Number(form.price),
-      cost:        Number(form.cost || 0),
+      cost:        Number(form.cost),
       quantity:    Number(form.quantity || 0),
       minStock:    Number(form.minStock || 5),
+      category:    form.category || 'عام',
       hasSubUnits: !!form.hasSubUnits,
       piecesPerBox: form.hasSubUnits ? Number(form.piecesPerBox || 1) : null,
       boxCost:     form.hasSubUnits ? Number(form.boxCost || 0) : null,
@@ -583,90 +591,140 @@ export default function Products() {
               <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 sm:hidden" />
 
               <div className="px-7 pt-6 pb-5 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="text-xl font-black text-slate-800">{editing ? 'تعديل بيانات المنتج' : 'إضافة منتج جديد'}</h2>
+                <div>
+                  <h2 className="text-xl font-black text-slate-800">{editing ? 'تعديل بيانات المنتج' : 'إضافة منتج جديد'}</h2>
+                  <p className="text-[11px] text-primary-600 font-bold mt-0.5">
+                    البيانات الإلزامية: الاسم، سعر البيع، وسعر التكلفة فقط. الكمية وباقي البيانات اختيارية للجرد لاحقاً.
+                  </p>
+                </div>
                 <button onClick={close} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="p-7 grid grid-cols-1 sm:grid-cols-2 gap-5 max-h-[65vh] overflow-y-auto custom-scrollbar">
-                <div className="sm:col-span-2">
-                  <label className="label-text">اسم المنتج *</label>
-                  <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                    className="input mt-1" placeholder="مثلاً: مساعدين أمامية تويوتا" />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="label-text">كود SKU / الباركود</label>
-                  <div className="relative mt-1 flex gap-2">
-                    <input value={form.sku} onChange={e => setForm(p => ({ ...p, sku: e.target.value }))}
-                      className="input flex-1" placeholder="123-ABC" />
-                    <button
-                      type="button"
-                      onClick={scanning ? () => stopScanner() : startScanner}
-                      className={`px-4 rounded-2xl flex items-center justify-center border transition-all ${
-                        scanning 
-                          ? 'bg-rose-500 border-rose-500 text-white animate-pulse' 
-                          : 'bg-primary-50 border-primary-200 text-primary-600 hover:bg-primary-100'
-                      }`}
-                      title="مسح الباركود بكاميرا الهاتف"
-                    >
-                      <Camera size={18} />
-                    </button>
+              <div className="p-7 space-y-5 max-h-[65vh] overflow-y-auto custom-scrollbar">
+                {/* ─── الحقول الإلزامية الثلاثة ─── */}
+                <div className="bg-primary-50/50 border border-primary-200/60 rounded-2xl p-4.5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-primary-900 flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-primary-600" /> البيانات الإلزامية الثلاثة
+                    </span>
+                    <span className="text-[10px] bg-primary-100 text-primary-800 px-2.5 py-0.5 rounded-md font-black">
+                      مطلوبة
+                    </span>
                   </div>
-                  {scanning && (
-                    <div className="mt-3 relative rounded-2xl overflow-hidden border-2 border-primary-500 bg-black">
-                      <div id="products-barcode-scanner" className="w-full h-48"></div>
-                      <button
-                        type="button"
-                        onClick={() => stopScanner()}
-                        className="absolute bottom-3 left-3 bg-rose-600 text-white px-3 py-1.5 rounded-xl text-xs font-black"
-                      >
-                        إغلاق الكاميرا
-                      </button>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="label-text flex items-center justify-between">
+                        <span className="font-black text-slate-800">اسم المنتج *</span>
+                        <span className="text-[10px] text-rose-500 font-black">مطلوب</span>
+                      </label>
+                      <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                        className="input mt-1 font-bold !bg-white" placeholder="مثلاً: مساعدين أمامية تويوتا" autoFocus />
                     </div>
-                  )}
-                </div>
-                <div>
-                  <label className="label-text">الفئة</label>
-                  <select value={form.category || ''} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
-                    className="input mt-1">
-                    <option value="">غير مصنف</option>
-                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="label-text">سعر البيع *</label>
-                  <div className="relative mt-1">
-                    <input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
-                      className="input pr-12" placeholder="0" />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">ج.م</span>
+
+                    <div>
+                      <label className="label-text flex items-center justify-between">
+                        <span className="font-black text-slate-800">سعر البيع *</span>
+                        <span className="text-[10px] text-rose-500 font-black">مطلوب</span>
+                      </label>
+                      <div className="relative mt-1">
+                        <input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
+                          className="input pr-12 font-black text-emerald-600 !bg-white" placeholder="0" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">ج.م</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="label-text flex items-center justify-between">
+                        <span className="font-black text-slate-800">سعر التكلفة *</span>
+                        <span className="text-[10px] text-rose-500 font-black">مطلوب</span>
+                      </label>
+                      <div className="relative mt-1">
+                        <input type="number" value={form.cost} onChange={e => setForm(p => ({ ...p, cost: e.target.value }))}
+                          className="input pr-12 font-black text-slate-700 !bg-white" placeholder="0" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">ج.م</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="label-text">سعر التكلفة</label>
-                  <div className="relative mt-1">
-                    <input type="number" value={form.cost} onChange={e => setForm(p => ({ ...p, cost: e.target.value }))}
-                      className="input pr-12" placeholder="0" />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">ج.م</span>
+
+                {/* ─── المخزون الأولي (اختياري للجرد) ─── */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-text flex items-center justify-between">
+                      <span>الكمية المتاحة</span>
+                      <span className="text-[10px] text-slate-400 font-bold">(اختياري - افتراضياً 0 للجرد لاحقاً)</span>
+                    </label>
+                    <input type="number" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))}
+                      className="input mt-1 font-bold" placeholder="0" />
+                  </div>
+
+                  <div>
+                    <label className="label-text">حد التنبيه بالنواقص (أقل من)</label>
+                    <input type="number" value={form.minStock} onChange={e => setForm(p => ({ ...p, minStock: e.target.value }))}
+                      className="input mt-1 border-rose-200" placeholder="5" />
                   </div>
                 </div>
-                <div>
-                  <label className="label-text">الكمية المتاحة</label>
-                  <input type="number" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))}
-                    className="input mt-1" placeholder="0" />
-                </div>
-                <div>
-                  <label className="label-text">حد التنبيه (أقل من)</label>
-                  <input type="number" value={form.minStock} onChange={e => setForm(p => ({ ...p, minStock: e.target.value }))}
-                    className="input mt-1 border-rose-300 focus:border-rose-500 focus:ring-rose-500/20" placeholder="5" />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="label-text">المورد</label>
-                  <select value={form.supplier || ''} onChange={e => setForm(p => ({ ...p, supplier: e.target.value }))}
-                    className="input mt-1">
-                    <option value="">بدون مورد</option>
-                    {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                  </select>
+
+                {/* ─── تفاصيل اختيارية ─── */}
+                <div className="border border-slate-200/80 rounded-2xl p-4 space-y-4 bg-slate-50/50">
+                  <span className="text-xs font-black text-slate-700 block">
+                    بيانات إضافية (اختيارية - يمكنك تركها أو تعبئتها أثناء الجرد):
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label-text">الفئة / القسم</label>
+                      <select value={form.category || ''} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+                        className="input mt-1 !bg-white">
+                        <option value="">عام (غير مصنف)</option>
+                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="label-text">المورد الافتراضي</label>
+                      <select value={form.supplier || ''} onChange={e => setForm(p => ({ ...p, supplier: e.target.value }))}
+                        className="input mt-1 !bg-white">
+                        <option value="">بدون مورد</option>
+                        {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="label-text">كود SKU / الباركود</label>
+                      <div className="relative mt-1 flex gap-2">
+                        <input value={form.sku} onChange={e => setForm(p => ({ ...p, sku: e.target.value }))}
+                          className="input flex-1 !bg-white" placeholder="123-ABC" />
+                        <button
+                          type="button"
+                          onClick={scanning ? () => stopScanner() : startScanner}
+                          className={`px-4 rounded-2xl flex items-center justify-center border transition-all ${
+                            scanning 
+                              ? 'bg-rose-500 border-rose-500 text-white animate-pulse' 
+                              : 'bg-primary-50 border-primary-200 text-primary-600 hover:bg-primary-100'
+                          }`}
+                          title="مسح الباركود بكاميرا الهاتف"
+                        >
+                          <Camera size={18} />
+                        </button>
+                      </div>
+                      {scanning && (
+                        <div className="mt-3 relative rounded-2xl overflow-hidden border-2 border-primary-500 bg-black">
+                          <div id="products-barcode-scanner" className="w-full h-48"></div>
+                          <button
+                            type="button"
+                            onClick={() => stopScanner()}
+                            className="absolute bottom-3 left-3 bg-rose-600 text-white px-3 py-1.5 rounded-xl text-xs font-black"
+                          >
+                            إغلاق الكاميرا
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="label-text">صورة المنتج</label>
