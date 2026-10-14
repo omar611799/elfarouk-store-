@@ -271,13 +271,15 @@ export async function completeSale({ items, cartItems, customerData = {}, total,
     paidAmount =
       Number(paymentsParam.cash || 0) +
       Number(paymentsParam.visa || 0) +
-      Number(paymentsParam.instapay || 0)
+      Number(paymentsParam.instapay || 0) +
+      Number(paymentsParam.wallet || 0)
   } else if (customerData.payments) {
     paymentsBreakdown = customerData.payments
     paidAmount =
       Number(paymentsBreakdown.cash || 0) +
       Number(paymentsBreakdown.visa || 0) +
-      Number(paymentsBreakdown.instapay || 0)
+      Number(paymentsBreakdown.instapay || 0) +
+      Number(paymentsBreakdown.wallet || 0)
   } else if (paidAmountParam !== undefined) {
     paidAmount = Number(paidAmountParam)
     paymentsBreakdown = { cash: paidAmount }
@@ -293,7 +295,7 @@ export async function completeSale({ items, cartItems, customerData = {}, total,
   const normPhone = normalizeEgyptianPhone(rawPhone)
 
   const customerFields = {
-    name: customerData.name?.trim() || '',
+    name: customerData.name?.trim() || 'عميل نقدي',
     phone: normPhone || rawPhone,
     carModel: customerData.carModel?.trim() || '',
     licensePlate: customerData.licensePlate?.trim() || '',
@@ -456,7 +458,7 @@ export async function completeSale({ items, cartItems, customerData = {}, total,
         paidTotal: increment(paidAmount),
         updatedAt: serverTimestamp(),
       })
-    } else if (customerFields.name || customerFields.phone) {
+    } else if ((customerFields.name && customerFields.name !== 'عميل نقدي') || customerFields.phone) {
       const newCustRef = doc(collection(db, COLS.CUSTOMERS))
       transaction.set(newCustRef, {
         ...customerFields,

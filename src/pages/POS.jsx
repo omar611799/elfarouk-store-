@@ -6,8 +6,10 @@ import {
   ShoppingCart, Search, Plus, Minus, Trash2, X, Users, 
   ChevronLeft, Send, MessageCircle, Camera, Sparkles,
   Wallet, CreditCard, Landmark, Wrench, Printer, AlertTriangle,
-  Package, Receipt, FolderSync, Clock
+  Package, Receipt, FolderSync, Clock, RotateCcw, Edit3, Tag, Check, CheckCircle2,
+  Smartphone, Zap, ChevronDown, ChevronUp, UserCheck
 } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { Html5Qrcode } from 'html5-qrcode'
 import toast from 'react-hot-toast'
 import { normalizeEgyptianPhone, formatPhoneForWhatsApp } from '../utils/phone'
@@ -242,10 +244,269 @@ ThermalReceipt.displayName = 'ThermalReceipt'
 
 
 /* ═══════════════════════════════════════════════════════════════
+   PRICE OVERRIDE MODAL — Edit selling price on the fly
+   ═══════════════════════════════════════════════════════════════ */
+const PriceOverrideModal = memo(({ item, onClose, onApply, isAdmin }) => {
+  if (!item) return null
+
+  const originalPrice = Number(item.originalPrice ?? item.price ?? 0)
+  const cost = Number(item.cost || 0)
+  const qty = Number(item.qty || 1)
+
+  const [inputPrice, setInputPrice] = useState(() => String(item.price ?? originalPrice))
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [])
+
+  const currentPriceNum = Math.max(0, Number(inputPrice) || 0)
+  const lineTotal = currentPriceNum * qty
+  const profitPerUnit = currentPriceNum - cost
+  const isBelowCost = cost > 0 && currentPriceNum < cost
+  const isDiscounted = currentPriceNum < originalPrice
+  const isMarkedUp = currentPriceNum > originalPrice
+  const discountAmount = Math.max(0, originalPrice - currentPriceNum)
+  const discountPercent = originalPrice > 0 ? Math.round((discountAmount / originalPrice) * 100) : 0
+
+  const handleQuickPercent = (percent) => {
+    const discounted = Math.round(originalPrice * (1 - percent / 100))
+    setInputPrice(String(discounted))
+  }
+
+  const handleQuickAmount = (amount) => {
+    const discounted = Math.max(0, originalPrice - amount)
+    setInputPrice(String(discounted))
+  }
+
+  const handleReset = () => {
+    setInputPrice(String(originalPrice))
+  }
+
+  const handleSubmit = (e) => {
+    e?.preventDefault()
+    const parsed = parseFloat(inputPrice)
+    if (isNaN(parsed) || parsed < 0) {
+      toast.error('يرجى إدخال سعر صحيح (0 أو أكبر)')
+      return
+    }
+    onApply(item.id, parsed)
+    onClose()
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[250] flex items-end sm:items-center justify-center p-3 sm:p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 50, scale: 0.95, opacity: 0 }}
+        animate={{ y: 0, scale: 1, opacity: 1 }}
+        exit={{ y: 50, scale: 0.95, opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 font-display"
+        onClick={e => e.stopPropagation()}
+        dir="rtl"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-5 relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Tag size={20} />
+              </div>
+              <div>
+                <h3 className="font-black text-base text-white">تعديل سعر البيع</h3>
+                <p className="text-xs text-slate-300 font-medium truncate max-w-[240px]">{item.name}</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Item Meta Pills */}
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">السعر الأصلي</span>
+              <span className="text-sm font-black text-slate-700">{originalPrice.toLocaleString('en-US')} ج</span>
+            </div>
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">الكمية</span>
+              <span className="text-sm font-black text-slate-700">{qty} قطعة</span>
+            </div>
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                {isAdmin ? 'سعر التكلفة' : 'الفئة'}
+              </span>
+              <span className="text-sm font-black text-slate-700">
+                {isAdmin ? `${cost.toLocaleString('en-US')} ج` : (item.category || 'عام')}
+              </span>
+            </div>
+          </div>
+
+          {/* New Price Input Field */}
+          <div>
+            <label className="block text-xs font-black text-slate-700 mb-1.5">
+              سعر البيع الجديد للقطعة (ج.م) *
+            </label>
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="number"
+                step="any"
+                min="0"
+                value={inputPrice}
+                onChange={e => setInputPrice(e.target.value)}
+                placeholder="أدخل سعر البيع الجديد..."
+                className="w-full bg-slate-50 border-2 border-primary-500 rounded-2xl py-3 px-4 text-2xl font-black text-slate-900 text-left font-mono focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/20 transition-all"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm pointer-events-none">
+                ج.م
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Shortcuts */}
+          <div>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-2">
+              اختصارات وتخفيضات سريعة:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 flex items-center gap-1 transition-all active:scale-95"
+              >
+                <RotateCcw size={12} /> السعر الأصلي
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickAmount(5)}
+                className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-all active:scale-95"
+              >
+                -5 ج.م
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickAmount(10)}
+                className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-all active:scale-95"
+              >
+                -10 ج.م
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickAmount(20)}
+                className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-all active:scale-95"
+              >
+                -20 ج.م
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickPercent(5)}
+                className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all active:scale-95"
+              >
+                -5%
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickPercent(10)}
+                className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all active:scale-95"
+              >
+                -10%
+              </button>
+            </div>
+          </div>
+
+          {/* Profit / Discount / Warning summary card */}
+          <div className="space-y-2">
+            {isBelowCost ? (
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 flex items-center gap-2.5 text-rose-800 text-xs">
+                <AlertTriangle size={18} className="text-rose-600 shrink-0" />
+                <div>
+                  <p className="font-black">تحذير: السعر أقل من سعر التكلفة!</p>
+                  <p className="text-[11px] text-rose-700 mt-0.5">
+                    التكلفة {cost} ج.م — البيع بهذا السعر يسبب خسارة {(cost - currentPriceNum).toLocaleString()} ج.م للقطعة.
+                  </p>
+                </div>
+              </div>
+            ) : isDiscounted ? (
+              <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs text-amber-900">
+                <span className="font-bold">خصم مخصص:</span>
+                <span className="font-black font-mono">
+                  -{discountAmount.toLocaleString()} ج.م ({discountPercent}%) للقطعة
+                </span>
+              </div>
+            ) : isMarkedUp ? (
+              <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-between text-xs text-blue-900">
+                <span className="font-bold">زيادة عن السعر الرسمي:</span>
+                <span className="font-black font-mono">
+                  +{(currentPriceNum - originalPrice).toLocaleString()} ج.م للقطعة
+                </span>
+              </div>
+            ) : null}
+
+            {/* Total Calculation Row */}
+            <div className="p-3 bg-slate-900 rounded-2xl text-white flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">إجمالي الصنف بالفاتورة</p>
+                <p className="text-xs text-slate-300 font-medium mt-0.5 font-mono">
+                  {qty} قطعة × {currentPriceNum.toLocaleString()} ج.م
+                </p>
+              </div>
+              <div className="text-left">
+                <p className="text-xl font-black text-emerald-400 font-mono">
+                  {lineTotal.toLocaleString('en-US')} <span className="text-xs text-slate-300 font-sans">ج.م</span>
+                </p>
+                {isAdmin && cost > 0 && (
+                  <p className="text-[10px] text-slate-300">
+                    الربح الصافي: {(profitPerUnit * qty).toLocaleString()} ج
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="py-3 px-4 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors"
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              className="py-3 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-black text-xs shadow-lg shadow-primary-500/25 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            >
+              <Check size={16} /> تطبيق السعر
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
+  )
+})
+PriceOverrideModal.displayName = 'PriceOverrideModal'
+
+
+/* ═══════════════════════════════════════════════════════════════
    CART CONTENT — Side panel / mobile bottom sheet
    ═══════════════════════════════════════════════════════════════ */
 const CartContent = memo(({
-  cart, cartTotal, cartClear, cartQty, cartRemove,
+  cart, cartTotal, cartClear, cartQty, cartRemove, cartPrice, onOpenPriceModal,
   customer, setCustomer, suggestedCustomers,
   payments, setPayments, isAdmin,
   saving, handleSale, setIsCartOpen,
@@ -258,8 +519,9 @@ const CartContent = memo(({
   const [activeTab, setActiveTab] = useState('cart')
   const [showCarSuggestions, setShowCarSuggestions] = useState(false)
   const [showSuspendedModal, setShowSuspendedModal] = useState(false)
+  const [showCustomerDetails, setShowCustomerDetails] = useState(() => Boolean(customer.name || customer.phone))
 
-  const totalPaid = Number(payments.cash || 0) + Number(payments.visa || 0) + Number(payments.instapay || 0)
+  const totalPaid = Number(payments.cash || 0) + Number(payments.visa || 0) + Number(payments.instapay || 0) + Number(payments.wallet || 0)
   const discount = Number(payments.discount || 0)
   const finalTotal = cartTotal - discount
   const remaining = finalTotal - totalPaid
@@ -294,9 +556,8 @@ const CartContent = memo(({
   const fillRemaining = (method) => {
     const otherPaid = totalPaid - Number(payments[method] || 0)
     const leftover = finalTotal - otherPaid
-    if (leftover > 0) {
-      setPayments(p => ({ ...p, [method]: String(leftover) }))
-    }
+    const amountToSet = leftover > 0 ? leftover : finalTotal
+    setPayments(p => ({ ...p, [method]: String(amountToSet) }))
   }
 
   /* Payment progress percentage */
@@ -377,7 +638,7 @@ const CartContent = memo(({
               ? 'bg-primary-50 text-primary-700 shadow-sm border border-primary-100/50' 
               : 'text-slate-400 hover:text-slate-600'
           }`}>
-          <Users size={14} /> الدفع والعميل
+          <CreditCard size={14} /> طريقة الدفع
           {customer.name && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
         </button>
       </div>
@@ -411,12 +672,57 @@ const CartContent = memo(({
                   <div className="flex items-center gap-3 pointer-events-none">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-900 font-black truncate font-display">{item.name}</p>
-                      <p className="text-sm text-emerald-600 font-black mt-1 tracking-wide font-display">
-                        {Number(item.price).toLocaleString('en-US')} ج.م
-                      </p>
+                      
+                      {/* Price button with quick edit trigger */}
+                      <div className="flex items-center flex-wrap gap-1.5 mt-1 pointer-events-auto">
+                        <button
+                          type="button"
+                          onClick={() => onOpenPriceModal?.(item)}
+                          className={`group/price flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-right transition-all active:scale-95 ${
+                            item.isCustomPrice
+                              ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm'
+                              : 'bg-emerald-50/80 border-emerald-200/80 text-emerald-800 hover:border-emerald-300'
+                          }`}
+                          title="انقر لتعديل سعر البيع لهذا الصنف"
+                        >
+                          {item.isCustomPrice && item.originalPrice !== undefined && item.originalPrice !== item.price && (
+                            <span className="text-[11px] line-through text-slate-400 font-bold font-mono">
+                              {Number(item.originalPrice).toLocaleString('en-US')}
+                            </span>
+                          )}
+                          <span className="text-sm font-black tracking-tight font-display">
+                            {Number(item.price).toLocaleString('en-US')} ج.م
+                          </span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
+                            item.isCustomPrice ? 'bg-amber-200 text-amber-900' : 'bg-emerald-200/70 text-emerald-900'
+                          }`}>
+                            {item.isCustomPrice ? '🏷️ معدل' : '✏️ تعديل'}
+                          </span>
+                        </button>
+
+                        {item.isCustomPrice && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              cartPrice(item.id, item.originalPrice)
+                              toast.success('تمت استعادة السعر الأصلي')
+                            }}
+                            className="text-[10px] font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                            title="استعادة السعر الأساسي"
+                          >
+                            <RotateCcw size={10} /> استعادة
+                          </button>
+                        )}
+                      </div>
+
                       {isAdmin && (
-                        <span className="text-[10px] text-slate-400 font-bold bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 inline-block mt-1">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border inline-block mt-1 ${
+                          (item.price - (item.cost || 0)) < 0 
+                            ? 'bg-rose-50 text-rose-600 border-rose-200' 
+                            : 'bg-slate-50 text-slate-400 border-slate-100'
+                        }`}>
                           الربح: {((item.price - (item.cost || 0)) * item.qty).toLocaleString()} ج
+                          {(item.price - (item.cost || 0)) < 0 && ' (خسارة ⚠️)'}
                         </span>
                       )}
                       {item.weight > 0 && (
@@ -446,150 +752,297 @@ const CartContent = memo(({
           </AnimatePresence>
         ) : (
           <div className="space-y-4">
-            {/* Customer debt alert */}
-            {customerDebt > 0 && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
-                <AlertTriangle size={18} className="text-amber-600 shrink-0" />
-                <div>
-                  <p className="text-xs font-black text-amber-800">تنبيه: العميل عليه مديونية سابقة</p>
-                  <p className="text-lg font-black text-amber-700">{customerDebt.toLocaleString()} ج.م</p>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Auto-save badge */}
-            {customer.name && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
-                <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                <p className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">
-                  سيتم إضافة العميل تلقائياً في صفحة العملاء
-                </p>
+            {/* ─── PAYMENT METHODS (FRONT & CENTER) ─── */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-800 font-black flex items-center gap-1.5">
+                  <CreditCard size={15} className="text-primary-600" /> طريقة الدفع
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold">
+                  (اختر الطريقة أو وزّع المبلغ)
+                </span>
               </div>
-            )}
+              
+              {/* 4 Interactive Payment Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { key: 'cash', label: 'كاش', sub: 'نقدي', icon: Wallet, color: 'emerald', bg: 'from-emerald-50 to-emerald-100/60', border: 'border-emerald-300 ring-2 ring-emerald-400/30', text: 'text-emerald-800', iconColor: 'text-emerald-600', badgeBg: 'bg-emerald-500' },
+                  { key: 'instapay', label: 'إنستاباي', sub: 'تحويل لحظي', icon: Zap, color: 'purple', bg: 'from-purple-50 to-purple-100/60', border: 'border-purple-300 ring-2 ring-purple-400/30', text: 'text-purple-800', iconColor: 'text-purple-600', badgeBg: 'bg-purple-500' },
+                  { key: 'wallet', label: 'محفظة', sub: 'فودافون كاش', icon: Smartphone, color: 'rose', bg: 'from-rose-50 to-rose-100/60', border: 'border-rose-300 ring-2 ring-rose-400/30', text: 'text-rose-800', iconColor: 'text-rose-600', badgeBg: 'bg-rose-500' },
+                  { key: 'visa', label: 'فيزا', sub: 'بطاقة بنكية', icon: CreditCard, color: 'blue', bg: 'from-blue-50 to-blue-100/60', border: 'border-blue-300 ring-2 ring-blue-400/30', text: 'text-blue-800', iconColor: 'text-blue-600', badgeBg: 'bg-blue-500' },
+                ].map(pm => {
+                  const Icon = pm.icon
+                  const val = Number(payments[pm.key] || 0)
+                  const hasValue = val > 0
+                  return (
+                    <div key={pm.key} className="space-y-1.5">
+                      {/* Quick-fill button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (val === finalTotal) {
+                            setPayments(p => ({ ...p, [pm.key]: '' }))
+                          } else {
+                            fillRemaining(pm.key)
+                          }
+                        }}
+                        className={`w-full rounded-2xl border p-2.5 transition-all flex flex-col items-center gap-1 group/pm active:scale-95 text-center relative ${
+                          hasValue 
+                            ? `${pm.border} bg-gradient-to-b ${pm.bg} shadow-sm` 
+                            : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100/70 hover:border-slate-300'
+                        }`}
+                      >
+                        {hasValue && (
+                          <span className={`absolute top-1.5 left-1.5 w-4 h-4 rounded-full ${pm.badgeBg} text-white flex items-center justify-center text-[9px] shadow-sm`}>
+                            ✓
+                          </span>
+                        )}
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${hasValue ? 'bg-white shadow-sm' : 'bg-slate-100'}`}>
+                          <Icon size={16} className={hasValue ? pm.iconColor : 'text-slate-400 group-hover/pm:text-slate-600'} />
+                        </div>
+                        <span className={`text-[11px] font-black ${hasValue ? pm.text : 'text-slate-700'}`}>
+                          {pm.label}
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-bold leading-none">
+                          {pm.sub}
+                        </span>
+                      </button>
 
-            {/* Customer Fields */}
-            <div className="space-y-3">
-              <div>
-                <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">اسم العميل بالكامل *</label>
-                <div className="relative group">
-                  <input id="customer-name-input" value={customer.name}
-                    onChange={e => setCustomer(p => ({ ...p, name: e.target.value }))}
-                    onFocus={() => setFocusedField('name')}
-                    onBlur={() => setTimeout(() => setFocusedField(null), 200)}
-                    placeholder="مثلاً: محمد علي" className="input !py-3.5 pr-11 text-sm" autoComplete="off" />
-                  <Users size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
-                  {focusedField === 'name' && suggestedCustomers.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-56 overflow-y-auto">
-                      {suggestedCustomers.map(sc => (
-                        <button key={sc.id} type="button"
-                          onMouseDown={() => {
-                            setCustomer({ name: sc.name, phone: sc.phone || '', carModel: sc.carModel || '', licensePlate: sc.licensePlate || '', nationalId: sc.nationalId || '' })
-                            setFocusedField(null)
-                          }}
-                          className="w-full text-right px-4 py-3 hover:bg-primary-50 transition-all flex justify-between items-center group/item">
-                          <div className="flex items-center gap-2">
-                            <ChevronLeft size={14} className="text-slate-300 group-hover/item:text-primary-600 group-hover/item:-translate-x-1 transition-all shrink-0" />
-                            {sc.phone && <span className="text-primary-600 bg-primary-50 px-2 py-0.5 rounded text-[10px] font-black">{sc.phone}</span>}
-                            {sc.carModel && <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold max-w-[120px] truncate">🚗 {sc.carModel}</span>}
-                          </div>
-                          <span className="text-slate-900 text-sm font-bold font-display">{sc.name}</span>
-                        </button>
-                      ))}
+                      {/* Amount input */}
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={payments[pm.key] ?? ''}
+                          onChange={e => setPayments(p => ({ ...p, [pm.key]: e.target.value }))}
+                          placeholder="0"
+                          className={`input !py-1.5 text-center text-xs font-black !rounded-xl ${
+                            hasValue ? `!bg-${pm.color}-50/60 !border-${pm.color}-300 text-slate-900 font-mono` : ''
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Payment Progress Bar */}
+              {finalTotal > 0 && (
+                <div className="pt-2 space-y-2 border-t border-slate-100">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                    <span className="text-slate-400">المدفوع الإجمالي</span>
+                    <span className={totalPaid >= finalTotal ? 'text-emerald-600' : totalPaid > 0 ? 'text-amber-600' : 'text-slate-400'}>
+                      {totalPaid.toLocaleString()} / {finalTotal.toLocaleString()} ج.م
+                      {totalPaid === 0 && ' (كاش بالكامل افتراضياً)'}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${paymentProgress}%` }}
+                      transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                      className={`h-full rounded-full ${
+                        paymentProgress >= 100 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' :
+                        paymentProgress >= 50 ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
+                        'bg-gradient-to-r from-rose-400 to-rose-500'
+                      }`}
+                    />
+                  </div>
+                  {remaining > 0 && totalPaid > 0 && (
+                    <div className="flex justify-between items-center px-3 py-2 bg-rose-50 rounded-xl border border-rose-100">
+                      <span className="text-[10px] text-rose-700 font-black uppercase">مديونية متبقية (آجل)</span>
+                      <span className="text-sm font-black text-rose-600 font-mono">{remaining.toLocaleString()} ج.م</span>
+                    </div>
+                  )}
+                  {remaining < 0 && (
+                    <div className="flex justify-between items-center px-3 py-2 bg-blue-50 rounded-xl border border-blue-100">
+                      <span className="text-[10px] text-blue-700 font-black uppercase">الباقي للعميل (فكة)</span>
+                      <span className="text-sm font-black text-blue-600 font-mono">{Math.abs(remaining).toLocaleString()} ج.م</span>
                     </div>
                   )}
                 </div>
-              </div>
-
-              <div>
-                <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">رقم الهاتف / الواتساب</label>
-                <div className="relative group">
-                  <input id="customer-phone-input" value={customer.phone}
-                    onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))}
-                    onFocus={() => setFocusedField('phone')}
-                    onBlur={() => setTimeout(() => setFocusedField(null), 200)}
-                    placeholder="01xxxxxxxxx" className="input !py-3.5 text-sm font-bold" autoComplete="off" />
-                  {focusedField === 'phone' && suggestedCustomers.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-56 overflow-y-auto">
-                      {suggestedCustomers.map(sc => (
-                        <button key={sc.id} type="button"
-                          onMouseDown={() => {
-                            setCustomer({ name: sc.name, phone: sc.phone || '', carModel: sc.carModel || '', licensePlate: sc.licensePlate || '', nationalId: sc.nationalId || '' })
-                            setFocusedField(null)
-                          }}
-                          className="w-full text-right px-4 py-3 hover:bg-primary-50 transition-all flex justify-between items-center group/item">
-                          <div className="flex items-center gap-2">
-                            <ChevronLeft size={14} className="text-slate-300 group-hover/item:text-primary-600 group-hover/item:-translate-x-1 transition-all shrink-0" />
-                            {sc.phone && <span className="text-primary-600 bg-primary-50 px-2 py-0.5 rounded text-[10px] font-black">{sc.phone}</span>}
-                          </div>
-                          <span className="text-slate-900 text-sm font-bold font-display">{sc.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">الرقم القومي</label>
-                  <input id="customer-national-id-input" value={customer.nationalId}
-                    onChange={e => setCustomer(p => ({ ...p, nationalId: e.target.value }))}
-                    placeholder="29xxx..." className="input !py-3.5 text-sm font-bold" />
-                </div>
-                <div>
-                  <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">رقم اللوحة</label>
-                  <input id="customer-license-input" value={customer.licensePlate}
-                    onChange={e => setCustomer(p => ({ ...p, licensePlate: e.target.value }))}
-                    placeholder="أ ب ج 123" className="input !py-3.5 text-sm font-bold" />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">نوع السيارة والموديل</label>
-                <div className="relative">
-                  <input id="customer-car-input" value={customer.carModel}
-                    onChange={e => setCustomer(p => ({ ...p, carModel: e.target.value }))}
-                    onFocus={() => setShowCarSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowCarSuggestions(false), 200)}
-                    placeholder="لانسر بومة 2008" className="input !py-3.5 text-sm font-bold" autoComplete="off" />
-                  
-                  {/* Car model suggestions popup above input */}
-                  {showCarSuggestions && filteredCarSuggestions.length > 0 && (
-                    <div className="absolute bottom-full mb-1 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-48 overflow-y-auto text-right">
-                      {filteredCarSuggestions.map((car, idx) => (
-                        <button 
-                          key={idx} 
-                          type="button"
-                          onMouseDown={() => {
-                            setCustomer(p => ({ ...p, carModel: car }))
-                            setShowCarSuggestions(false)
-                          }}
-                          className="w-full text-right px-4 py-2.5 hover:bg-primary-50 transition-all text-xs font-bold text-slate-700 flex items-center justify-between"
-                        >
-                          <span>🚗</span>
-                          <span>{car}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Customer History Button */}
-            {matchedCustomerHistory.length > 0 && (
-              <button type="button" onClick={() => setShowHistory(true)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-primary-50 border border-primary-100 hover:bg-primary-100 hover:border-primary-200 rounded-2xl transition-all">
+            {/* ─── CUSTOMER DATA (OPTIONAL ACCORDION) ─── */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm transition-all">
+              <button
+                type="button"
+                onClick={() => setShowCustomerDetails(!showCustomerDetails)}
+                className="w-full px-4 py-3.5 bg-slate-50/70 hover:bg-slate-100/70 flex items-center justify-between text-right transition-colors"
+              >
                 <div className="flex items-center gap-2.5">
-                  <Wrench size={14} className="text-primary-600" />
-                  <span className="text-xs font-black text-primary-800">
-                    سجل صيانة العميل ({matchedCustomerHistory.length} زيارات)
-                  </span>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${customer.name ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200/70 text-slate-600'}`}>
+                    <Users size={15} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      بيانات العميل <span className="text-[10px] font-bold text-slate-400">(اختياري)</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-bold mt-0.5">
+                      {customer.name ? `العميل: ${customer.name}` : 'الافتراضي: عميل نقدي (بدون تسجيل بيانات)'}
+                    </span>
+                  </div>
                 </div>
-                <ChevronLeft size={14} className="text-primary-600" />
+                <div className="flex items-center gap-2 text-slate-400">
+                  {customer.name ? (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-black">
+                      محدد ✓
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-slate-200/60 text-slate-600 px-2 py-0.5 rounded-md font-bold">
+                      عميل نقدي
+                    </span>
+                  )}
+                  {showCustomerDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
               </button>
-            )}
+
+              {showCustomerDetails && (
+                <div className="p-4 space-y-3.5 border-t border-slate-100 bg-white">
+                  {/* Customer debt alert */}
+                  {customerDebt > 0 && (
+                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
+                      <AlertTriangle size={18} className="text-amber-600 shrink-0" />
+                      <div>
+                        <p className="text-xs font-black text-amber-800">تنبيه: العميل عليه مديونية سابقة</p>
+                        <p className="text-lg font-black text-amber-700">{customerDebt.toLocaleString()} ج.م</p>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Auto-save badge */}
+                  {customer.name && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
+                      <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">
+                        سيتم إضافة العميل تلقائياً في صفحة العملاء
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Fields */}
+                  <div>
+                    <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">اسم العميل (اختياري)</label>
+                    <div className="relative group">
+                      <input id="customer-name-input" value={customer.name}
+                        onChange={e => setCustomer(p => ({ ...p, name: e.target.value }))}
+                        onFocus={() => setFocusedField('name')}
+                        onBlur={() => setTimeout(() => setFocusedField(null), 200)}
+                        placeholder="اتركه فارغاً لـ 'عميل نقدي' أو اكتب اسمه" className="input !py-3 pr-11 text-sm font-bold" autoComplete="off" />
+                      <Users size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+                      {focusedField === 'name' && suggestedCustomers.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-56 overflow-y-auto">
+                          {suggestedCustomers.map(sc => (
+                            <button key={sc.id} type="button"
+                              onMouseDown={() => {
+                                setCustomer({ name: sc.name, phone: sc.phone || '', carModel: sc.carModel || '', licensePlate: sc.licensePlate || '', nationalId: sc.nationalId || '' })
+                                setFocusedField(null)
+                              }}
+                              className="w-full text-right px-4 py-3 hover:bg-primary-50 transition-all flex justify-between items-center group/item">
+                              <div className="flex items-center gap-2">
+                                <ChevronLeft size={14} className="text-slate-300 group-hover/item:text-primary-600 group-hover/item:-translate-x-1 transition-all shrink-0" />
+                                {sc.phone && <span className="text-primary-600 bg-primary-50 px-2 py-0.5 rounded text-[10px] font-black">{sc.phone}</span>}
+                                {sc.carModel && <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold max-w-[120px] truncate">🚗 {sc.carModel}</span>}
+                              </div>
+                              <span className="text-slate-900 text-sm font-bold font-display">{sc.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">رقم الهاتف / الواتساب</label>
+                    <div className="relative group">
+                      <input id="customer-phone-input" value={customer.phone}
+                        onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))}
+                        onFocus={() => setFocusedField('phone')}
+                        onBlur={() => setTimeout(() => setFocusedField(null), 200)}
+                        placeholder="01xxxxxxxxx" className="input !py-3 text-sm font-bold" autoComplete="off" />
+                      {focusedField === 'phone' && suggestedCustomers.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-56 overflow-y-auto">
+                          {suggestedCustomers.map(sc => (
+                            <button key={sc.id} type="button"
+                              onMouseDown={() => {
+                                setCustomer({ name: sc.name, phone: sc.phone || '', carModel: sc.carModel || '', licensePlate: sc.licensePlate || '', nationalId: sc.nationalId || '' })
+                                setFocusedField(null)
+                              }}
+                              className="w-full text-right px-4 py-3 hover:bg-primary-50 transition-all flex justify-between items-center group/item">
+                              <div className="flex items-center gap-2">
+                                <ChevronLeft size={14} className="text-slate-300 group-hover/item:text-primary-600 group-hover/item:-translate-x-1 transition-all shrink-0" />
+                                {sc.phone && <span className="text-primary-600 bg-primary-50 px-2 py-0.5 rounded text-[10px] font-black">{sc.phone}</span>}
+                              </div>
+                              <span className="text-slate-900 text-sm font-bold font-display">{sc.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">الرقم القومي</label>
+                      <input id="customer-national-id-input" value={customer.nationalId}
+                        onChange={e => setCustomer(p => ({ ...p, nationalId: e.target.value }))}
+                        placeholder="29xxx..." className="input !py-3 text-sm font-bold" />
+                    </div>
+                    <div>
+                      <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">رقم اللوحة</label>
+                      <input id="customer-license-input" value={customer.licensePlate}
+                        onChange={e => setCustomer(p => ({ ...p, licensePlate: e.target.value }))}
+                        placeholder="أ ب ج 123" className="input !py-3 text-sm font-bold" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 block">نوع السيارة والموديل</label>
+                    <div className="relative">
+                      <input id="customer-car-input" value={customer.carModel}
+                        onChange={e => setCustomer(p => ({ ...p, carModel: e.target.value }))}
+                        onFocus={() => setShowCarSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowCarSuggestions(false), 200)}
+                        placeholder="لانسر بومة 2008" className="input !py-3 text-sm font-bold" autoComplete="off" />
+                      
+                      {showCarSuggestions && filteredCarSuggestions.length > 0 && (
+                        <div className="absolute bottom-full mb-1 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-48 overflow-y-auto text-right">
+                          {filteredCarSuggestions.map((car, idx) => (
+                            <button 
+                              key={idx} 
+                              type="button"
+                              onMouseDown={() => {
+                                setCustomer(p => ({ ...p, carModel: car }))
+                                setShowCarSuggestions(false)
+                              }}
+                              className="w-full text-right px-4 py-2.5 hover:bg-primary-50 transition-all text-xs font-bold text-slate-700 flex items-center justify-between"
+                            >
+                              <span>🚗</span>
+                              <span>{car}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Customer History Button */}
+                  {matchedCustomerHistory.length > 0 && (
+                    <button type="button" onClick={() => setShowHistory(true)}
+                      className="w-full flex items-center justify-between px-4 py-3 bg-primary-50 border border-primary-100 hover:bg-primary-100 hover:border-primary-200 rounded-2xl transition-all">
+                      <div className="flex items-center gap-2.5">
+                        <Wrench size={14} className="text-primary-600" />
+                        <span className="text-xs font-black text-primary-800">
+                          سجل صيانة العميل ({matchedCustomerHistory.length} زيارات)
+                        </span>
+                      </div>
+                      <ChevronLeft size={14} className="text-primary-600" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Customer History Modal */}
             <AnimatePresence>
@@ -607,7 +1060,7 @@ const CartContent = memo(({
                           <Wrench size={18} className="text-primary-600" /> سجل العميل
                         </h3>
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                          أ/ {customer.name} {customer.carModel ? `| ${customer.carModel}` : ''}
+                          أ/ {customer.name || 'عميل نقدي'} {customer.carModel ? `| ${customer.carModel}` : ''}
                         </p>
                       </div>
                       <button onClick={() => setShowHistory(false)} className="p-2 text-slate-400 hover:text-slate-950 bg-slate-100 rounded-xl transition-colors">
@@ -649,68 +1102,6 @@ const CartContent = memo(({
                 </>
               )}
             </AnimatePresence>
-
-            {/* ─── PAYMENT CARDS ─── */}
-            <div className="pt-3 border-t border-slate-200 mt-4">
-              <p className="text-xs text-slate-500 font-black uppercase tracking-widest mb-3 px-1 text-center">طريقة الدفع</p>
-              
-              {/* Interactive Payment Cards */}
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { key: 'cash', label: 'كاش', icon: Wallet, color: 'emerald', bg: 'from-emerald-50 to-emerald-100/50', border: 'border-emerald-200', text: 'text-emerald-700', iconColor: 'text-emerald-600' },
-                  { key: 'visa', label: 'فيزا', icon: CreditCard, color: 'blue', bg: 'from-blue-50 to-blue-100/50', border: 'border-blue-200', text: 'text-blue-700', iconColor: 'text-blue-600' },
-                  { key: 'instapay', label: 'إنستاباي', icon: Landmark, color: 'purple', bg: 'from-purple-50 to-purple-100/50', border: 'border-purple-200', text: 'text-purple-700', iconColor: 'text-purple-600' },
-                ].map(pm => {
-                  const Icon = pm.icon
-                  const hasValue = Number(payments[pm.key] || 0) > 0
-                  return (
-                    <div key={pm.key} className="space-y-1.5">
-                      {/* Quick-fill button */}
-                      <button type="button" onClick={() => fillRemaining(pm.key)}
-                        className={`w-full rounded-xl border ${hasValue ? pm.border + ' bg-gradient-to-b ' + pm.bg : 'border-slate-200 bg-white hover:border-slate-300'} p-3 transition-all flex flex-col items-center gap-1.5 group/pm active:scale-95`}>
-                        <Icon size={18} className={hasValue ? pm.iconColor : 'text-slate-400 group-hover/pm:text-slate-600'} />
-                        <span className={`text-[10px] font-black ${hasValue ? pm.text : 'text-slate-400'}`}>{pm.label}</span>
-                      </button>
-                      {/* Amount input */}
-                      <input type="number" value={payments[pm.key]}
-                        onChange={e => setPayments(p => ({ ...p, [pm.key]: e.target.value }))}
-                        placeholder="0"
-                        className={`input !py-2.5 text-center text-sm font-black !rounded-xl ${hasValue ? `!bg-${pm.color}-50/50 !border-${pm.color}-200` : ''}`} />
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Payment Progress Bar */}
-              {finalTotal > 0 && (
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
-                    <span className="text-slate-400">المدفوع</span>
-                    <span className={totalPaid >= finalTotal ? 'text-emerald-600' : 'text-amber-600'}>
-                      {totalPaid.toLocaleString()} / {finalTotal.toLocaleString()} ج.م
-                    </span>
-                  </div>
-                  <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${paymentProgress}%` }}
-                      transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-                      className={`h-full rounded-full ${
-                        paymentProgress >= 100 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' :
-                        paymentProgress >= 50 ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
-                        'bg-gradient-to-r from-rose-400 to-rose-500'
-                      }`}
-                    />
-                  </div>
-                  {remaining > 0 && (
-                    <div className="flex justify-between items-center px-3 py-2 bg-rose-50 rounded-xl border border-rose-100">
-                      <span className="text-[10px] text-rose-700 font-black uppercase">مديونية</span>
-                      <span className="text-sm font-black text-rose-600">{remaining.toLocaleString()} ج.م</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
         )}
       </div>
@@ -740,11 +1131,22 @@ const CartContent = memo(({
 
         <div className="space-y-2">
           {activeTab === 'cart' ? (
-            <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveTab('checkout')} disabled={cart.length === 0}
-              className="w-full btn-primary !py-3.5 flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider disabled:opacity-20">
-              متابعة إدخال البيانات ←
-            </motion.button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleSale('cash')}
+                disabled={cart.length === 0 || saving}
+                className="px-4 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all disabled:opacity-20 shrink-0"
+                title="إنهاء البيع فوراً كاش بدون أي خطوات إضافية"
+              >
+                <Zap size={15} className="fill-current text-amber-300" /> كاش فوري
+              </button>
+              <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+                onClick={() => setActiveTab('checkout')} disabled={cart.length === 0}
+                className="flex-1 btn-primary !py-3.5 flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider disabled:opacity-20">
+                طريقة الدفع ←
+              </motion.button>
+            </div>
           ) : (
             <div className="flex gap-2">
               <button type="button" onClick={() => setActiveTab('cart')}
@@ -752,8 +1154,8 @@ const CartContent = memo(({
                 ← السلة
               </button>
               <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-                onClick={handleSale} disabled={cart.length === 0 || !customer.name || saving}
-                className="btn-primary !py-3.5 flex-1 text-sm font-black uppercase tracking-[0.1em] shadow-neon disabled:opacity-20 active:scale-95">
+                onClick={() => handleSale()} disabled={cart.length === 0 || saving}
+                className="btn-primary !py-3.5 flex-1 text-sm font-black uppercase tracking-[0.1em] shadow-neon disabled:opacity-20 active:scale-95 flex items-center justify-center gap-2">
                 <Send size={16} /> {saving ? 'جار الحفظ...' : 'إتمام البيع'}
               </motion.button>
             </div>
@@ -868,7 +1270,7 @@ CartContent.displayName = 'CartContent'
    ═══════════════════════════════════════════════════════════════ */
 export default function POS() {
   const {
-    products, cart, cartAdd, cartRemove, cartQty, cartClear, cartTotal,
+    products, cart, cartAdd, cartRemove, cartQty, cartPrice, cartClear, cartTotal,
     completeSale, customers, invoices
   } = useStore()
   const { currentUser } = useAuth()
@@ -877,7 +1279,7 @@ export default function POS() {
   const [search, setSearch] = useState('')
   const [catFilter, setCat] = useState('')
   const [customer, setCustomer] = useState({ name: '', phone: '', carModel: '', licensePlate: '', nationalId: '' })
-  const [payments, setPayments] = useState({ cash: '', visa: '', instapay: '' })
+  const [payments, setPayments] = useState({ cash: '', visa: '', instapay: '', wallet: '', discount: '' })
   const [saving, setSaving] = useState(false)
   const [doneInvoice, setDoneInvoice] = useState(null)
   const [showScanner, setShowScanner] = useState(false)
@@ -886,6 +1288,30 @@ export default function POS() {
   const [reminders, setReminders] = useState({})
   const [itemWeights, setItemWeightsState] = useState({})
   const [unitSelectProduct, setUnitSelectProduct] = useState(null) // for box/piece selection
+  const [priceModalItem, setPriceModalItem] = useState(null) // for overriding price
+
+  const handleOpenPriceModal = useCallback((item) => {
+    setPriceModalItem(item)
+  }, [])
+
+  const handleAddWithCustomPrice = useCallback((p) => {
+    if (p.hasSubUnits) {
+      setUnitSelectProduct(p)
+      return
+    }
+    const existing = cart.find(i => i.id === p.id)
+    if (!existing) {
+      cartAdd(p)
+      setPriceModalItem({
+        ...p,
+        qty: 1,
+        originalPrice: p.price,
+        price: p.price
+      })
+    } else {
+      setPriceModalItem(existing)
+    }
+  }, [cart, cartAdd])
 
   // Suspended Carts state
   const [suspendedCarts, setSuspendedCarts] = useState(() => {
@@ -1136,11 +1562,10 @@ export default function POS() {
   }, [customers, customer.name, customer.phone])
 
   /* ─── Handle sale ─── */
-  const handleSale = useCallback(async () => {
-    if (cart.length === 0 || !customer.name) return
+  const handleSale = useCallback(async (forcedMethod = null) => {
+    if (cart.length === 0) return
     setSaving(true)
     try {
-      const totalPaid = Number(payments.cash || 0) + Number(payments.visa || 0) + Number(payments.instapay || 0)
       const discount = Number(payments.discount || 0)
 
       // ✅ Fix: Validate discount bounds
@@ -1156,34 +1581,56 @@ export default function POS() {
       }
 
       const finalTotal = Math.max(0, cartTotal - discount)
-      const dueAmount = finalTotal - totalPaid
+
+      let finalPayments = {
+        cash: Number(payments.cash || 0),
+        visa: Number(payments.visa || 0),
+        instapay: Number(payments.instapay || 0),
+        wallet: Number(payments.wallet || 0)
+      }
+
+      // If a specific method was forced (e.g. 1-click cash button)
+      if (typeof forcedMethod === 'string' && ['cash', 'visa', 'instapay', 'wallet'].includes(forcedMethod)) {
+        finalPayments = { cash: 0, visa: 0, instapay: 0, wallet: 0, [forcedMethod]: finalTotal }
+      }
+
+      let totalPaid = finalPayments.cash + finalPayments.visa + finalPayments.instapay + finalPayments.wallet
+
+      // Default to cash in full if no payment was explicitly typed/selected
+      if (totalPaid === 0 && finalTotal > 0) {
+        finalPayments.cash = finalTotal
+        totalPaid = finalTotal
+      }
+
+      const dueAmount = Math.max(0, finalTotal - totalPaid)
+      const customerName = customer.name?.trim() || 'عميل نقدي'
+      const customerData = {
+        ...customer,
+        name: customerName
+      }
 
       const { id: invId, number: invNum } = await completeSale({
-        customerData: customer,
+        customerData,
         items: cart.map(i => ({ ...i, reminderMonths: reminders[i.id] || 0 })),
         total: finalTotal,
         paidAmount: totalPaid,
-        dueAmount: dueAmount > 0 ? dueAmount : 0,
-        payments: {
-          cash: Number(payments.cash || 0),
-          visa: Number(payments.visa || 0),
-          instapay: Number(payments.instapay || 0)
-        }
+        dueAmount,
+        payments: finalPayments
       })
 
       setDoneInvoice({
         id: invId,
         number: invNum,
         total: finalTotal,
-        due: dueAmount > 0 ? dueAmount : 0,
+        due: dueAmount,
         customerPhone: customer.phone,
-        customerName: customer.name,
+        customerName: customerName,
         customerCar: customer.carModel,
         items: cart.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
       })
 
       setCustomer({ name: '', phone: '', carModel: '', licensePlate: '', nationalId: '' })
-      setPayments({ cash: '', visa: '', instapay: '' })
+      setPayments({ cash: '', visa: '', instapay: '', wallet: '', discount: '' })
       setReminders({})
     } catch (e) {
       toast.error(e?.message || 'حدث خطأ أثناء حفظ الفاتورة!')
@@ -1310,15 +1757,20 @@ export default function POS() {
         id: item.id,
         name: item.name,
         price: item.price,
+        originalPrice: item.originalPrice !== undefined ? item.originalPrice : item.price,
+        isCustomPrice: !!item.isCustomPrice,
         cost: item.cost || 0,
         category: item.category || 'عام',
-        quantity: item.quantity || 999
+        quantity: item.quantity || 999,
+        qty: item.qty
       }
       cartAdd(productObj)
-      cartQty(item.id, item.qty)
+      if (item.qty > 1) {
+        cartQty(item.id, item.qty)
+      }
     })
     setCustomer(suspended.customer || { name: '', phone: '', carModel: '', licensePlate: '', nationalId: '' })
-    setPayments(suspended.payments || { cash: '', visa: '', instapay: '' })
+    setPayments(suspended.payments || { cash: '', visa: '', instapay: '', wallet: '', discount: '' })
     setReminders(suspended.reminders || {})
     if (suspended.itemWeights) {
       Object.entries(suspended.itemWeights).forEach(([id, weight]) => {
@@ -1338,7 +1790,8 @@ export default function POS() {
 
   /* ─── Cart props memo ─── */
   const cartProps = useMemo(() => ({
-    cart, cartTotal, cartClear, cartQty, cartRemove,
+    cart, cartTotal, cartClear, cartQty, cartRemove, cartPrice,
+    onOpenPriceModal: handleOpenPriceModal,
     customer, setCustomer, suggestedCustomers,
     payments, setPayments, isAdmin,
     saving, handleSale, setIsCartOpen,
@@ -1346,7 +1799,8 @@ export default function POS() {
     // suspended features
     suspendedCarts, handleSuspendCart, handleResumeCart, handleDeleteSuspended
   }), [
-    cart, cartTotal, cartClear, cartQty, cartRemove,
+    cart, cartTotal, cartClear, cartQty, cartRemove, cartPrice,
+    handleOpenPriceModal,
     customer, setCustomer, suggestedCustomers,
     payments, setPayments, isAdmin,
     saving, handleSale, setIsCartOpen,
@@ -1400,6 +1854,21 @@ export default function POS() {
               >إلغاء</button>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== Price Override Modal ===== */}
+      <AnimatePresence>
+        {priceModalItem && (
+          <PriceOverrideModal
+            item={priceModalItem}
+            onClose={() => setPriceModalItem(null)}
+            onApply={(id, newPrice) => {
+              cartPrice(id, newPrice)
+              toast.success(`تم تحديث سعر البيع إلى ${newPrice.toLocaleString()} ج.م`)
+            }}
+            isAdmin={isAdmin}
+          />
         )}
       </AnimatePresence>
 
@@ -1573,7 +2042,10 @@ export default function POS() {
         {/* PRODUCTS GRID */}
         <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filtered.map(p => {
-            const inCart = cartMap[p.id] || 0
+            const inCartItem = cart.find(i => i.id === p.id || i._originalId === p.id)
+            const inCart = inCartItem?.qty || cartMap[p.id] || 0
+            const displayPrice = inCartItem ? inCartItem.price : p.price
+            const isCustom = inCartItem?.isCustomPrice
             const isLowStock = p.quantity <= 5
             return (
               <motion.div variants={itemVariant} key={p.id}
@@ -1627,10 +2099,25 @@ export default function POS() {
                   <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-3">
                     <div>
                       <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">السعر</p>
-                      <p className="text-xl sm:text-2xl font-black tracking-tight text-primary-600 leading-none mt-0.5">
-                        {Number(p.price).toLocaleString('en-US')}
-                        <span className="mr-1 text-[10px] font-bold text-slate-400">ج.م</span>
-                      </p>
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAddWithCustomPrice(p)
+                        }}
+                        className="group/cardprice flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+                        title="انقر لتعديل سعر البيع أو البيع بسعر مخصص"
+                      >
+                        <p className="text-xl sm:text-2xl font-black tracking-tight text-primary-600 leading-none mt-0.5 flex items-center gap-1">
+                          {Number(displayPrice).toLocaleString('en-US')}
+                          <span className="mr-1 text-[10px] font-bold text-slate-400">ج.م</span>
+                          <span className="text-[11px] text-slate-400 opacity-0 group-hover/cardprice:opacity-100 transition-opacity">✏️</span>
+                        </p>
+                        {isCustom && (
+                          <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md border border-amber-200">
+                            معدل
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {inCart === 0 && (
                       <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-primary-500/20 group-hover:scale-105 transition-transform">
@@ -1645,12 +2132,25 @@ export default function POS() {
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                       className="border-t border-primary-100 bg-primary-50/50">
                       <div className="flex items-center justify-between px-3.5 py-2">
-                        <button onClick={(e) => { e.stopPropagation(); cartQty(p.id, inCart - 1) }}
+                        <button onClick={(e) => { e.stopPropagation(); cartQty(inCartItem?.id || p.id, inCart - 1) }}
                           className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm active:scale-90 transition-transform hover:bg-rose-50 hover:border-rose-200">
                           {inCart === 1 ? <Trash2 size={14} className="text-rose-500" /> : <Minus size={14} className="text-slate-600" />}
                         </button>
-                        <span className="text-sm font-black text-primary-700">{inCart} في السلة</span>
-                        <button onClick={(e) => { e.stopPropagation(); cartQty(p.id, inCart + 1) }}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (inCartItem) handleOpenPriceModal(inCartItem)
+                          }}
+                          className="text-xs font-black text-primary-700 hover:text-primary-900 bg-white px-2.5 py-1 rounded-lg border border-primary-200 shadow-sm flex items-center gap-1.5 active:scale-95 transition-transform"
+                          title="تعديل سعر البيع لهذا الصنف"
+                        >
+                          <span>{inCart} في السلة</span>
+                          <span className="text-[10px] text-amber-700 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 font-bold">
+                            ✏️ السعر
+                          </span>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); cartQty(inCartItem?.id || p.id, inCart + 1) }}
                           className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm active:scale-90 transition-transform hover:bg-primary-50 hover:border-primary-200">
                           <Plus size={14} className="text-primary-600" />
                         </button>

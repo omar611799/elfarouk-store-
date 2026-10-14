@@ -78,11 +78,41 @@ function reducer(state, action) {
         return {
           ...state,
           cart: state.cart.map((item) =>
-            item.id === action.item.id ? { ...item, qty: item.qty + 1 } : item
+            item.id === action.item.id ? { ...item, qty: item.qty + (action.item.qty || 1) } : item
           ),
         }
       }
-      return { ...state, cart: [...state.cart, { ...action.item, qty: 1 }] }
+      const itemPrice = Number(action.item.price) || 0
+      const originalPrice = action.item.originalPrice !== undefined ? Number(action.item.originalPrice) : itemPrice
+      return {
+        ...state,
+        cart: [
+          ...state.cart,
+          {
+            ...action.item,
+            price: itemPrice,
+            originalPrice,
+            isCustomPrice: itemPrice !== originalPrice,
+            qty: action.item.qty || 1,
+          },
+        ],
+      }
+    }
+    case 'CART_PRICE': {
+      const newPrice = Math.max(0, Number(action.price) || 0)
+      return {
+        ...state,
+        cart: state.cart.map((item) => {
+          if (item.id !== action.id) return item
+          const origPrice = item.originalPrice !== undefined ? item.originalPrice : item.price
+          return {
+            ...item,
+            price: newPrice,
+            originalPrice: origPrice,
+            isCustomPrice: newPrice !== origPrice,
+          }
+        }),
+      }
     }
     case 'CART_QTY':
       if (action.qty < 1) {
@@ -671,6 +701,7 @@ export function StoreProvider({ children }) {
 
   const cartAdd = (item) => dispatch({ type: 'CART_ADD', item })
   const cartQty = (id, qty) => dispatch({ type: 'CART_QTY', id, qty })
+  const cartPrice = (id, price) => dispatch({ type: 'CART_PRICE', id, price })
   const cartRemove = (id) => dispatch({ type: 'CART_REMOVE', id })
   const cartClear = () => dispatch({ type: 'CART_CLEAR' })
   const cartTotal = state.cart.reduce((sum, item) => sum + item.price * item.qty, 0)
@@ -715,6 +746,7 @@ export function StoreProvider({ children }) {
       logAuditEvent,
       cartAdd,
       cartQty,
+      cartPrice,
       cartRemove,
       cartClear,
     }}>
