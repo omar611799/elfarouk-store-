@@ -1718,7 +1718,9 @@ export default function POS() {
       }
       cartAdd(setItem)
     } else if (unit === 'box') {
-      const boxPrice = Number(p.boxPrice || (p.price / boxesPerSet))
+      const isSet = boxesPerSet > 1 || p.name?.includes('طقم')
+      const defaultBoxPrice = Math.round(Number(p.price) / boxesPerSet) + (isSet ? 100 : 0)
+      const boxPrice = Number(p.boxPrice || defaultBoxPrice)
       const boxCost = Number(p.boxCost || (p.cost / boxesPerSet))
       const boxItem = {
         ...p,
@@ -1733,7 +1735,9 @@ export default function POS() {
       cartAdd(boxItem)
     } else {
       // piece
-      const piecePrice = Number(p.piecePrice || (p.price / totalPiecesInSet))
+      const isSet = boxesPerSet > 1 || p.name?.includes('طقم')
+      const defaultBoxPrice = Number(p.boxPrice || (Math.round(Number(p.price) / boxesPerSet) + (isSet ? 100 : 0)))
+      const piecePrice = Number(p.piecePrice || Math.round(defaultBoxPrice / piecesPerBox))
       const pieceCost = Number(p.pieceCost || (p.cost / totalPiecesInSet))
       const pieceItem = {
         ...p,
@@ -1843,8 +1847,9 @@ export default function POS() {
           const piecesPerBox = Number(unitSelectProduct.piecesPerBox || 2)
           const totalPieces = boxesPerSet * piecesPerBox
           const setPrice = Number(unitSelectProduct.price)
-          const boxPrice = Number(unitSelectProduct.boxPrice || (setPrice / boxesPerSet))
-          const piecePrice = Number(unitSelectProduct.piecePrice || (setPrice / totalPieces))
+          const defaultBoxPrice = Math.round(setPrice / boxesPerSet) + (isSetProduct ? 100 : 0)
+          const boxPrice = Number(unitSelectProduct.boxPrice || defaultBoxPrice)
+          const piecePrice = Number(unitSelectProduct.piecePrice || Math.round(boxPrice / piecesPerBox))
 
           return (
             <motion.div

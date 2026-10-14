@@ -833,7 +833,7 @@ export default function Products() {
                             setForm(p => ({
                               ...p,
                               boxesPerSet: val,
-                              boxPrice: val && p.price ? Math.round(Number(p.price) / Number(val)) : p.boxPrice,
+                              boxPrice: val && p.price ? Math.round(Number(p.price) / Number(val)) + (Number(val) > 1 ? 100 : 0) : p.boxPrice,
                               boxCost: val && p.cost ? Math.round(Number(p.cost) / Number(val)) : p.boxCost,
                             }))
                           }}
@@ -848,12 +848,12 @@ export default function Products() {
                           onChange={e => {
                             const val = e.target.value
                             setForm(p => {
-                              const totalPieces = (Number(p.boxesPerSet) || 1) * (Number(val) || 1)
+                              const calcBoxPrice = p.boxPrice || (p.boxesPerSet && p.price ? Math.round(Number(p.price) / Number(p.boxesPerSet)) + 100 : 0)
                               return {
                                 ...p,
                                 piecesPerBox: val,
-                                piecePrice: totalPieces && p.price ? Math.round(Number(p.price) / totalPieces) : p.piecePrice,
-                                pieceCost: totalPieces && p.cost ? Math.round(Number(p.cost) / totalPieces) : p.pieceCost,
+                                piecePrice: val && calcBoxPrice ? Math.round(Number(calcBoxPrice) / Number(val)) : p.piecePrice,
+                                pieceCost: val && p.boxCost ? Math.round(Number(p.boxCost) / Number(val)) : p.pieceCost,
                               }
                             })
                           }}
