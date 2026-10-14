@@ -22,9 +22,12 @@ const EMPTY = {
   supplier: '',
   image: '',
   hasSubUnits: false,
+  boxesPerSet: '',
+  boxPrice: '',
   piecesPerBox: '',
   boxCost: '',
   piecePrice: '',
+  pieceCost: '',
   brand: '',
   qualityTier: 'oem',
   oemPartNumber: '',
@@ -214,9 +217,12 @@ export default function Products() {
       minStock:    Number(form.minStock || 5),
       category:    form.category || 'عام',
       hasSubUnits: !!form.hasSubUnits,
+      boxesPerSet:  form.hasSubUnits && form.boxesPerSet ? Number(form.boxesPerSet) : null,
+      boxPrice:     form.hasSubUnits && form.boxPrice ? Number(form.boxPrice) : null,
       piecesPerBox: form.hasSubUnits ? Number(form.piecesPerBox || 1) : null,
-      boxCost:     form.hasSubUnits ? Number(form.boxCost || 0) : null,
-      piecePrice:  form.hasSubUnits ? Number(form.piecePrice || 0) : null,
+      boxCost:      form.hasSubUnits ? Number(form.boxCost || 0) : null,
+      piecePrice:   form.hasSubUnits ? Number(form.piecePrice || 0) : null,
+      pieceCost:    form.hasSubUnits && form.pieceCost ? Number(form.pieceCost || 0) : null,
       compatibility,
     }
     if (editing) await updateProduct(editing, data)
@@ -539,7 +545,16 @@ export default function Products() {
                     <div className="px-5 py-4 grid grid-cols-2 gap-4 bg-slate-50/50">
                       <div>
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">المخزن</p>
-                        <p className={`text-xl font-black ${isLow ? 'text-rose-600' : 'text-slate-800'}`}>{p.quantity} <small className="text-[10px] font-normal text-slate-400">قطعة</small></p>
+                        {p.boxesPerSet ? (
+                          <div>
+                            <p className={`text-base font-black ${isLow ? 'text-rose-600' : 'text-slate-800'}`}>
+                              {Math.floor(p.quantity / ((p.boxesPerSet || 2) * (p.piecesPerBox || 2)))} <small className="text-[10px] font-bold text-emerald-600">طقم</small>
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-400">({p.quantity} قطعة بالمخزن)</p>
+                          </div>
+                        ) : (
+                          <p className={`text-xl font-black ${isLow ? 'text-rose-600' : 'text-slate-800'}`}>{p.quantity} <small className="text-[10px] font-normal text-slate-400">قطعة</small></p>
+                        )}
                       </div>
                       <div className="text-left">
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">السعر</p>
@@ -808,44 +823,92 @@ export default function Products() {
 
                   {form.hasSubUnits && (
                     <div className="mt-4 grid grid-cols-2 gap-4">
-                      <div className="col-span-2">
+                      <div>
+                        <label className="label-text">عدد العلب في الطقم (إن كان طقماً)</label>
+                        <input
+                          type="number" min="1"
+                          value={form.boxesPerSet || ''}
+                          onChange={e => {
+                            const val = e.target.value
+                            setForm(p => ({
+                              ...p,
+                              boxesPerSet: val,
+                              boxPrice: val && p.price ? Math.round(Number(p.price) / Number(val)) : p.boxPrice,
+                              boxCost: val && p.cost ? Math.round(Number(p.cost) / Number(val)) : p.boxCost,
+                            }))
+                          }}
+                          className="input mt-1" placeholder="مثال: 2 (اتركه فارغاً إن لم يكن طقماً)"
+                        />
+                      </div>
+                      <div>
                         <label className="label-text">عدد القطع في العلبة الواحدة *</label>
                         <input
                           type="number" min="1"
                           value={form.piecesPerBox}
-                          onChange={e => setForm(p => ({ ...p, piecesPerBox: e.target.value }))}
-                          className="input mt-1" placeholder="مثال: 12"
+                          onChange={e => {
+                            const val = e.target.value
+                            setForm(p => {
+                              const totalPieces = (Number(p.boxesPerSet) || 1) * (Number(val) || 1)
+                              return {
+                                ...p,
+                                piecesPerBox: val,
+                                piecePrice: totalPieces && p.price ? Math.round(Number(p.price) / totalPieces) : p.piecePrice,
+                                pieceCost: totalPieces && p.cost ? Math.round(Number(p.cost) / totalPieces) : p.pieceCost,
+                              }
+                            })
+                          }}
+                          className="input mt-1" placeholder="مثال: 2"
                         />
+                      </div>
+
+                      <div>
+                        <label className="label-text">سعر بيع العلبة</label>
+                        <div className="relative mt-1">
+                          <input
+                            type="number"
+                            value={form.boxPrice || ''}
+                            onChange={e => setForm(p => ({ ...p, boxPrice: e.target.value }))}
+                            className="input pr-12" placeholder="0"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">ج.م</span>
+                        </div>
                       </div>
                       <div>
                         <label className="label-text">تكلفة العلبة (شراء)</label>
                         <div className="relative mt-1">
                           <input
                             type="number"
-                            value={form.boxCost}
+                            value={form.boxCost || ''}
                             onChange={e => setForm(p => ({ ...p, boxCost: e.target.value }))}
                             className="input pr-12" placeholder="0"
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">ج.م</span>
                         </div>
-                        {form.boxCost && form.piecesPerBox && (
-                          <p className="text-xs text-slate-500 mt-1">
-                            تكلفة القطعة: <span className="font-bold text-blue-600">{(Number(form.boxCost) / Number(form.piecesPerBox)).toFixed(2)} ج.م</span>
-                          </p>
-                        )}
                       </div>
+
                       <div>
                         <label className="label-text">سعر بيع القطعة</label>
                         <div className="relative mt-1">
                           <input
                             type="number"
-                            value={form.piecePrice}
+                            value={form.piecePrice || ''}
                             onChange={e => setForm(p => ({ ...p, piecePrice: e.target.value }))}
                             className="input pr-12" placeholder="0"
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">ج.م</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-1">سعر بيع العلبة (الحقل أعلاه): <span className="font-bold">{form.price || '0'} ج.م</span></p>
+                      </div>
+                      <div>
+                        <label className="label-text">تكلفة القطعة (شراء)</label>
+                        <div className="relative mt-1">
+                          <input
+                            type="number"
+                            value={form.pieceCost || ''}
+                            onChange={e => setForm(p => ({ ...p, pieceCost: e.target.value }))}
+                            className="input pr-12" placeholder="0"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">ج.م</span>
+                        </div>
                       </div>
                     </div>
                   )}

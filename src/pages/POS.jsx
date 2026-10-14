@@ -1700,30 +1700,52 @@ export default function POS() {
   }
 
   const handleCartAddWithUnit = (p, unit) => {
-    // unit: 'piece' or 'box'
-    const piecesPerBox = Number(p.piecesPerBox || 1)
-    if (unit === 'piece') {
-      const pieceItem = {
+    // unit: 'set' | 'box' | 'piece'
+    const boxesPerSet = Number(p.boxesPerSet || 2)
+    const piecesPerBox = Number(p.piecesPerBox || 2)
+    const totalPiecesInSet = boxesPerSet * piecesPerBox
+
+    if (unit === 'set') {
+      const setItem = {
         ...p,
-        id: p.id + '_piece',
-        name: p.name + ' (قطعة)',
-        price: Number(p.piecePrice || p.price),
+        id: p.id + '_set',
+        name: p.name + ' (طقم كامل)',
+        price: Number(p.price),
+        cost: Number(p.cost || p.price),
         _originalId: p.id,
-        _unit: 'piece',
-        _piecesPerBox: 1,
+        _unit: 'set',
+        _piecesPerBox: totalPiecesInSet,
       }
-      cartAdd(pieceItem)
-    } else {
+      cartAdd(setItem)
+    } else if (unit === 'box') {
+      const boxPrice = Number(p.boxPrice || (p.price / boxesPerSet))
+      const boxCost = Number(p.boxCost || (p.cost / boxesPerSet))
       const boxItem = {
         ...p,
         id: p.id + '_box',
         name: p.name + ' (علبة - ' + piecesPerBox + ' قطعة)',
-        price: Number(p.price),
+        price: boxPrice,
+        cost: boxCost,
         _originalId: p.id,
         _unit: 'box',
         _piecesPerBox: piecesPerBox,
       }
       cartAdd(boxItem)
+    } else {
+      // piece
+      const piecePrice = Number(p.piecePrice || (p.price / totalPiecesInSet))
+      const pieceCost = Number(p.pieceCost || (p.cost / totalPiecesInSet))
+      const pieceItem = {
+        ...p,
+        id: p.id + '_piece',
+        name: p.name + ' (قطعة مفردة)',
+        price: piecePrice,
+        cost: pieceCost,
+        _originalId: p.id,
+        _unit: 'piece',
+        _piecesPerBox: 1,
+      }
+      cartAdd(pieceItem)
     }
     setUnitSelectProduct(null)
     if (window.navigator?.vibrate) window.navigator.vibrate(15)
@@ -1813,48 +1835,125 @@ export default function POS() {
   return (
     <div className="flex min-h-full flex-col overflow-hidden bg-[#f1f5f9] font-display xl:h-full xl:flex-row" dir="rtl">
 
-      {/* ===== Unit Selection Modal (Box / Piece) ===== */}
+      {/* ===== Unit Selection Modal (Set / Box / Piece) ===== */}
       <AnimatePresence>
-        {unitSelectProduct && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-end sm:items-center justify-center p-4"
-            onClick={() => setUnitSelectProduct(null)}
-          >
+        {unitSelectProduct && (() => {
+          const isSetProduct = (Number(unitSelectProduct.boxesPerSet) || 0) > 1 || unitSelectProduct.name?.includes('طقم')
+          const boxesPerSet = Number(unitSelectProduct.boxesPerSet || 2)
+          const piecesPerBox = Number(unitSelectProduct.piecesPerBox || 2)
+          const totalPieces = boxesPerSet * piecesPerBox
+          const setPrice = Number(unitSelectProduct.price)
+          const boxPrice = Number(unitSelectProduct.boxPrice || (setPrice / boxesPerSet))
+          const piecePrice = Number(unitSelectProduct.piecePrice || (setPrice / totalPieces))
+
+          return (
             <motion.div
-              initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6"
-              onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-end sm:items-center justify-center p-4"
+              onClick={() => setUnitSelectProduct(null)}
             >
-              <div className="w-10 h-1.5 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
-              <h3 className="text-lg font-black text-slate-800 text-center mb-1">{unitSelectProduct.name}</h3>
-              <p className="text-xs text-slate-500 text-center mb-6">اختر وحدة البيع</p>
-              <div className="grid grid-cols-2 gap-3">
+              <motion.div
+                initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 border border-slate-100"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="w-10 h-1.5 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
+                <h3 className="text-xl font-black text-slate-900 text-center mb-1 font-display">{unitSelectProduct.name}</h3>
+                <p className="text-xs text-slate-500 text-center mb-5 font-bold">
+                  {isSetProduct ? 'الطقم يتكون من علبتين وكل علبة قطعتين (4 قطع) — اختر وحدة البيع:' : 'اختر وحدة البيع المطلوبة:'}
+                </p>
+
+                {isSetProduct ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Option 1: Full Set */}
+                    <button
+                      type="button"
+                      onClick={() => handleCartAddWithUnit(unitSelectProduct, 'set')}
+                      className="group flex flex-col items-center justify-between p-4 rounded-2xl border-2 border-emerald-300 bg-emerald-50/60 hover:bg-emerald-100/80 hover:border-emerald-500 active:scale-95 transition-all shadow-sm text-center"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-200/60 flex items-center justify-center text-2xl mb-2 group-hover:scale-110 transition-transform">
+                        📦📦
+                      </div>
+                      <div>
+                        <span className="block font-black text-emerald-950 text-sm">طقم كامل</span>
+                        <span className="block text-[11px] text-emerald-700 font-bold mb-1">علبتين (4 قطع)</span>
+                      </div>
+                      <span className="mt-1 inline-block px-2.5 py-1 rounded-xl bg-emerald-600 text-white text-xs font-black shadow-sm">
+                        {setPrice.toLocaleString()} ج.م
+                      </span>
+                    </button>
+
+                    {/* Option 2: 1 Box */}
+                    <button
+                      type="button"
+                      onClick={() => handleCartAddWithUnit(unitSelectProduct, 'box')}
+                      className="group flex flex-col items-center justify-between p-4 rounded-2xl border-2 border-amber-300 bg-amber-50/60 hover:bg-amber-100/80 hover:border-amber-500 active:scale-95 transition-all shadow-sm text-center"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-amber-200/60 flex items-center justify-center text-2xl mb-2 group-hover:scale-110 transition-transform">
+                        📦
+                      </div>
+                      <div>
+                        <span className="block font-black text-amber-950 text-sm">علبة واحدة</span>
+                        <span className="block text-[11px] text-amber-700 font-bold mb-1">قطعتين (2 قطعة)</span>
+                      </div>
+                      <span className="mt-1 inline-block px-2.5 py-1 rounded-xl bg-amber-600 text-white text-xs font-black shadow-sm">
+                        {boxPrice.toLocaleString()} ج.م
+                      </span>
+                    </button>
+
+                    {/* Option 3: 1 Piece */}
+                    <button
+                      type="button"
+                      onClick={() => handleCartAddWithUnit(unitSelectProduct, 'piece')}
+                      className="group flex flex-col items-center justify-between p-4 rounded-2xl border-2 border-blue-300 bg-blue-50/60 hover:bg-blue-100/80 hover:border-blue-500 active:scale-95 transition-all shadow-sm text-center"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-blue-200/60 flex items-center justify-center text-2xl mb-2 group-hover:scale-110 transition-transform">
+                        🔩
+                      </div>
+                      <div>
+                        <span className="block font-black text-blue-950 text-sm">قطعة مفردة</span>
+                        <span className="block text-[11px] text-blue-700 font-bold mb-1">فردة واحدة</span>
+                      </div>
+                      <span className="mt-1 inline-block px-2.5 py-1 rounded-xl bg-blue-600 text-white text-xs font-black shadow-sm">
+                        {piecePrice.toLocaleString()} ج.م
+                      </span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleCartAddWithUnit(unitSelectProduct, 'piece')}
+                      className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 active:scale-95 transition-all"
+                    >
+                      <span className="text-3xl">🔩</span>
+                      <span className="font-black text-blue-700 text-sm">قطعة</span>
+                      <span className="text-xs font-bold text-blue-500">{piecePrice.toLocaleString()} ج.م</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCartAddWithUnit(unitSelectProduct, 'box')}
+                      className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 active:scale-95 transition-all"
+                    >
+                      <span className="text-3xl">📦</span>
+                      <span className="font-black text-amber-700 text-sm">علبة ({piecesPerBox} قطعة)</span>
+                      <span className="text-xs font-bold text-amber-500">{boxPrice.toLocaleString()} ج.م</span>
+                    </button>
+                  </div>
+                )}
+
                 <button
-                  onClick={() => handleCartAddWithUnit(unitSelectProduct, 'piece')}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 active:scale-95 transition-all"
+                  type="button"
+                  onClick={() => setUnitSelectProduct(null)}
+                  className="mt-5 w-full text-xs text-slate-400 font-bold py-2 hover:text-slate-600 transition-colors"
                 >
-                  <span className="text-3xl">🔩</span>
-                  <span className="font-black text-blue-700 text-sm">قطعة</span>
-                  <span className="text-xs font-bold text-blue-500">{Number(unitSelectProduct.piecePrice || unitSelectProduct.price).toLocaleString()} ج.م</span>
+                  إلغاء
                 </button>
-                <button
-                  onClick={() => handleCartAddWithUnit(unitSelectProduct, 'box')}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 active:scale-95 transition-all"
-                >
-                  <span className="text-3xl">📦</span>
-                  <span className="font-black text-amber-700 text-sm">علبة ({unitSelectProduct.piecesPerBox} قطعة)</span>
-                  <span className="text-xs font-bold text-amber-500">{Number(unitSelectProduct.price).toLocaleString()} ج.م</span>
-                </button>
-              </div>
-              <button
-                onClick={() => setUnitSelectProduct(null)}
-                className="mt-4 w-full text-xs text-slate-400 font-bold py-2 hover:text-slate-600 transition-colors"
-              >إلغاء</button>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          )
+        })()}
       </AnimatePresence>
 
       {/* ===== Price Override Modal ===== */}
@@ -2069,7 +2168,10 @@ export default function POS() {
                 {isLowStock && (
                   <div className="absolute top-2 right-2 z-10">
                     <span className="bg-amber-100 text-amber-700 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-amber-200 flex items-center gap-0.5">
-                      <AlertTriangle size={10} /> {p.quantity}
+                      <AlertTriangle size={10} />{' '}
+                      {p.boxesPerSet
+                        ? `${Math.floor(p.quantity / ((p.boxesPerSet || 2) * (p.piecesPerBox || 2)))} طقم`
+                        : p.quantity}
                     </span>
                   </div>
                 )}
@@ -2089,7 +2191,9 @@ export default function POS() {
                         <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[9px] font-black text-white">{p.category || 'عام'}</span>
                         {!isLowStock && (
                           <span className="rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[9px] font-black text-emerald-600">
-                            متاح {p.quantity}
+                            {p.boxesPerSet
+                              ? `متاح ${Math.floor(p.quantity / ((p.boxesPerSet || 2) * (p.piecesPerBox || 2)))} طقم (${p.quantity} ق)`
+                              : `متاح ${p.quantity}`}
                           </span>
                         )}
                       </div>
